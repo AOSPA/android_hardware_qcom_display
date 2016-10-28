@@ -34,6 +34,7 @@ ifneq ($(TARGET_USES_GRALLOC1), true)
     common_flags += -isystem $(display_top)/libgralloc
 else
     common_flags += -isystem $(display_top)/libgralloc1
+    common_flags += -DUSES_GRALLOC1
 endif
 
 ifeq ($(TARGET_USES_POST_PROCESSING),true)

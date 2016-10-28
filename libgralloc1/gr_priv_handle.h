@@ -135,7 +135,7 @@ struct private_handle_t : public native_handle_t {
                    int height, int meta_fd, unsigned int meta_offset, uint64_t meta_base,
                    int unaligned_w , int unaligned_h,
                    gralloc1_producer_usage_t prod_usage, gralloc1_consumer_usage_t cons_usage)
-      : private_handle_t(fd, size, flags, buf_type, format, width, height, meta_fd, meta_offset
+      : private_handle_t(fd, size, flags, buf_type, format, width, height, meta_fd, meta_offset,
                          meta_base) {
     unaligned_width = unaligned_w;
     unaligned_height = unaligned_h;

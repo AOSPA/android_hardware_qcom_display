@@ -57,7 +57,12 @@ DisplayError HWCBufferAllocator::AllocateBuffer(BufferInfo *buffer_info) {
     return kErrorMemory;
   }
 
-  int alloc_flags = INT(GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+  int alloc_flags =
+#ifndef USES_GRALLOC1
+  INT(GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+#else
+  INT(GRALLOC1_PRODUCER_USAGE_PRIVATE_IOMMU_HEAP);
+#endif
   int error = 0;
 
   int width = INT(buffer_config.width);
@@ -65,7 +70,11 @@ DisplayError HWCBufferAllocator::AllocateBuffer(BufferInfo *buffer_info) {
   int format;
 
   if (buffer_config.secure) {
+#ifndef USES_GRALLOC1
     alloc_flags = INT(GRALLOC_USAGE_PRIVATE_MM_HEAP);
+#else
+    alloc_flags = INT(GRALLOC1_PRODUCER_USAGE_PRIVATE_MM_HEAP);
+#endif
     alloc_flags |= INT(GRALLOC_USAGE_PROTECTED);
     data.align = SECURE_ALIGN;
   } else {
@@ -74,7 +83,11 @@ DisplayError HWCBufferAllocator::AllocateBuffer(BufferInfo *buffer_info) {
 
   if (buffer_config.cache == false) {
     // Allocate uncached buffers
+#ifndef USES_GRALLOC1
     alloc_flags |= GRALLOC_USAGE_PRIVATE_UNCACHED;
+#else
+    alloc_flags |= GRALLOC1_PRODUCER_USAGE_PRIVATE_UNCACHED;
+#endif
   }
 
   error = SetBufferInfo(buffer_config.format, &format, &alloc_flags);
@@ -160,21 +173,33 @@ uint32_t HWCBufferAllocator::GetBufferSize(BufferInfo *buffer_info) {
 
   const BufferConfig &buffer_config = buffer_info->buffer_config;
 
-  int alloc_flags = INT(GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
-
+  int alloc_flags =
+#ifndef USES_GRALLOC1
+  INT(GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+#else
+  INT(GRALLOC1_PRODUCER_USAGE_PRIVATE_IOMMU_HEAP);
+#endif
   int width = INT(buffer_config.width);
   int height = INT(buffer_config.height);
   int format;
 
   if (buffer_config.secure) {
+#ifndef USES_GRALLOC1
     alloc_flags = INT(GRALLOC_USAGE_PRIVATE_MM_HEAP);
+#else
+    alloc_flags = INT(GRALLOC1_PRODUCER_USAGE_PRIVATE_MM_HEAP);
+#endif
     alloc_flags |= INT(GRALLOC_USAGE_PROTECTED);
     align = SECURE_ALIGN;
   }
 
   if (buffer_config.cache == false) {
     // Allocate uncached buffers
+#ifndef USES_GRALLOC1
     alloc_flags |= GRALLOC_USAGE_PRIVATE_UNCACHED;
+#else
+    alloc_flags |= GRALLOC1_PRODUCER_USAGE_PRIVATE_UNCACHED;
+#endif
   }
 
   if (SetBufferInfo(buffer_config.format, &format, &alloc_flags) < 0) {
@@ -221,23 +246,43 @@ int HWCBufferAllocator::SetBufferInfo(LayerBufferFormat format, int *target, int
   case kFormatYCbCr420TP10Ubwc:         *target = HAL_PIXEL_FORMAT_YCbCr_420_TP10_UBWC;   break;
   case kFormatRGBA8888Ubwc:
     *target = HAL_PIXEL_FORMAT_RGBA_8888;
+#ifndef USES_GRALLOC1
     *flags |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+    *flags |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
     break;
   case kFormatRGBX8888Ubwc:
     *target = HAL_PIXEL_FORMAT_RGBX_8888;
+#ifndef USES_GRALLOC1
     *flags |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+    *flags |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
     break;
   case kFormatBGR565Ubwc:
     *target = HAL_PIXEL_FORMAT_BGR_565;
+#ifndef USES_GRALLOC1
     *flags |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+    *flags |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
     break;
   case kFormatRGBA1010102Ubwc:
     *target = HAL_PIXEL_FORMAT_RGBA_1010102;
+#ifndef USES_GRALLOC1
     *flags |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+    *flags |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
     break;
   case kFormatRGBX1010102Ubwc:
     *target = HAL_PIXEL_FORMAT_RGBX_1010102;
+#ifndef USES_GRALLOC1
     *flags |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+    *flags |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
     break;
   default:
     DLOGE("Unsupported format = 0x%x", format);

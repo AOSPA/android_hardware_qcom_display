@@ -494,6 +494,7 @@ gralloc1_error_t BufferManager::Perform(int operation, va_list args) {
           native_handle_create(private_handle_t::kNumFds, private_handle_t::NumInts()));
       if (hnd) {
         unsigned int alignedw = 0, alignedh = 0;
+        int alignedw1 = 0, alignedh1 = 0;
         hnd->magic = private_handle_t::kMagic;
         hnd->fd = fd;
         hnd->flags = private_handle_t::PRIV_FLAGS_USES_ION;
@@ -505,8 +506,8 @@ gralloc1_error_t BufferManager::Perform(int operation, va_list args) {
         allocator_->GetAlignedWidthAndHeight(descriptor, &alignedw, &alignedh);
         hnd->unaligned_width = width;
         hnd->unaligned_height = height;
-        hnd->width = alignedw;
-        hnd->height = alignedh;
+        hnd->width = alignedw1;
+        hnd->height = alignedh1;
         hnd->format = format;
         *handle = reinterpret_cast<native_handle_t *>(hnd);
       }

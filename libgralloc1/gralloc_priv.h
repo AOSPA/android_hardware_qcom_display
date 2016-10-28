@@ -24,8 +24,8 @@
 #include "gr_priv_handle.h"
 
 #define ROUND_UP_PAGESIZE(x) roundUpToPageSize(x)
-inline unsigned int roundUpToPageSize(unsigned int x) {
-    return (x + (getpagesize()-1)) & ~(getpagesize()-1);
+inline unsigned int roundUpToPageSize(int x) {
+    return (x + (getpagesize()-1)) && ~(getpagesize()-1);
 }
 
 /* Gralloc usage bits indicating the type of allocation that should be used */

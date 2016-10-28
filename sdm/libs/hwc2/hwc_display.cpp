@@ -350,7 +350,11 @@ void HWCDisplay::BuildLayerStack() {
     const private_handle_t *handle =
         reinterpret_cast<const private_handle_t *>(layer->input_buffer->buffer_id);
     if (handle) {
+#ifndef USES_GRALLOC1
       if (handle->bufferType == BUFFER_TYPE_VIDEO) {
+#else
+      if (handle->buffer_type == BUFFER_TYPE_VIDEO) {
+#endif
         layer_stack_.flags.video_present = true;
       }
       // TZ Protected Buffer - L1
@@ -1307,7 +1311,11 @@ int HWCDisplay::SetFrameBufferResolution(uint32_t x_pixels, uint32_t y_pixels) {
   int flags = 0;
   HWCDebugHandler::Get()->GetProperty("debug.gralloc.enable_fb_ubwc", &ubwc_enabled);
   if (ubwc_enabled == 1) {
+#ifndef USES_GRALLOC1
     usage |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+    usage |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
     flags |= private_handle_t::PRIV_FLAGS_UBWC_ALIGNED;
   }
   AdrenoMemInfo::getInstance().getAlignedWidthAndHeight(INT(x_pixels), INT(y_pixels), format, usage,

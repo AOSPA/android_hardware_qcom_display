@@ -485,8 +485,11 @@ static int stretch_copybit(
         }
 
         if(src->format ==  HAL_PIXEL_FORMAT_YV12) {
-            int usage =
-            GRALLOC_USAGE_PRIVATE_IOMMU_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED;
+#ifndef USES_GRALLOC1
+            int usage = GRALLOC_USAGE_PRIVATE_IOMMU_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED;
+#else
+            int usage = GRALLOC1_PRODUCER_USAGE_PRIVATE_IOMMU_HEAP | GRALLOC1_PRODUCER_USAGE_PRIVATE_UNCACHED;
+#endif
             if (0 == alloc_buffer(&yv12_handle,src->w,src->h,
                                   src->format, usage)){
                 if(0 == convertYV12toYCrCb420SP(src,yv12_handle)){

@@ -89,7 +89,7 @@ static unsigned int getUBwcSize(int, int, int, const int, const int);
  * treated as uncached. */
 static bool useUncached(const int& usage) {
     if ((usage & GRALLOC_USAGE_PROTECTED) or
-        (usage & GRALLOC_USAGE_PRIVATE_UNCACHED) or
+        (usage & GRALLOC1_PRODUCER_USAGE_PRIVATE_UNCACHED) or
         ((usage & GRALLOC_USAGE_SW_WRITE_MASK) == GRALLOC_USAGE_SW_WRITE_RARELY) or
         ((usage & GRALLOC_USAGE_SW_READ_MASK) ==  GRALLOC_USAGE_SW_READ_RARELY))
         return true;
@@ -169,7 +169,7 @@ void AdrenoMemInfo::getAlignedWidthAndHeight(const private_handle_t *hnd, int& a
         int usage = 0;
 
         if (hnd->flags & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) {
-            usage = GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+            usage = GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
         }
 
         getAlignedWidthAndHeight(w, h, f, usage, aligned_w, aligned_h);
@@ -178,6 +178,18 @@ void AdrenoMemInfo::getAlignedWidthAndHeight(const private_handle_t *hnd, int& a
         aligned_h = hnd->height;
     }
 
+}
+
+void AdrenoMemInfo::getUnalignedWidthAndHeight(const private_handle_t *hnd, int& unaligned_w,
+                                               int& unaligned_h) {
+    MetaData_t *metadata = (MetaData_t *)hnd->base_metadata;
+    if(metadata && metadata->operation & UPDATE_BUFFER_GEOMETRY) {
+        unaligned_w = metadata->bufferDim.sliceWidth;
+        unaligned_h = metadata->bufferDim.sliceHeight;
+    } else {
+        unaligned_w = hnd->unaligned_width;
+        unaligned_h = hnd->unaligned_height;
+    }
 }
 
 bool isUncompressedRgbFormat(int format)
@@ -454,7 +466,7 @@ int IonController::allocate(alloc_data& data, int usage)
     data.allocType = 0;
 
     if(usage & GRALLOC_USAGE_PROTECTED) {
-        if (usage & GRALLOC_USAGE_PRIVATE_SECURE_DISPLAY) {
+        if (usage & GRALLOC1_CONSUMER_USAGE_PRIVATE_SECURE_DISPLAY) {
             ionHeapId = ION_HEAP(SD_HEAP_ID);
             /*
              * There is currently no flag in ION for Secure Display
@@ -465,19 +477,19 @@ int IonController::allocate(alloc_data& data, int usage)
             ionHeapId = ION_HEAP(CP_HEAP_ID);
             ionFlags |= ION_CP_FLAGS;
         }
-    } else if(usage & GRALLOC_USAGE_PRIVATE_MM_HEAP) {
+    } else if(usage & GRALLOC1_PRODUCER_USAGE_PRIVATE_MM_HEAP) {
         //MM Heap is exclusively a secure heap.
         //If it is used for non secure cases, fallback to IOMMU heap
-        ALOGW("GRALLOC_USAGE_PRIVATE_MM_HEAP \
+        ALOGW("GRALLOC1_PRODUCER_USAGE_PRIVATE_MM_HEAP \
                                 cannot be used as an insecure heap!\
                                 trying to use system heap instead !!");
         ionHeapId |= ION_HEAP(ION_SYSTEM_HEAP_ID);
     }
 
-    if(usage & GRALLOC_USAGE_PRIVATE_CAMERA_HEAP)
+    if(usage & GRALLOC1_PRODUCER_USAGE_PRIVATE_CAMERA_HEAP)
         ionHeapId |= ION_HEAP(ION_CAMERA_HEAP_ID);
 
-    if(usage & GRALLOC_USAGE_PRIVATE_ADSP_HEAP)
+    if(usage & GRALLOC1_PRODUCER_USAGE_PRIVATE_ADSP_HEAP)
         ionHeapId |= ION_HEAP(ION_ADSP_HEAP_ID);
 
     if(ionFlags & ION_SECURE)
@@ -790,7 +802,7 @@ int getYUVPlaneInfo(private_handle_t* hnd, struct android_ycbcr* ycbcr)
         int usage = 0;
 
         if (hnd->flags & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) {
-            usage = GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+            usage = GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
         }
 
         AdrenoMemInfo::getInstance().getAlignedWidthAndHeight(metadata->bufferDim.sliceWidth,
@@ -962,7 +974,7 @@ bool isUBwcEnabled(int format, int usage)
     // Allow UBWC, if an OpenGL client sets UBWC usage flag and GPU plus MDP
     // support the format. OR if a non-OpenGL client like Rotator, sets UBWC
     // usage flag and MDP supports the format.
-    if ((usage & GRALLOC_USAGE_PRIVATE_ALLOC_UBWC) && isUBwcSupported(format)) {
+    if ((usage & GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC) && isUBwcSupported(format)) {
         bool enable = true;
         // Query GPU for UBWC only if buffer is intended to be used by GPU.
         if (usage & (GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_HW_RENDER)) {

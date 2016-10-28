@@ -363,7 +363,11 @@ int HWCDisplay::PrepareLayerParams(hwc_layer_1_t *hwc_layer, Layer* layer) {
       return -EINVAL;
     }
 
+#ifndef USES_GRALLOC1
     if (pvt_handle->bufferType == BUFFER_TYPE_VIDEO) {
+#else
+    if (pvt_handle->buffer_type == BUFFER_TYPE_VIDEO) {
+#endif
       layer_stack_.flags.video_present = true;
       layer_buffer->flags.video = true;
     }
@@ -398,7 +402,11 @@ int HWCDisplay::PrepareLayerParams(hwc_layer_1_t *hwc_layer, Layer* layer) {
       int flags = 0;
       HWCDebugHandler::Get()->GetProperty("debug.gralloc.enable_fb_ubwc", &ubwc_enabled);
       if (ubwc_enabled == 1) {
+#ifndef USES_GRALLOC1
         usage |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+        usage |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
         flags |= private_handle_t::PRIV_FLAGS_UBWC_ALIGNED;
       }
 

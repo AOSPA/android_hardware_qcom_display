@@ -92,7 +92,11 @@ HWC2::Error HWCLayer::SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fen
     return HWC2::Error::BadLayer;
   }
 
+#ifndef USES_GRALLOC1
   if (handle->bufferType == BUFFER_TYPE_VIDEO) {
+#else
+  if (handle->buffer_type == BUFFER_TYPE_VIDEO) {
+#endif
     layer_buffer->flags.video = true;
   }
   // TZ Protected Buffer - L1

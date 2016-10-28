@@ -344,9 +344,18 @@ int BlitEngineC2d::PreCommit(hwc_display_contents_1_t *content_list, LayerStack 
     int height = INT(layer->dst_rect.bottom - layer->dst_rect.top);
     int aligned_w = 0;
     int aligned_h = 0;
-    usage = GRALLOC_USAGE_PRIVATE_IOMMU_HEAP | GRALLOC_USAGE_HW_TEXTURE;
+    usage = GRALLOC_USAGE_HW_TEXTURE |
+#ifndef USES_GRALLOC1
+    GRALLOC_USAGE_PRIVATE_IOMMU_HEAP;
+#else
+    GRALLOC1_PRODUCER_USAGE_PRIVATE_IOMMU_HEAP;
+#endif
     if (blit_engine_c2d_->get(blit_engine_c2d_, COPYBIT_UBWC_SUPPORT) > 0) {
+#ifndef USES_GRALLOC1
       usage |= GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
+#else
+      usage |= GRALLOC1_PRODUCER_USAGE_PRIVATE_ALLOC_UBWC;
+#endif
     }
     // TODO(user): FrameBuffer is assumed to be RGBA
     target_width = std::max(target_width, width);

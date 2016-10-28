@@ -23,3 +23,17 @@ LOCAL_SRC_FILES               := gr_utils.cpp \
 LOCAL_COPY_HEADERS_TO         := $(common_header_export_path)
 LOCAL_COPY_HEADERS            := gr_device_impl.h gralloc_priv.h gr_priv_handle.h
 include $(BUILD_SHARED_LIBRARY)
+
+# MemAlloc Library
+include $(CLEAR_VARS)
+
+LOCAL_MODULE                  := libmemalloc
+LOCAL_MODULE_TAGS             := optional
+LOCAL_C_INCLUDES              := $(common_includes) $(kernel_includes)
+LOCAL_SHARED_LIBRARIES        := $(common_libs) libqdutils libdl
+LOCAL_CFLAGS                  := $(common_flags) -DLOG_TAG=\"qdmemalloc\" -Wno-sign-conversion
+LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps) $(kernel_deps)
+LOCAL_SRC_FILES               := ionalloc.cpp alloc_controller.cpp
+LOCAL_COPY_HEADERS            := alloc_controller.h memalloc.h
+
+include $(BUILD_SHARED_LIBRARY)

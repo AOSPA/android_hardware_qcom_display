@@ -528,11 +528,7 @@ bool  CopyBit::draw(hwc_context_t *ctx, hwc_display_contents_1_t *list,
     mDirtyLayerIndex =  checkDirtyRect(ctx, list, dpy);
     if( mDirtyLayerIndex != -1){
           hwc_layer_1_t *layer = &list->hwLayers[mDirtyLayerIndex];
-#ifdef QCOM_BSP
-          clear(renderBuffer,layer->dirtyRect);
-#else
           clear(renderBuffer,layer->displayFrame);
-#endif
     } else {
           hwc_rect_t clearRegion = {0,0,0,0};
           if(CBUtils::getuiClearRegion(list, clearRegion, layerProp))
@@ -847,16 +843,6 @@ int  CopyBit::drawLayerUsingCopybit(hwc_context_t *dev, hwc_layer_1_t *layer,
     copybit_rect_t dstRect = {displayFrame.left, displayFrame.top,
                               displayFrame.right,
                               displayFrame.bottom};
-#ifdef QTI_BSP
-    //change src and dst with dirtyRect
-    if(mDirtyLayerIndex != -1) {
-      srcRect.l = layer->dirtyRect.left;
-      srcRect.t = layer->dirtyRect.top;
-      srcRect.r = layer->dirtyRect.right;
-      srcRect.b = layer->dirtyRect.bottom;
-      dstRect = srcRect;
-    }
-#endif
     // Copybit dst
     copybit_image_t dst;
     dst.w = ALIGN(fbHandle->width,32);

@@ -205,6 +205,12 @@ bool MDPComp::init(hwc_context_t *ctx) {
     }
 
     sIsPartialUpdateActive = getPartialUpdatePref(ctx);
+    if (property_get("persist.mdp.partialUpdate", property, NULL) > 0) {
+        if (!strncasecmp(property, "false", PROPERTY_VALUE_MAX) ||
+            (!strncmp(property, "0", PROPERTY_VALUE_MAX ))) {
+                sIsPartialUpdateActive = false;
+        }
+    }
 
     if(property_get("persist.mdpcomp_perfhint", property, "-1") > 0) {
         int val = atoi(property);

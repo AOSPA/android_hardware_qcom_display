@@ -39,6 +39,10 @@ ifeq ($(call is-board-platform-in-list, mpq8092 msm_bronze msm8916), true)
 endif
 
 
+ifeq ($(DISPLAY_DEBUG_SWAPINTERVAL),true)
+    common_flags += -DDEBUG_SWAPINTERVAL
+endif
+
 common_deps  :=
 kernel_includes :=
 

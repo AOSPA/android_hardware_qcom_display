@@ -30,6 +30,10 @@ ifeq ($(call is-board-platform-in-list, $(MSM_VIDC_TARGET_LIST)), true)
     common_flags += -DMDSS_TARGET
 endif
 
+ifeq ($(DISPLAY_DEBUG_SWAPINTERVAL),true)
+    common_flags += -DDEBUG_SWAPINTERVAL
+endif
+
 common_deps  :=
 kernel_includes :=
 

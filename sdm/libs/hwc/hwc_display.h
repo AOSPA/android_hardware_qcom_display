@@ -165,11 +165,12 @@ class HWCDisplay : public DisplayEventHandler {
   const char *GetDisplayString();
   void MarkLayersForGPUBypass(hwc_display_contents_1_t *content_list);
   virtual void ApplyScanAdjustment(hwc_rect_t *display_frame);
-  DisplayError SetCSC(ColorSpace_t source, LayerCSC *target);
+  DisplayError SetCSC(const MetaData_t *meta_data, ColorMetaData *color_metadata);
   DisplayError SetIGC(IGC_t source, LayerIGC *target);
   DisplayError SetMetaData(const private_handle_t *pvt_handle, Layer *layer);
   bool NeedsFrameBufferRefresh(hwc_display_contents_1_t *content_list);
   bool IsLayerUpdating(hwc_display_contents_1_t *content_list, const Layer *layer);
+  bool IsNonIntegralSourceCrop(const hwc_frect_t &source);
   uint32_t GetUpdatingLayersCount(uint32_t app_layer_count);
   bool SingleVideoLayerUpdating(uint32_t app_layer_count);
   bool IsSurfaceUpdated(const std::vector<LayerRect> &dirty_regions);

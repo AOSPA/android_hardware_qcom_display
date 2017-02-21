@@ -437,6 +437,7 @@ int HWCDisplay::PrePrepareLayerStack(hwc_display_contents_1_t *content_list) {
   for (size_t i = 0; i < num_hw_layers; i++) {
     hwc_layer_1_t &hwc_layer = content_list->hwLayers[i];
 
+    const private_handle_t *pvt_handle = static_cast<const private_handle_t *>(hwc_layer.handle);
     Layer *layer = layer_stack_.layers.at(i);
     int ret = PrepareLayerParams(&content_list->hwLayers[i], layer);
 
@@ -454,6 +455,15 @@ int HWCDisplay::PrePrepareLayerStack(hwc_display_contents_1_t *content_list) {
     ApplyScanAdjustment(&scaled_display_frame);
 
     SetRect(scaled_display_frame, &layer->dst_rect);
+    if (pvt_handle) {
+        bool NonIntegralSourceCrop =  IsNonIntegralSourceCrop(hwc_layer.sourceCropf);
+        bool secure = (pvt_handle->flags & private_handle_t::PRIV_FLAGS_SECURE_BUFFER) ||
+                (pvt_handle->flags & private_handle_t::PRIV_FLAGS_PROTECTED_BUFFER) ||
+                (pvt_handle->flags & private_handle_t::PRIV_FLAGS_SECURE_DISPLAY);
+        if (NonIntegralSourceCrop && !secure) {
+            layer->flags.skip = true;
+        }
+    }
     SetRect(hwc_layer.sourceCropf, &layer->src_rect);
     ApplyDeInterlaceAdjustment(layer);
 
@@ -749,6 +759,17 @@ bool HWCDisplay::IsLayerUpdating(hwc_display_contents_1_t *content_list, const L
   //   c) layer stack geometry has changed
   return (layer->flags.single_buffer || IsSurfaceUpdated(layer->dirty_regions) ||
          (layer_stack_.flags.geometry_changed));
+}
+
+bool HWCDisplay::IsNonIntegralSourceCrop(const hwc_frect_t &source) {
+     if ((source.left != roundf(source.left)) ||
+         (source.top != roundf(source.top)) ||
+         (source.right != roundf(source.right)) ||
+         (source.bottom != roundf(source.bottom))) {
+         return true;
+     } else {
+         return false;
+     }
 }
 
 void HWCDisplay::SetRect(const hwc_rect_t &source, LayerRect *target) {
@@ -1156,16 +1177,37 @@ void HWCDisplay::MarkLayersForGPUBypass(hwc_display_contents_1_t *content_list) 
 void HWCDisplay::ApplyScanAdjustment(hwc_rect_t *display_frame) {
 }
 
-DisplayError HWCDisplay::SetCSC(ColorSpace_t source, LayerCSC *target) {
-  switch (source) {
-  case ITU_R_601:       *target = kCSCLimitedRange601;   break;
-  case ITU_R_601_FR:    *target = kCSCFullRange601;      break;
-  case ITU_R_709:       *target = kCSCLimitedRange709;   break;
-  default:
-    DLOGE("Unsupported CSC: %d", source);
-    return kErrorNotSupported;
-  }
+DisplayError HWCDisplay::SetCSC(const MetaData_t *meta_data, ColorMetaData *color_metadata) {
+  if (meta_data->operation & COLOR_METADATA) {
+#ifdef USE_COLOR_METADATA
+    *color_metadata = meta_data->color;
+#endif
+  } else if (meta_data->operation & UPDATE_COLOR_SPACE) {
+    ColorSpace_t csc = meta_data->colorSpace;
+    color_metadata->range = Range_Limited;
 
+    if (csc == ITU_R_601_FR || csc == ITU_R_2020_FR) {
+      color_metadata->range = Range_Full;
+    }
+
+    switch (csc) {
+    case ITU_R_601:
+    case ITU_R_601_FR:
+      // display driver uses 601 irrespective of 525 or 625
+      color_metadata->colorPrimaries = ColorPrimaries_BT601_6_525;
+      break;
+    case ITU_R_709:
+      color_metadata->colorPrimaries = ColorPrimaries_BT709_5;
+      break;
+    case ITU_R_2020:
+    case ITU_R_2020_FR:
+      color_metadata->colorPrimaries = ColorPrimaries_BT2020;
+      break;
+    default:
+      DLOGE("Unsupported CSC: %d", csc);
+      return kErrorNotSupported;
+    }
+  }
   return kErrorNone;
 }
 
@@ -1189,10 +1231,8 @@ DisplayError HWCDisplay::SetMetaData(const private_handle_t *pvt_handle, Layer *
     return kErrorNone;
   }
 
-  if (meta_data->operation & UPDATE_COLOR_SPACE) {
-    if (SetCSC(meta_data->colorSpace, &layer_buffer->csc) != kErrorNone) {
+  if (SetCSC(meta_data, &layer_buffer->color_metadata) != kErrorNone) {
       return kErrorNotSupported;
-    }
   }
 
   if (meta_data->operation & SET_IGC) {

@@ -49,6 +49,18 @@ else
     LOCAL_CLANG := true
 endif
 
+#Debugging mode
+debug := false
+
+#Common C flags
+common_flags += -Wno-missing-field-initializers
+
+ifeq ($(debug), true)
+    common_flags += -DDEBUG=1 -DDEBUG_CALC_FPS
+else
+    common_flags += -Wno-unused-parameter -Wno-unused-variable
+endif
+
 ifneq ($(TARGET_USES_GRALLOC1), true)
     common_flags += -isystem $(display_top)/libgralloc
 else

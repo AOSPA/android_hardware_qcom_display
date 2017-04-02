@@ -27,7 +27,10 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef DEBUG
 #define DEBUG 0
+#endif
+
 #define ATRACE_TAG (ATRACE_TAG_GRAPHICS | ATRACE_TAG_HAL)
 #include <sys/ioctl.h>
 #include <sys/mman.h>

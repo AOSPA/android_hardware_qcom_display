@@ -27,7 +27,10 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef DEBUG
 #define DEBUG 0
+#endif
+
 #include <QServiceUtils.h>
 #include "QHDMIClient.h"
 

@@ -1,0 +1,33 @@
+cc_defaults {
+    name: "display_defaults",
+    cflags: [
+        "-Wno-missing-field-initializers",
+        "-Wconversion",
+        "-Wall",
+        "-Werror",
+        "-std=c++14",
+    ],
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libutils",
+    ],
+    header_libs: ["display_headers", "generated_kernel_headers"],
+    clang: true,
+}
+
+cc_library_headers {
+    name: "display_headers",
+    export_include_dirs: [
+        "libgralloc",
+        "libhwcomposer",
+        "liboverlay",
+        "libqdutils",
+        "libqservice",
+    ],
+}
+
+subdirs = [
+    "libqservice",
+    "libqdutils",
+]

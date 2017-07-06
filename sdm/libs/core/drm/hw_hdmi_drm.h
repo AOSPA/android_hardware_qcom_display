@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+* Copyright (c) 2017, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -22,47 +22,39 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __HW_EVENTS_INTERFACE_H__
-#define __HW_EVENTS_INTERFACE_H__
+#ifndef __HW_HDMI_DRM_H__
+#define __HW_HDMI_DRM_H__
 
-#include <private/hw_info_types.h>
-#include <inttypes.h>
-#include <utility>
+#include <map>
 #include <vector>
+
+#include "hw_device_drm.h"
 
 namespace sdm {
 
-class HWEventHandler;
-class HWInterface;
+using std::vector;
 
-enum HWEvent {
-  VSYNC = 0,
-  EXIT,
-  IDLE_NOTIFY,
-  CEC_READ_MESSAGE,
-  SHOW_BLANK_EVENT,
-  THERMAL_LEVEL,
-  IDLE_POWER_COLLAPSE,
-};
-
-class HWEventsInterface {
+class HWHDMIDRM : public HWDeviceDRM {
  public:
-  virtual DisplayError Init(int display_type, HWEventHandler *event_handler,
-                            const std::vector<HWEvent> &event_list,
-                            const HWInterface *hw_intf) = 0;
-  virtual DisplayError Deinit() = 0;
-  virtual DisplayError SetEventState(HWEvent event, bool enable, void *aux = nullptr) = 0;
-
-  static DisplayError Create(int display_type, HWEventHandler *event_handler,
-                             const std::vector<HWEvent> &event_list,
-                             const HWInterface *hw_intf, HWEventsInterface **intf);
-  static DisplayError Destroy(HWEventsInterface *intf);
+  explicit HWHDMIDRM(BufferSyncHandler *buffer_sync_handler, BufferAllocator *buffer_allocator,
+                     HWInfoInterface *hw_info_intf);
 
  protected:
-  virtual ~HWEventsInterface() { }
+  virtual DisplayError Init();
+  virtual DisplayError GetNumDisplayAttributes(uint32_t *count);
+  // Requirement to call this only after the first config has been explicitly set by client
+  virtual DisplayError GetActiveConfig(uint32_t *active_config);
+  virtual DisplayError SetDisplayAttributes(uint32_t index);
+  virtual DisplayError GetConfigIndex(uint32_t mode, uint32_t *index);
+  virtual DisplayError Validate(HWLayers *hw_layers);
+  virtual DisplayError Commit(HWLayers *hw_layers);
+
+ private:
+  uint32_t active_config_index_;
+  uint32_t frame_rate_ = 0;
 };
 
 }  // namespace sdm
 
-#endif  // __HW_EVENTS_INTERFACE_H__
+#endif  // __HW_HDMI_DRM_H__
 

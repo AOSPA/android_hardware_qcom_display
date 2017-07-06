@@ -332,6 +332,7 @@ void HWInfoDRM::PopulatePipeCaps(const sde_drm::DRMPlaneTypeInfo &info,
   hw_resource->max_scale_up = info.max_upscale;
   hw_resource->has_decimation = info.max_horizontal_deci > 1 && info.max_vertical_deci > 1;
   hw_resource->max_pipe_bw = info.max_pipe_bandwidth / kKiloUnit;
+  hw_resource->cache_size = info.cache_size;
 }
 
 void HWInfoDRM::PopulateSupportedFmts(HWSubBlockType sub_blk_type,
@@ -412,8 +413,7 @@ void HWInfoDRM::GetSDMFormat(uint32_t v4l2_format, LayerBufferFormat *sdm_format
     case SDE_PIX_FMT_RGBX_1010102_UBWC: *sdm_format = kFormatRGBX1010102Ubwc;          break;
     case SDE_PIX_FMT_Y_CBCR_H2V2_P010:  *sdm_format = kFormatYCbCr420P010;             break;
     case SDE_PIX_FMT_Y_CBCR_H2V2_TP10_UBWC: *sdm_format = kFormatYCbCr420TP10Ubwc;     break;
-    /* TODO(user) : enable when defined in uapi
-      case SDE_PIX_FMT_Y_CBCR_H2V2_P010_UBWC: *sdm_format = kFormatYCbCr420P010Ubwc;     break; */
+    case SDE_PIX_FMT_Y_CBCR_H2V2_P010_UBWC: *sdm_format = kFormatYCbCr420P010Ubwc;     break;
     default: *sdm_format = kFormatInvalid;
   }
 }

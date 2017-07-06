@@ -54,6 +54,7 @@ class HWDeviceDRM : public HWInterface {
   virtual ~HWDeviceDRM() {}
   virtual DisplayError Init();
   virtual DisplayError Deinit();
+  void GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const;
 
  protected:
   // From HWInterface
@@ -119,6 +120,7 @@ class HWDeviceDRM : public HWInterface {
   void SetBlending(const LayerBlending &source, sde_drm::DRMBlendType *target);
   void SetSrcConfig(const LayerBuffer &input_buffer, uint32_t *config);
   void SetRect(const LayerRect &source, sde_drm::DRMRect *target);
+  void SetRotation(LayerTransform transform, const HWRotatorMode &mode, uint32_t* rot_bit_mask);
   DisplayError DefaultCommit(HWLayers *hw_layers);
   DisplayError AtomicCommit(HWLayers *hw_layers);
   void SetupAtomic(HWLayers *hw_layers, bool validate);
@@ -149,6 +151,7 @@ class HWDeviceDRM : public HWInterface {
  protected:
   const char *device_name_ = {};
   bool deferred_initialize_ = false;
+  bool default_mode_ = false;
   sde_drm::DRMDisplayType disp_type_ = {};
   HWInfoInterface *hw_info_intf_ = {};
   BufferSyncHandler *buffer_sync_handler_ = {};
@@ -167,7 +170,6 @@ class HWDeviceDRM : public HWInterface {
  private:
   bool synchronous_commit_ = false;
   HWMixerAttributes mixer_attributes_ = {};
-  bool default_mode_ = false;
   std::string interface_str_ = "DSI";
   HWScaleDRM *hw_scale_ = {};
 };

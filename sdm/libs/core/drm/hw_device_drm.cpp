@@ -50,6 +50,7 @@
 #include <utils/sys.h>
 #include <drm/sde_drm.h>
 #include <private/color_params.h>
+#include <utils/rect.h>
 
 #include <algorithm>
 #include <string>
@@ -225,7 +226,7 @@ void HWDeviceDRM::Registry::RegisterCurrent(HWLayers *hw_layers) {
     HWRotatorSession *hw_rotator_session = &hw_layers->config[i].hw_rotator_session;
     HWRotateInfo *hw_rotate_info = &hw_rotator_session->hw_rotate_info[0];
 
-    if (hw_rotate_info->valid) {
+    if (hw_rotator_session->mode == kRotatorOffline && hw_rotate_info->valid) {
       input_buffer = &hw_rotator_session->output_buffer;
     }
 
@@ -414,7 +415,9 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes() {
   display_attributes_.h_total = mode.htotal;
   uint32_t h_blanking = mode.htotal - mode.hdisplay;
   display_attributes_.is_device_split =
-      (topology == DRMTopology::DUAL_LM || topology == DRMTopology::DUAL_LM_MERGE);
+      (topology == DRMTopology::DUAL_LM || topology == DRMTopology::DUAL_LM_MERGE ||
+       topology == DRMTopology::DUAL_LM_MERGE_DSC || topology == DRMTopology::DUAL_LM_DSC ||
+       topology == DRMTopology::DUAL_LM_DSCMERGE);
   display_attributes_.h_total += display_attributes_.is_device_split ? h_blanking : 0;
 
   display_attributes_.x_dpi = (FLOAT(mode.hdisplay) * 25.4f) / FLOAT(mm_width);
@@ -574,6 +577,11 @@ DisplayError HWDeviceDRM::GetConfigIndex(uint32_t mode, uint32_t *index) {
 
 DisplayError HWDeviceDRM::PowerOn() {
   DTRACE_SCOPED();
+  if (!drm_atomic_intf_) {
+    DLOGE("DRM Atomic Interface is null!");
+    return kErrorUndefined;
+  }
+
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::ON);
   int ret = drm_atomic_intf_->Commit(false /* synchronous */);
@@ -585,6 +593,11 @@ DisplayError HWDeviceDRM::PowerOn() {
 }
 
 DisplayError HWDeviceDRM::PowerOff() {
+  if (!drm_atomic_intf_) {
+    DLOGE("DRM Atomic Interface is null!");
+    return kErrorUndefined;
+  }
+
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::OFF);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
   int ret = drm_atomic_intf_->Commit(false /* synchronous */);
@@ -617,6 +630,7 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
 
   HWLayersInfo &hw_layer_info = hw_layers->info;
   uint32_t hw_layer_count = UINT32(hw_layer_info.hw_layers.size());
+  HWQosData &qos_data = hw_layers->qos_data;
 
   // TODO(user): Once destination scalar is enabled we can always send ROIs if driver allows
   if (hw_panel_info_.partial_update) {
@@ -652,15 +666,13 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
     HWPipeInfo *left_pipe = &hw_layers->config[i].left_pipe;
     HWPipeInfo *right_pipe = &hw_layers->config[i].right_pipe;
     HWRotatorSession *hw_rotator_session = &hw_layers->config[i].hw_rotator_session;
-    bool needs_rotation = false;
 
     for (uint32_t count = 0; count < 2; count++) {
       HWPipeInfo *pipe_info = (count == 0) ? left_pipe : right_pipe;
       HWRotateInfo *hw_rotate_info = &hw_rotator_session->hw_rotate_info[count];
 
-      if (hw_rotate_info->valid) {
+      if (hw_rotator_session->mode == kRotatorOffline && hw_rotate_info->valid) {
         input_buffer = &hw_rotator_session->output_buffer;
-        needs_rotation = true;
       }
 
       uint32_t fb_id = registry_.GetFbId(input_buffer->planes[0].fd);
@@ -674,21 +686,17 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
         DRMRect src = {};
         SetRect(pipe_info->src_roi, &src);
         drm_atomic_intf_->Perform(DRMOps::PLANE_SET_SRC_RECT, pipe_id, src);
+        DRMRect rot_dst = {0, 0, 0, 0};
+        if (hw_rotator_session->mode == kRotatorInline && hw_rotate_info->valid) {
+          SetRect(hw_rotate_info->dst_roi, &rot_dst);
+          drm_atomic_intf_->Perform(DRMOps::PLANE_SET_ROTATION_DST_RECT, pipe_id, rot_dst);
+        }
         DRMRect dst = {};
         SetRect(pipe_info->dst_roi, &dst);
         drm_atomic_intf_->Perform(DRMOps::PLANE_SET_DST_RECT, pipe_id, dst);
 
         uint32_t rot_bit_mask = 0;
-        // In case of rotation, rotator handles flips
-        if (!needs_rotation) {
-          if (layer.transform.flip_horizontal) {
-            rot_bit_mask |= UINT32(DRMRotation::FLIP_H);
-          }
-          if (layer.transform.flip_vertical) {
-            rot_bit_mask |= UINT32(DRMRotation::FLIP_V);
-          }
-        }
-
+        SetRotation(layer.transform, hw_rotator_session->mode, &rot_bit_mask);
         drm_atomic_intf_->Perform(DRMOps::PLANE_SET_ROTATION, pipe_id, rot_bit_mask);
         drm_atomic_intf_->Perform(DRMOps::PLANE_SET_H_DECIMATION, pipe_id,
                                   pipe_info->horizontal_decimation);
@@ -715,12 +723,20 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
       }
     }
 
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_CLK, token_.crtc_id, hw_layers->clock_hz);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_AB, token_.crtc_id, hw_layers->ab_bps);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_IB, token_.crtc_id, hw_layers->ib_bps);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_CLK, token_.crtc_id, qos_data.clock_hz);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_AB, token_.crtc_id, qos_data.core_ab_bps);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_IB, token_.crtc_id, qos_data.core_ib_bps);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_LLCC_AB, token_.crtc_id, qos_data.llcc_ab_bps);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_LLCC_IB, token_.crtc_id, qos_data.llcc_ib_bps);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_AB, token_.crtc_id, qos_data.dram_ab_bps);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_IB, token_.crtc_id, qos_data.dram_ib_bps);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_CLK, token_.crtc_id, qos_data.rot_clock_hz);
 
-    DLOGI_IF(kTagDriverConfig, "System: clock=%d Hz, ab=%llu Bps ib=%llu Bps", hw_layers->clock_hz,
-             hw_layers->ab_bps, hw_layers->ib_bps);
+    DLOGI_IF(kTagDriverConfig, "System Clock=%d Hz, Core: AB=%llu Bps, IB=%llu Bps, " \
+             "LLCC: AB=%llu Bps, IB=%llu Bps, DRAM AB=%llu Bps, IB=%llu Bps Rot Clock=%d",
+             qos_data.clock_hz, qos_data.core_ab_bps, qos_data.core_ib_bps, qos_data.llcc_ab_bps,
+             qos_data.llcc_ib_bps, qos_data.dram_ab_bps, qos_data.dram_ib_bps,
+             qos_data.rot_clock_hz);
   }
 }
 
@@ -828,7 +844,7 @@ DisplayError HWDeviceDRM::AtomicCommit(HWLayers *hw_layers) {
   for (uint32_t i = 0; i < hw_layer_info.hw_layers.size(); i++) {
     Layer &layer = hw_layer_info.hw_layers.at(i);
     HWRotatorSession *hw_rotator_session = &hw_layers->config[i].hw_rotator_session;
-    if (hw_rotator_session->hw_block_count) {
+    if (hw_rotator_session->mode == kRotatorOffline) {
       hw_rotator_session->output_buffer.release_fence_fd = Sys::dup_(release_fence);
     } else {
       layer.input_buffer.release_fence_fd = Sys::dup_(release_fence);
@@ -872,6 +888,36 @@ void HWDeviceDRM::SetRect(const LayerRect &source, DRMRect *target) {
   target->top = UINT32(source.top);
   target->right = UINT32(source.right);
   target->bottom = UINT32(source.bottom);
+}
+
+void HWDeviceDRM::SetRotation(LayerTransform transform, const HWRotatorMode &mode,
+                              uint32_t* rot_bit_mask) {
+  // In offline rotation case, rotator will handle flips set via offline rotator interface.
+  if (mode == kRotatorOffline) {
+    *rot_bit_mask = 0;
+    return;
+  }
+
+  // In no rotation case or inline rotation case, plane will handle flips
+  // In DRM framework rotation is applied in counter-clockwise direction.
+  if (transform.rotation == 90) {
+    // a) rotate 90 clockwise = rotate 270 counter-clockwise in DRM
+    // rotate 270 is translated as hflip + vflip + rotate90
+    // b) rotate 270 clockwise = rotate 90 counter-clockwise in DRM
+    // c) hflip + rotate 90 clockwise = vflip + rotate 90 counter-clockwise in DRM
+    // d) vflip + rotate 90 clockwise = hflip + rotate 90 counter-clockwise in DRM
+    *rot_bit_mask = UINT32(DRMRotation::ROT_90);
+    transform.flip_horizontal = !transform.flip_horizontal;
+    transform.flip_vertical = !transform.flip_vertical;
+  }
+
+  if (transform.flip_horizontal) {
+    *rot_bit_mask |= UINT32(DRMRotation::FLIP_H);
+  }
+
+  if (transform.flip_vertical) {
+    *rot_bit_mask |= UINT32(DRMRotation::FLIP_V);
+  }
 }
 
 bool HWDeviceDRM::EnableHotPlugDetection(int enable) {
@@ -1102,6 +1148,11 @@ DisplayError HWDeviceDRM::GetMixerAttributes(HWMixerAttributes *mixer_attributes
   *mixer_attributes = mixer_attributes_;
 
   return kErrorNone;
+}
+
+void HWDeviceDRM::GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const {
+  token->conn_id = token_.conn_id;
+  token->crtc_id = token_.crtc_id;
 }
 
 void HWDeviceDRM::UpdateMixerAttributes() {

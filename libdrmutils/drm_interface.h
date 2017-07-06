@@ -125,6 +125,12 @@ enum struct DRMOps {
    */
   PLANE_SET_SCALER_CONFIG,
   /*
+   * Op: Sets plane rotation destination rect
+   * Arg: uint32_t - Plane ID
+   *      DRMRect - rotator dst Rectangle
+   */
+  PLANE_SET_ROTATION_DST_RECT,
+  /*
    * Op: Activate or deactivate a CRTC
    * Arg: uint32_t - CRTC ID
    *      uint32_t - 1 to enable, 0 to disable
@@ -149,19 +155,48 @@ enum struct DRMOps {
    *      uint32_t - core_clk
    */
   CRTC_SET_CORE_CLK,
-   /*
-   * Op: Sets overall SDE core average bandwidth
+  /*
+   * Op: Sets MNOC bus average bandwidth
    * Arg: uint32_t - CRTC ID
    *      uint32_t - core_ab
    */
   CRTC_SET_CORE_AB,
    /*
-   * Op: Sets overall SDE core instantaneous bandwidth
+   * Op: Sets MNOC bus instantaneous bandwidth
    * Arg: uint32_t - CRTC ID
    *      uint32_t - core_ib
    */
   CRTC_SET_CORE_IB,
   /*
+   * Op: Sets LLCC Bus average bandwidth
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - llcc_ab
+   */
+  CRTC_SET_LLCC_AB,
+  /*
+   * Op: Sets LLCC Bus instantaneous bandwidth
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - llcc_ib
+   */
+  CRTC_SET_LLCC_IB,
+  /*
+   * Op: Sets DRAM bus average bandwidth
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - dram_ab
+   */
+  CRTC_SET_DRAM_AB,
+  /*
+   * Op: Sets DRAM bus instantaneous bandwidth
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - dram_ib
+   */
+  CRTC_SET_DRAM_IB,
+  /*
+   * Op: Sets rotator clock for inline rotation
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - rot_clk
+   */
+  CRTC_SET_ROT_CLK,  /*
    * Op: Returns release fence for this frame. Should be called after Commit() on
    * DRMAtomicReqInterface.
    * Arg: uint32_t - CRTC ID
@@ -315,17 +350,22 @@ struct DRMPlaneTypeInfo {
   uint32_t max_horizontal_deci;
   uint32_t max_vertical_deci;
   uint64_t max_pipe_bandwidth;
+  uint32_t cache_size;  // cache size in bytes for inline rotation support.
 };
 
 // All DRM Planes as map<Plane_id , plane_type_info> listed from highest to lowest priority
 typedef std::vector<std::pair<uint32_t, DRMPlaneTypeInfo>>  DRMPlanesInfo;
 
 enum struct DRMTopology {
-  UNKNOWN,  // To be compat with driver defs in sde_kms.h
+  UNKNOWN,  // To be compat with driver defs in sde_rm.h
   SINGLE_LM,
+  SINGLE_LM_DSC,
   DUAL_LM,
-  PPSPLIT,
+  DUAL_LM_DSC,
   DUAL_LM_MERGE,
+  DUAL_LM_MERGE_DSC,
+  DUAL_LM_DSCMERGE,
+  PPSPLIT,
 };
 
 enum struct DRMPanelMode {

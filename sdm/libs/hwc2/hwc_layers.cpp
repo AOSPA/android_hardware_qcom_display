@@ -91,8 +91,13 @@ HWCLayer::~HWCLayer() {
 
 HWC2::Error HWCLayer::SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fence) {
   if (!buffer) {
-    DLOGE("Invalid buffer handle: %p on layer: %d", buffer, id_);
-    return HWC2::Error::BadParameter;
+    if (client_requested_ == HWC2::Composition::Device ||
+        client_requested_ == HWC2::Composition::Cursor) {
+      DLOGE("Invalid buffer handle: %p on layer: %d", buffer, id_);
+      return HWC2::Error::BadParameter;
+    } else {
+      return HWC2::Error::None;
+    }
   }
 
   if (acquire_fence == 0) {
@@ -271,6 +276,17 @@ HWC2::Error HWCLayer::SetLayerDisplayFrame(hwc_rect_t frame) {
 void HWCLayer::ResetPerFrameData() {
   layer_->dst_rect = dst_rect_;
   layer_->transform = layer_transform_;
+}
+
+HWC2::Error HWCLayer::SetCursorPosition(int32_t x, int32_t y) {
+  hwc_rect_t frame = {};
+  frame.left = x;
+  frame.top = y;
+  frame.right = x + INT(layer_->dst_rect.right - layer_->dst_rect.left);
+  frame.bottom = y + INT(layer_->dst_rect.bottom - layer_->dst_rect.top);
+  SetLayerDisplayFrame(frame);
+
+  return HWC2::Error::None;
 }
 
 HWC2::Error HWCLayer::SetLayerPlaneAlpha(float alpha) {

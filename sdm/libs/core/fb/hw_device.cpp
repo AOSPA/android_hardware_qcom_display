@@ -1141,8 +1141,8 @@ DisplayError HWDevice::SetCursorPosition(HWLayers *hw_layers, int x, int y) {
   async_layer.pipe_ndx = left_pipe->pipe_id;
   async_layer.src.x = UINT32(left_pipe->src_roi.left);
   async_layer.src.y = UINT32(left_pipe->src_roi.top);
-  async_layer.dst.x = UINT32(x);
-  async_layer.dst.y = UINT32(y);
+  async_layer.dst.x = UINT32(left_pipe->dst_roi.left);
+  async_layer.dst.y = UINT32(left_pipe->dst_roi.top);
 
   mdp_position_update pos_update = {};
   pos_update.input_layer_cnt = 1;
@@ -1356,6 +1356,34 @@ DisplayError HWDevice::GetMixerAttributes(HWMixerAttributes *mixer_attributes) {
 
   *mixer_attributes = mixer_attributes_;
 
+  return kErrorNone;
+}
+
+DisplayError HWDevice::DumpDebugData() {
+  DLOGW("Pingpong timeout occurred in the driver.");
+#ifdef USER_DEBUG
+  // Save the xlogs on ping pong time out
+  std::ofstream  dst("/data/vendor/display/mdp_xlog");
+  dst << "+++ MDP:XLOG +++" << std::endl;
+  std::ifstream  src("/sys/kernel/debug/mdp/xlog/dump");
+  dst << src.rdbuf() << std::endl;
+  src.close();
+
+  dst << "+++ MDP:REG_XLOG +++" << std::endl;
+  src.open("/sys/kernel/debug/mdp/xlog/reg_xlog");
+  dst << src.rdbuf() << std::endl;
+  src.close();
+
+  dst << "+++ MDP:DBGBUS_XLOG +++" << std::endl;
+  src.open("/sys/kernel/debug/mdp/xlog/dbgbus_xlog");
+  dst << src.rdbuf() << std::endl;
+  src.close();
+
+  dst << "+++ MDP:VBIF_DBGBUS_XLOG +++" << std::endl;
+  src.open("/sys/kernel/debug/mdp/xlog/vbif_dbgbus_xlog");
+  dst << src.rdbuf() << std::endl;
+  src.close();
+#endif
   return kErrorNone;
 }
 

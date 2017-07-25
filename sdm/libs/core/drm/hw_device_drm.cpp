@@ -95,6 +95,8 @@ using sde_drm::DRMSrcConfig;
 using sde_drm::DRMOps;
 using sde_drm::DRMTopology;
 using sde_drm::DRMPowerMode;
+using sde_drm::DRMSecureMode;
+using sde_drm::DRMSecurityLevel;
 
 namespace sdm {
 
@@ -216,6 +218,27 @@ static void GetDRMFormat(LayerBufferFormat format, uint32_t *drm_format,
   }
 }
 
+HWDeviceDRM::Registry::Registry(BufferAllocator *buffer_allocator) :
+  buffer_allocator_(buffer_allocator) {
+  DRMMaster *master = nullptr;
+  DRMMaster::GetInstance(&master);
+
+  if (!master) {
+    DLOGE("Failed to acquire DRM Master instance");
+    return;
+  }
+
+  // If RMFB is ref-counted, we should immediately make a call to clean up fb_id after commit.
+  // Driver will release fb_id after its usage. Otherwise speculatively free up fb_id after 3
+  // cycles assuming driver is done with it.
+  rmfb_delay_ = master->IsRmFbRefCounted() ? 1 : 3;
+  hashmap_ = new std::unordered_map<int, uint32_t>[rmfb_delay_];
+}
+
+HWDeviceDRM::Registry::~Registry() {
+  delete [] hashmap_;
+}
+
 void HWDeviceDRM::Registry::RegisterCurrent(HWLayers *hw_layers) {
   HWLayersInfo &hw_layer_info = hw_layers->info;
   uint32_t hw_layer_count = UINT32(hw_layer_info.hw_layers.size());
@@ -276,7 +299,7 @@ void HWDeviceDRM::Registry::UnregisterNext() {
     return;
   }
 
-  current_index_ = (current_index_ + 1) % kCycleDelay;
+  current_index_ = (current_index_ + 1) % rmfb_delay_;
   auto &curr_map = hashmap_[current_index_];
   for (auto &pair : curr_map) {
     uint32_t fb_id = pair.second;
@@ -290,7 +313,7 @@ void HWDeviceDRM::Registry::UnregisterNext() {
 }
 
 void HWDeviceDRM::Registry::Clear() {
-  for (int i = 0; i < kCycleDelay; i++) {
+  for (int i = 0; i < rmfb_delay_; i++) {
     UnregisterNext();
   }
   current_index_ = 0;
@@ -453,6 +476,17 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   hw_panel_info_.max_fps = 60;
   hw_panel_info_.is_primary_panel = connector_info_.is_primary;
   hw_panel_info_.is_pluggable = 0;
+  hw_panel_info_.hdr_enabled = connector_info_.panel_hdr_prop.hdr_enabled;
+  hw_panel_info_.peak_luminance = connector_info_.panel_hdr_prop.peak_brightness;
+  hw_panel_info_.blackness_level = connector_info_.panel_hdr_prop.blackness_level;
+  hw_panel_info_.primaries.white_point[0] = connector_info_.panel_hdr_prop.display_primaries[0];
+  hw_panel_info_.primaries.white_point[1] = connector_info_.panel_hdr_prop.display_primaries[1];
+  hw_panel_info_.primaries.red[0] = connector_info_.panel_hdr_prop.display_primaries[2];
+  hw_panel_info_.primaries.red[1] = connector_info_.panel_hdr_prop.display_primaries[3];
+  hw_panel_info_.primaries.green[0] = connector_info_.panel_hdr_prop.display_primaries[4];
+  hw_panel_info_.primaries.green[1] = connector_info_.panel_hdr_prop.display_primaries[5];
+  hw_panel_info_.primaries.blue[0] = connector_info_.panel_hdr_prop.display_primaries[6];
+  hw_panel_info_.primaries.blue[1] = connector_info_.panel_hdr_prop.display_primaries[7];
 
   // no supprt for 90 rotation only flips or 180 supported
   hw_panel_info_.panel_orientation.rotation = 0;
@@ -469,8 +503,8 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   DLOGI("%s, Panel Interface = %s, Panel Mode = %s, Is Primary = %d", device_name_,
         interface_str_.c_str(), hw_panel_info_.mode == kModeVideo ? "Video" : "Command",
         hw_panel_info_.is_primary_panel);
-  DLOGI("Partial Update = %d, Dynamic FPS = %d", hw_panel_info_.partial_update,
-        hw_panel_info_.dynamic_fps);
+  DLOGI("Partial Update = %d, Dynamic FPS = %d, HDR Panel = %d", hw_panel_info_.partial_update,
+        hw_panel_info_.dynamic_fps, hw_panel_info_.hdr_enabled);
   DLOGI("Align: left = %d, width = %d, top = %d, height = %d", hw_panel_info_.left_align,
         hw_panel_info_.width_align, hw_panel_info_.top_align, hw_panel_info_.height_align);
   DLOGI("ROI: min_width = %d, min_height = %d, need_merge = %d", hw_panel_info_.min_roi_width,
@@ -632,6 +666,9 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
   HWLayersInfo &hw_layer_info = hw_layers->info;
   uint32_t hw_layer_count = UINT32(hw_layer_info.hw_layers.size());
   HWQosData &qos_data = hw_layers->qos_data;
+  DRMSecurityLevel crtc_security_level = DRMSecurityLevel::SECURE_NON_SECURE;
+
+  solid_fills_.clear();
 
   // TODO(user): Once destination scalar is enabled we can always send ROIs if driver allows
   if (hw_panel_info_.partial_update) {
@@ -668,6 +705,11 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
     HWPipeInfo *right_pipe = &hw_layers->config[i].right_pipe;
     HWRotatorSession *hw_rotator_session = &hw_layers->config[i].hw_rotator_session;
 
+    if (hw_layers->config[i].use_solidfill_stage) {
+      AddSolidfillStage(hw_layers->config[i].hw_solidfill_stage, layer.plane_alpha);
+      continue;
+    }
+
     for (uint32_t count = 0; count < 2; count++) {
       HWPipeInfo *pipe_info = (count == 0) ? left_pipe : right_pipe;
       HWRotateInfo *hw_rotate_info = &hw_rotator_session->hw_rotate_info[count];
@@ -703,6 +745,15 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
                                   pipe_info->horizontal_decimation);
         drm_atomic_intf_->Perform(DRMOps::PLANE_SET_V_DECIMATION, pipe_id,
                                   pipe_info->vertical_decimation);
+
+        DRMSecureMode fb_secure_mode;
+        DRMSecurityLevel security_level;
+        SetSecureConfig(layer.input_buffer, &fb_secure_mode, &security_level);
+        drm_atomic_intf_->Perform(DRMOps::PLANE_SET_FB_SECURE_MODE, pipe_id, fb_secure_mode);
+        if (security_level > crtc_security_level) {
+          crtc_security_level = security_level;
+        }
+
         uint32_t config = 0;
         SetSrcConfig(layer.input_buffer, &config);
         drm_atomic_intf_->Perform(DRMOps::PLANE_SET_SRC_CONFIG, pipe_id, config);;
@@ -723,21 +774,44 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
         }
       }
     }
+  }
 
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_CLK, token_.crtc_id, qos_data.clock_hz);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_AB, token_.crtc_id, qos_data.core_ab_bps);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_IB, token_.crtc_id, qos_data.core_ib_bps);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_LLCC_AB, token_.crtc_id, qos_data.llcc_ab_bps);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_LLCC_IB, token_.crtc_id, qos_data.llcc_ib_bps);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_AB, token_.crtc_id, qos_data.dram_ab_bps);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_IB, token_.crtc_id, qos_data.dram_ib_bps);
-    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_CLK, token_.crtc_id, qos_data.rot_clock_hz);
+  SetSolidfillStages();
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_CLK, token_.crtc_id, qos_data.clock_hz);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_AB, token_.crtc_id, qos_data.core_ab_bps);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CORE_IB, token_.crtc_id, qos_data.core_ib_bps);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_LLCC_AB, token_.crtc_id, qos_data.llcc_ab_bps);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_LLCC_IB, token_.crtc_id, qos_data.llcc_ib_bps);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_AB, token_.crtc_id, qos_data.dram_ab_bps);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_IB, token_.crtc_id, qos_data.dram_ib_bps);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_CLK, token_.crtc_id, qos_data.rot_clock_hz);
 
-    DLOGI_IF(kTagDriverConfig, "System Clock=%d Hz, Core: AB=%llu Bps, IB=%llu Bps, " \
-             "LLCC: AB=%llu Bps, IB=%llu Bps, DRAM AB=%llu Bps, IB=%llu Bps Rot Clock=%d",
-             qos_data.clock_hz, qos_data.core_ab_bps, qos_data.core_ib_bps, qos_data.llcc_ab_bps,
-             qos_data.llcc_ib_bps, qos_data.dram_ab_bps, qos_data.dram_ib_bps,
-             qos_data.rot_clock_hz);
+  DLOGI_IF(kTagDriverConfig, "System Clock=%d Hz, Core: AB=%llu Bps, IB=%llu Bps, " \
+           "LLCC: AB=%llu Bps, IB=%llu Bps, DRAM AB=%llu Bps, IB=%llu Bps Rot Clock=%d",
+           qos_data.clock_hz, qos_data.core_ab_bps, qos_data.core_ib_bps, qos_data.llcc_ab_bps,
+           qos_data.llcc_ib_bps, qos_data.dram_ab_bps, qos_data.dram_ib_bps,
+           qos_data.rot_clock_hz);
+}
+
+void HWDeviceDRM::AddSolidfillStage(const HWSolidfillStage &sf, uint32_t plane_alpha) {
+  sde_drm::DRMSolidfillStage solidfill;
+  solidfill.bounding_rect.left = UINT32(sf.roi.left);
+  solidfill.bounding_rect.top = UINT32(sf.roi.top);
+  solidfill.bounding_rect.right = UINT32(sf.roi.right);
+  solidfill.bounding_rect.bottom = UINT32(sf.roi.bottom);
+  solidfill.is_exclusion_rect  = sf.is_exclusion_rect;
+  solidfill.plane_alpha = plane_alpha;
+  solidfill.z_order = sf.z_order;
+  solidfill.color = sf.color;
+  solid_fills_.push_back(solidfill);
+  DLOGI_IF(kTagDriverConfig, "Add a solidfill stage at z_order:%d argb_color:%x plane_alpha:%x",
+           solidfill.z_order, solidfill.color, solidfill.plane_alpha);
+}
+
+void HWDeviceDRM::SetSolidfillStages() {
+  if (hw_resource_.num_solidfill_stages) {
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_SOLIDFILL_STAGES, token_.crtc_id,
+                              reinterpret_cast<uint64_t> (&solid_fills_));
   }
 }
 
@@ -949,9 +1023,9 @@ DisplayError HWDeviceDRM::GetPPFeaturesVersion(PPFeatureVersion *vers) {
 DisplayError HWDeviceDRM::SetPPFeatures(PPFeaturesConfig *feature_list) {
   int ret = 0;
   PPFeatureInfo *feature = NULL;
-  DRMPPFeatureInfo kernel_params = {};
 
   while (true) {
+    DRMPPFeatureInfo kernel_params = {};
     ret = feature_list->RetrieveNextFeature(&feature);
     if (ret)
       break;
@@ -1162,6 +1236,32 @@ void HWDeviceDRM::UpdateMixerAttributes() {
   mixer_attributes_.split_left = display_attributes_.is_device_split
                                      ? hw_panel_info_.split_info.left_split
                                      : mixer_attributes_.width;
+}
+
+void HWDeviceDRM::SetSecureConfig(const LayerBuffer &input_buffer, DRMSecureMode *fb_secure_mode,
+                                  DRMSecurityLevel *security_level) {
+  *fb_secure_mode = DRMSecureMode::NON_SECURE;
+  *security_level = DRMSecurityLevel::SECURE_NON_SECURE;
+
+  if (input_buffer.flags.secure) {
+    if (input_buffer.flags.secure_camera) {
+      // IOMMU configuration for this framebuffer mode is secure domain & requires
+      // only stage II translation, when this buffer is accessed by Display H/W.
+      // Secure and non-secure planes can be attached to this CRTC.
+      *fb_secure_mode = DRMSecureMode::SECURE_DIR_TRANSLATION;
+    } else if (input_buffer.flags.secure_display) {
+      // IOMMU configuration for this framebuffer mode is non-secure domain & requires
+      // only stage II translation, when this buffer is accessed by Display H/W.
+      // Only secure planes can be attached to this CRTC.
+      *fb_secure_mode = DRMSecureMode::NON_SECURE_DIR_TRANSLATION;
+      *security_level = DRMSecurityLevel::SECURE_ONLY;
+    } else {
+      // IOMMU configuration for this framebuffer mode is secure domain & requires both
+      // stage I and stage II translations, when this buffer is accessed by Display H/W.
+      // Secure and non-secure planes can be attached to this CRTC.
+      *fb_secure_mode = DRMSecureMode::SECURE;
+    }
+  }
 }
 
 }  // namespace sdm

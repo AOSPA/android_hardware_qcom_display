@@ -54,6 +54,10 @@ inline int roundUpToPageSize(int x) {
 /* Use legacy ZSL definition until we know the correct usage on gralloc1 */
 #define GRALLOC1_PRODUCER_USAGE_PRIVATE_CAMERA_ZSL  GRALLOC_USAGE_HW_CAMERA_ZSL
 
+/* TODO(user): move these to use producer private bits once 64-bit support available */
+/* This flag is used to indicate 10-bit tight pack format (e.g. TP10) */
+#define GRALLOC1_PRODUCER_USAGE_PRIVATE_10BIT_TP  0x08000000
+
 
 /* Consumer flags */
 /* TODO(user): Fix when producer and consumer flags are actually separated */
@@ -63,11 +67,8 @@ inline int roundUpToPageSize(int x) {
 /* This flag is used for SECURE display usecase */
 #define GRALLOC1_CONSUMER_USAGE_PRIVATE_SECURE_DISPLAY 0x00800000
 
-/* Buffer content should be displayed on a primary display only */
-#define GRALLOC1_CONSUMER_USAGE_PRIVATE_INTERNAL_ONLY  0x04000000
-
-/* Buffer content should be displayed on an external display only */
-#define GRALLOC1_CONSUMER_USAGE_PRIVATE_EXTERNAL_ONLY  0x08000000
+/* Unused flag */
+#define GRALLOC1_USAGE_PRIVATE_UNUSED1  0x04000000
 
 
 /* Legacy gralloc0.x definitions */

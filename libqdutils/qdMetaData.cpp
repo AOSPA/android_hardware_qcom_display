@@ -120,11 +120,19 @@ int setMetaDataVa(MetaData_t *data, DispParamType paramType,
         case SET_VT_TIMESTAMP:
             data->vtTimeStamp = *((uint64_t *)param);
             break;
-#ifdef USE_COLOR_METADATA
         case COLOR_METADATA:
+#ifdef USE_COLOR_METADATA
             data->color = *((ColorMetaData *)param);
 #endif
             break;
+        case SET_UBWC_CR_STATS_INFO: {
+             struct UBWCStats* stats = (struct UBWCStats*)param;
+             int numelems = sizeof(data->ubwcCRStats) / sizeof(struct UBWCStats);
+             for (int i = 0; i < numelems; i++) {
+                  data->ubwcCRStats[i] = stats[i];
+             }
+              break;
+          }
         default:
             ALOGE("Unknown paramType %d", paramType);
             break;
@@ -170,6 +178,8 @@ int getMetaDataVa(MetaData_t *data, DispFetchParamType paramType,
     // Make sure we send 0 only if the operation queried is present
     int ret = -EINVAL;
     if (data == nullptr)
+        return ret;
+    if (param == nullptr)
         return ret;
 
     switch (paramType) {
@@ -239,13 +249,23 @@ int getMetaDataVa(MetaData_t *data, DispFetchParamType paramType,
                 ret = 0;
             }
             break;
-#ifdef USE_COLOR_METADATA
         case GET_COLOR_METADATA:
+#ifdef USE_COLOR_METADATA
             if (data->operation & COLOR_METADATA) {
                 *((ColorMetaData *)param) = data->color;
                 ret = 0;
             }
 #endif
+            break;
+        case GET_UBWC_CR_STATS_INFO:
+            if (data->operation & SET_UBWC_CR_STATS_INFO) {
+                struct UBWCStats* stats = (struct UBWCStats*)param;
+                int numelems = sizeof(data->ubwcCRStats) / sizeof(struct UBWCStats);
+                for (int i = 0; i < numelems; i++) {
+                    stats[i] = data->ubwcCRStats[i];
+                }
+                ret = 0;
+            }
             break;
         default:
             ALOGE("Unknown paramType %d", paramType);
@@ -265,7 +285,7 @@ int copyMetaData(struct private_handle_t *src, struct private_handle_t *dst) {
 
     MetaData_t *src_data = reinterpret_cast <MetaData_t *>(src->base_metadata);
     MetaData_t *dst_data = reinterpret_cast <MetaData_t *>(dst->base_metadata);
-    memcpy(src_data, dst_data, getMetaDataSize());
+    *dst_data = *src_data;
     return 0;
 }
 
@@ -279,7 +299,7 @@ int copyMetaDataVaToHandle(MetaData_t *src_data, struct private_handle_t *dst) {
         return err;
 
     MetaData_t *dst_data = reinterpret_cast <MetaData_t *>(dst->base_metadata);
-    memcpy(src_data, dst_data, getMetaDataSize());
+    *dst_data = *src_data;
     return 0;
 }
 
@@ -293,7 +313,7 @@ int copyMetaDataHandleToVa(struct private_handle_t *src, MetaData_t *dst_data) {
         return err;
 
     MetaData_t *src_data = reinterpret_cast <MetaData_t *>(src->base_metadata);
-    memcpy(src_data, dst_data, getMetaDataSize());
+    *dst_data = *src_data;
     return 0;
 }
 
@@ -305,7 +325,7 @@ int copyMetaDataVaToVa(MetaData_t *src_data, MetaData_t *dst_data) {
     if (dst_data == nullptr)
         return err;
 
-    memcpy(src_data, dst_data, getMetaDataSize());
+    *dst_data = *src_data;
     return 0;
 }
 

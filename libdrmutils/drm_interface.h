@@ -37,6 +37,7 @@
 
 #include "xf86drm.h"
 #include "xf86drmMode.h"
+#include <drm/msm_drm.h>
 
 namespace sde_drm {
 
@@ -131,6 +132,12 @@ enum struct DRMOps {
    */
   PLANE_SET_ROTATION_DST_RECT,
   /*
+   * Op: Sets FB Secure mode for this plane.
+   * Arg: uint32_t - Plane ID
+   *      uint32_t - Value of the FB Secure mode.
+   */
+  PLANE_SET_FB_SECURE_MODE,
+  /*
    * Op: Activate or deactivate a CRTC
    * Arg: uint32_t - CRTC ID
    *      uint32_t - 1 to enable, 0 to disable
@@ -216,6 +223,18 @@ enum struct DRMOps {
    *      DRMRect * - Array of CRTC ROIs
    */
   CRTC_SET_ROI,
+  /*
+   * Op: Sets Security level for CRTC.
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - Security level
+   */
+  CRTC_SET_SECURITY_LEVEL,
+  /*
+   * Op: sets solid fill stages
+   * Arg: uint32_t - CRTC ID
+   *      Vector of DRMSolidfillStage
+   */
+  CRTC_SET_SOLIDFILL_STAGES,
   /*
    * Op: Returns retire fence for this commit. Should be called after Commit() on
    * DRMAtomicReqInterface.
@@ -308,6 +327,7 @@ enum struct SmartDMARevision {
 struct DRMCrtcInfo {
   bool has_src_split;
   uint32_t max_blend_stages;
+  uint32_t max_solidfill_stages;
   QSEEDVersion qseed_version;
   SmartDMARevision smart_dma_rev;
   float ib_fudge_factor;
@@ -325,6 +345,7 @@ struct DRMCrtcInfo {
   uint32_t max_sde_clk;
   CompRatioMap comp_ratio_rt_map;
   CompRatioMap comp_ratio_nrt_map;
+  uint32_t hw_version;
 };
 
 enum struct DRMPlaneType {
@@ -400,6 +421,7 @@ struct DRMConnectorInfo {
   int hmin;
   bool roi_merge;
   DRMRotation panel_orientation;
+  drm_panel_hdr_properties panel_hdr_prop;
 };
 
 /* Identifier token for a display */
@@ -442,6 +464,26 @@ struct DRMScalerLUTInfo {
   uint64_t dir_lut = 0;
   uint64_t cir_lut = 0;
   uint64_t sep_lut = 0;
+};
+
+enum struct DRMSecureMode {
+  NON_SECURE,
+  SECURE,
+  NON_SECURE_DIR_TRANSLATION,
+  SECURE_DIR_TRANSLATION,
+};
+
+enum struct DRMSecurityLevel {
+  SECURE_NON_SECURE,
+  SECURE_ONLY,
+};
+
+struct DRMSolidfillStage {
+ DRMRect bounding_rect {};
+ bool is_exclusion_rect = false;
+ uint32_t color = 0xff000000; // in 8bit argb
+ uint32_t z_order = 0;
+ uint32_t plane_alpha = 0xff;
 };
 
 /* DRM Atomic Request Property Set.

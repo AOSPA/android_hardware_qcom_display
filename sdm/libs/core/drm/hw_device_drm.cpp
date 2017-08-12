@@ -398,6 +398,7 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes() {
   uint32_t mm_width = 0;
   uint32_t mm_height = 0;
   DRMTopology topology = DRMTopology::SINGLE_LM;
+  bool dual_dsi = false;
 
   if (default_mode_) {
     DRMResMgr *res_mgr = nullptr;
@@ -442,7 +443,9 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes() {
       (topology == DRMTopology::DUAL_LM || topology == DRMTopology::DUAL_LM_MERGE ||
        topology == DRMTopology::DUAL_LM_MERGE_DSC || topology == DRMTopology::DUAL_LM_DSC ||
        topology == DRMTopology::DUAL_LM_DSCMERGE);
-  display_attributes_.h_total += display_attributes_.is_device_split ? h_blanking : 0;
+  dual_dsi = (topology == DRMTopology::DUAL_LM || topology == DRMTopology::DUAL_LM_DSC ||
+       topology == DRMTopology::PPSPLIT);
+  display_attributes_.h_total += dual_dsi ? h_blanking : 0;
 
   // If driver doesn't return panel width/height information, default to 320 dpi
   if (INT(mm_width) <= 0 || INT(mm_height) <= 0) {
@@ -453,6 +456,14 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes() {
 
   display_attributes_.x_dpi = (FLOAT(mode.hdisplay) * 25.4f) / FLOAT(mm_width);
   display_attributes_.y_dpi = (FLOAT(mode.vdisplay) * 25.4f) / FLOAT(mm_height);
+
+  DLOGI("x_pixels %d, y_pixels %d, x_dpi %f, y_dpi %f, fps %d, split %d\n" \
+        "vfp %d, vbp %d, vpw %d, v_total %d, h_total %d, topology %d",
+        display_attributes_.x_pixels, display_attributes_.y_pixels, display_attributes_.x_dpi,
+        display_attributes_.y_dpi, display_attributes_.fps, display_attributes_.is_device_split,
+        display_attributes_.v_back_porch, display_attributes_.v_front_porch,
+        display_attributes_.v_pulse_width, display_attributes_.v_total, display_attributes_.h_total,
+        topology);
 
   return kErrorNone;
 }

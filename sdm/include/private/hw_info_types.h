@@ -88,6 +88,7 @@ enum HWSubBlockType {
 enum HWAlphaInterpolation {
   kInterpolationPixelRepeat,
   kInterpolationBilinear,
+  kInterpolation2D,
   kInterpolationMax,
 };
 
@@ -134,6 +135,12 @@ struct HWRotatorInfo {
   bool downscale_compression = false;
 
   void Reset() { *this = HWRotatorInfo(); }
+};
+
+enum HWQseedStepVersion {
+  kQseed3v2,
+  kQseed3v3,
+  kQseed3v4,
 };
 
 struct HWDestScalarInfo {
@@ -205,6 +212,7 @@ struct HWResourceInfo {
   CompRatioMap comp_ratio_rt_map;
   CompRatioMap comp_ratio_nrt_map;
   uint32_t cache_size = 0;  // cache size in bytes
+  HWQseedStepVersion pipe_qseed3_version = kQseed3v2;  // only valid when has_qseed3=true
 
   void Reset() { *this = HWResourceInfo(); }
 };
@@ -274,6 +282,7 @@ struct HWPanelInfo {
   uint32_t blackness_level = 0;       // Panel's blackness level
   HWColorPrimaries primaries = {};    // WRGB color primaries
   HWPanelOrientation panel_orientation = {};  // Panel Orientation
+  uint32_t transfer_time_us = 0;      // transfer time in micro seconds to panel's active region
 
   bool operator !=(const HWPanelInfo &panel_info) {
     return ((port != panel_info.port) || (mode != panel_info.mode) ||
@@ -289,7 +298,8 @@ struct HWPanelInfo {
             (max_fps != panel_info.max_fps) || (is_primary_panel != panel_info.is_primary_panel) ||
             (split_info != panel_info.split_info) || (s3d_mode != panel_info.s3d_mode) ||
             (left_roi_count != panel_info.left_roi_count) ||
-            (right_roi_count != panel_info.right_roi_count));
+            (right_roi_count != panel_info.right_roi_count) ||
+            (transfer_time_us != panel_info.transfer_time_us));
   }
 
   bool operator ==(const HWPanelInfo &panel_info) {

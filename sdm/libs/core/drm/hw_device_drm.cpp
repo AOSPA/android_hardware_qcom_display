@@ -494,6 +494,7 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   hw_panel_info_.primaries.green[1] = connector_info_.panel_hdr_prop.display_primaries[5];
   hw_panel_info_.primaries.blue[0] = connector_info_.panel_hdr_prop.display_primaries[6];
   hw_panel_info_.primaries.blue[1] = connector_info_.panel_hdr_prop.display_primaries[7];
+  hw_panel_info_.transfer_time_us = connector_info_.transfer_time_us;
 
   // no supprt for 90 rotation only flips or 180 supported
   hw_panel_info_.panel_orientation.rotation = 0;
@@ -519,6 +520,7 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   DLOGI("FPS: min = %d, max =%d", hw_panel_info_.min_fps, hw_panel_info_.max_fps);
   DLOGI("Left Split = %d, Right Split = %d", hw_panel_info_.split_info.left_split,
         hw_panel_info_.split_info.right_split);
+  DLOGI("Panel Transfer time = %d us", hw_panel_info_.transfer_time_us);
 }
 
 void HWDeviceDRM::GetHWDisplayPortAndMode() {
@@ -613,7 +615,7 @@ DisplayError HWDeviceDRM::SetDisplayAttributes(const HWDisplayAttributes &displa
   return kErrorNotSupported;
 }
 
-DisplayError HWDeviceDRM::GetConfigIndex(uint32_t mode, uint32_t *index) {
+DisplayError HWDeviceDRM::GetConfigIndex(char *mode, uint32_t *index) {
   return kErrorNone;
 }
 
@@ -792,6 +794,7 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_AB, token_.crtc_id, qos_data.dram_ab_bps);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_IB, token_.crtc_id, qos_data.dram_ib_bps);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_CLK, token_.crtc_id, qos_data.rot_clock_hz);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_SECURITY_LEVEL, token_.crtc_id, crtc_security_level);
 
   DLOGI_IF(kTagDriverConfig, "System Clock=%d Hz, Core: AB=%llu Bps, IB=%llu Bps, " \
            "LLCC: AB=%llu Bps, IB=%llu Bps, DRAM AB=%llu Bps, IB=%llu Bps Rot Clock=%d",

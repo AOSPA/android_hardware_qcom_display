@@ -41,23 +41,43 @@
 
 namespace sdm {
 
-HWCBufferAllocator::HWCBufferAllocator() {
+DisplayError HWCBufferAllocator::Init() {
   int err = hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &module_);
   if (err != 0) {
-    DLOGE("FATAL: can not open GRALLOC module");
-  } else {
-    gralloc1_open(module_, &gralloc_device_);
+    DLOGE("FATAL: can not get GRALLOC module");
+    return kErrorResources;
   }
+
+  err = gralloc1_open(module_, &gralloc_device_);
+  if (err != 0) {
+    DLOGE("FATAL: can not open GRALLOC device");
+    return kErrorResources;
+  }
+
+  if (gralloc_device_ == nullptr) {
+    DLOGE("FATAL: gralloc device is null");
+    return kErrorResources;
+  }
+
   ReleaseBuffer_ = reinterpret_cast<GRALLOC1_PFN_RELEASE>(
       gralloc_device_->getFunction(gralloc_device_, GRALLOC1_FUNCTION_RELEASE));
   Perform_ = reinterpret_cast<GRALLOC1_PFN_PERFORM>(
       gralloc_device_->getFunction(gralloc_device_, GRALLOC1_FUNCTION_PERFORM));
+  Lock_ = reinterpret_cast<GRALLOC1_PFN_LOCK>(
+      gralloc_device_->getFunction(gralloc_device_, GRALLOC1_FUNCTION_LOCK));
+
+  return kErrorNone;
 }
 
-HWCBufferAllocator::~HWCBufferAllocator() {
+DisplayError HWCBufferAllocator::Deinit() {
   if (gralloc_device_ != nullptr) {
-    gralloc1_close(gralloc_device_);
+    int err = gralloc1_close(gralloc_device_);
+    if (err != 0) {
+      DLOGE("FATAL: can not close GRALLOC device");
+      return kErrorResources;
+    }
   }
+  return kErrorNone;
 }
 
 DisplayError HWCBufferAllocator::AllocateBuffer(BufferInfo *buffer_info) {
@@ -132,6 +152,9 @@ void HWCBufferAllocator::GetAlignedWidthAndHeight(int width, int height, int for
   gralloc1_consumer_usage_t consumer_usage = GRALLOC1_CONSUMER_USAGE_NONE;
   if (alloc_type & GRALLOC_USAGE_HW_FB) {
     consumer_usage = GRALLOC1_CONSUMER_USAGE_CLIENT_TARGET;
+  }
+  if (alloc_type & GRALLOC_USAGE_PRIVATE_ALLOC_UBWC) {
+    producer_usage = GRALLOC_USAGE_PRIVATE_ALLOC_UBWC;
   }
 
   Perform_(gralloc_device_, GRALLOC_MODULE_PERFORM_GET_ATTRIBUTES, width, height, format,
@@ -349,6 +372,23 @@ DisplayError HWCBufferAllocator::GetBufferLayout(const AllocatedBufferInfo &buf_
   if (ret < 0) {
     DLOGE("GetBufferLayout failed");
     return kErrorParameters;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError HWCBufferAllocator::MapBuffer(const private_handle_t *handle, int acquire_fence) {
+  void* buffer_ptr = NULL;
+  const gralloc1_rect_t accessRegion = {
+        .left = 0,
+        .top = 0,
+        .width = 0,
+        .height = 0
+  };
+  Lock_(gralloc_device_, handle, GRALLOC1_PRODUCER_USAGE_CPU_READ, GRALLOC1_CONSUMER_USAGE_NONE,
+        &accessRegion, &buffer_ptr, acquire_fence);
+  if (!buffer_ptr) {
+    return kErrorUndefined;
   }
 
   return kErrorNone;

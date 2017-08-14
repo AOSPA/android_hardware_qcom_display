@@ -23,7 +23,6 @@
 #include <vendor/display/config/1.0/IDisplayConfig.h>
 #include <core/core_interface.h>
 #include <utils/locker.h>
-#include <thread>
 
 #include "hwc_callbacks.h"
 #include "hwc_layers.h"
@@ -39,7 +38,32 @@ namespace sdm {
 using ::vendor::display::config::V1_0::IDisplayConfig;
 using ::android::hardware::Return;
 
-class HWCSession : hwc2_device_t, public IDisplayConfig, public qClient::BnQClient {
+// Create a singleton uevent listener thread valid for life of hardware composer process.
+// This thread blocks on uevents poll inside uevent library implementation. This poll exits
+// only when there is a valid uevent, it can not be interrupted otherwise. Tieing life cycle
+// of this thread with HWC session cause HWC deinitialization to wait infinitely for the
+// thread to exit.
+class HWCUEventListener {
+ public:
+  virtual ~HWCUEventListener() {}
+  virtual void UEventHandler(const char *uevent_data, int length) = 0;
+};
+
+class HWCUEvent {
+ public:
+  HWCUEvent();
+  static void UEventThread(HWCUEvent *hwc_event);
+  void Register(HWCUEventListener *uevent_listener);
+  inline bool InitDone() { return init_done_; }
+
+ private:
+  std::mutex mutex_;
+  std::condition_variable caller_cv_;
+  HWCUEventListener *uevent_listener_ = nullptr;
+  bool init_done_ = false;
+};
+
+class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qClient::BnQClient {
  public:
   struct HWCModuleMethods : public hw_module_methods_t {
     HWCModuleMethods() { hw_module_methods_t::open = HWCSession::Open; }
@@ -120,9 +144,8 @@ class HWCSession : hwc2_device_t, public IDisplayConfig, public qClient::BnQClie
                               int32_t *outCapabilities);
   static hwc2_function_pointer_t GetFunction(struct hwc2_device *device, int32_t descriptor);
 
-  // Uevent thread
-  static void *HWCUeventThread(void *context);
-  void *HWCUeventThreadHandler();
+  // Uevent handler
+  virtual void UEventHandler(const char *uevent_data, int length);
   int GetEventValue(const char *uevent_data, int length, const char *event_info);
   void HandleExtHPD(const char *uevent_data, int length);
   int HotPlugHandler(bool connected);
@@ -188,13 +211,13 @@ class HWCSession : hwc2_device_t, public IDisplayConfig, public qClient::BnQClie
 
   android::status_t SetColorModeById(const android::Parcel *input_parcel);
 
+  void Refresh(hwc2_display_t display);
+  void HotPlug(hwc2_display_t display, HWC2::Connection state);
+
   static Locker locker_;
   CoreInterface *core_intf_ = nullptr;
   HWCDisplay *hwc_display_[HWC_NUM_DISPLAY_TYPES] = {nullptr};
   HWCCallbacks callbacks_;
-  std::thread uevent_thread_;
-  bool uevent_thread_exit_ = false;
-  const char *uevent_thread_name_ = "HWC_UeventThread";
   HWCBufferAllocator buffer_allocator_;
   HWCBufferSyncHandler buffer_sync_handler_;
   HWCColorManager *color_mgr_ = nullptr;
@@ -207,6 +230,7 @@ class HWCSession : hwc2_device_t, public IDisplayConfig, public qClient::BnQClie
   qService::QService *qservice_ = nullptr;
   HWCSocketHandler socket_handler_;
   bool hdmi_is_primary_ = false;
+  Locker callbacks_lock_;
 };
 
 }  // namespace sdm

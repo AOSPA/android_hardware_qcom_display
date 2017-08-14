@@ -49,13 +49,6 @@ BufferManager::BufferManager() : next_id_(0) {
     map_fb_mem_ = true;
   }
 
-  // Enable UBWC for framebuffer
-  if ((property_get("debug.gralloc.enable_fb_ubwc", property, NULL) > 0) &&
-      (!strncmp(property, "1", PROPERTY_VALUE_MAX) ||
-       (!strncasecmp(property, "true", PROPERTY_VALUE_MAX)))) {
-    ubwc_for_fb_ = true;
-  }
-
   handles_map_.clear();
   allocator_ = new Allocator();
   allocator_->Init();
@@ -262,19 +255,10 @@ gralloc1_error_t BufferManager::MapBuffer(private_handle_t const *handle) {
   ALOGD_IF(DEBUG, "Map buffer handle:%p id: %" PRIu64, hnd, hnd->id);
 
   hnd->base = 0;
-  hnd->base_metadata = 0;
-
   if (allocator_->MapBuffer(reinterpret_cast<void **>(&hnd->base), hnd->size, hnd->offset,
                             hnd->fd) != 0) {
     return GRALLOC1_ERROR_BAD_HANDLE;
   }
-
-  unsigned int size = ALIGN((unsigned int)sizeof(MetaData_t), getpagesize());
-  if (allocator_->MapBuffer(reinterpret_cast<void **>(&hnd->base_metadata), size,
-                            hnd->offset_metadata, hnd->fd_metadata) != 0) {
-    return GRALLOC1_ERROR_BAD_HANDLE;
-  }
-
   return GRALLOC1_ERROR_NONE;
 }
 

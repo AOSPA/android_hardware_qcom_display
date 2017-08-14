@@ -35,6 +35,8 @@
 #include <algorithm>
 #include <string>
 #include <bitset>
+#include <thread>
+#include <memory>
 
 #include "hwc_buffer_allocator.h"
 #include "hwc_buffer_sync_handler.h"
@@ -66,7 +68,62 @@ hwc_module_t HAL_MODULE_INFO_SYM = {
 };
 
 namespace sdm {
+
+static HWCUEvent g_hwc_uevent_;
 Locker HWCSession::locker_;
+
+void HWCUEvent::UEventThread(HWCUEvent *hwc_uevent) {
+  const char *uevent_thread_name = "HWC_UeventThread";
+
+  prctl(PR_SET_NAME, uevent_thread_name, 0, 0, 0);
+  setpriority(PRIO_PROCESS, 0, HAL_PRIORITY_URGENT_DISPLAY);
+
+  int status = uevent_init();
+  if (!status) {
+    std::unique_lock<std::mutex> caller_lock(hwc_uevent->mutex_);
+    hwc_uevent->caller_cv_.notify_one();
+    DLOGE("Failed to init uevent with err %d", status);
+    return;
+  }
+
+  {
+    // Signal caller thread that worker thread is ready to listen to events.
+    std::unique_lock<std::mutex> caller_lock(hwc_uevent->mutex_);
+    hwc_uevent->init_done_ = true;
+    hwc_uevent->caller_cv_.notify_one();
+  }
+
+  while (1) {
+    char uevent_data[PAGE_SIZE] = {};
+
+    // keep last 2 zeroes to ensure double 0 termination
+    int length = uevent_next_event(uevent_data, INT32(sizeof(uevent_data)) - 2);
+
+    // scope of lock to this block only, so that caller is free to set event handler to nullptr;
+    {
+      std::lock_guard<std::mutex> guard(hwc_uevent->mutex_);
+      if (hwc_uevent->uevent_listener_) {
+        hwc_uevent->uevent_listener_->UEventHandler(uevent_data, length);
+      } else {
+        DLOGW("UEvent dropped. No uevent listener.");
+      }
+    }
+  }
+}
+
+HWCUEvent::HWCUEvent() {
+  std::unique_lock<std::mutex> caller_lock(mutex_);
+  std::thread thread(HWCUEvent::UEventThread, this);
+  thread.detach();
+  caller_cv_.wait(caller_lock);
+}
+
+void HWCUEvent::Register(HWCUEventListener *uevent_listener) {
+  DLOGI("Set uevent listener = %p", uevent_listener);
+
+  std::lock_guard<std::mutex> obj(mutex_);
+  uevent_listener_ = uevent_listener;
+}
 
 HWCSession::HWCSession(const hw_module_t *module) {
   hwc2_device_t::common.tag = HARDWARE_DEVICE_TAG;
@@ -80,6 +137,10 @@ HWCSession::HWCSession(const hw_module_t *module) {
 int HWCSession::Init() {
   int status = -EINVAL;
   const char *qservice_name = "display.qservice";
+
+  if (!g_hwc_uevent_.InitDone()) {
+    return status;
+  }
 
   // Start QService and connect to it.
   qService::QService::init();
@@ -96,19 +157,29 @@ int HWCSession::Init() {
 
   StartServices();
 
-  DisplayError error = CoreInterface::CreateCore(HWCDebugHandler::Get(), &buffer_allocator_,
-                                                 &buffer_sync_handler_, &socket_handler_,
-                                                 &core_intf_);
+  DisplayError error = buffer_allocator_.Init();
   if (error != kErrorNone) {
+    DLOGE("Buffer allocaor initialization failed. Error = %d", error);
+    return -EINVAL;
+  }
+
+  error = CoreInterface::CreateCore(HWCDebugHandler::Get(), &buffer_allocator_,
+                                    &buffer_sync_handler_, &socket_handler_, &core_intf_);
+  if (error != kErrorNone) {
+    buffer_allocator_.Deinit();
     DLOGE("Display core initialization failed. Error = %d", error);
     return -EINVAL;
   }
+
+  g_hwc_uevent_.Register(this);
 
   // If HDMI display is primary display, defer display creation until hotplug event is received.
   HWDisplayInterfaceInfo hw_disp_info = {};
   error = core_intf_->GetFirstDisplayInterfaceType(&hw_disp_info);
   if (error != kErrorNone) {
+    g_hwc_uevent_.Register(nullptr);
     CoreInterface::DestroyCore();
+    buffer_allocator_.Deinit();
     DLOGE("Primary display type not recognized. Error = %d", error);
     return -EINVAL;
   }
@@ -132,7 +203,9 @@ int HWCSession::Init() {
   }
 
   if (status) {
+    g_hwc_uevent_.Register(nullptr);
     CoreInterface::DestroyCore();
+    buffer_allocator_.Deinit();
     return status;
   }
 
@@ -145,9 +218,6 @@ int HWCSession::Init() {
       DLOGW("Unable to increase fd limit -  err:%d, %s", errno, strerror(errno));
     }
   }
-
-  std::thread uevent_thread(HWCUeventThread, this);
-  uevent_thread_.swap(uevent_thread);
 
   return 0;
 }
@@ -167,10 +237,7 @@ int HWCSession::Deinit() {
     color_mgr_->DestroyColorManager();
   }
 
-  DLOGD("Terminating uevent thread");
-  uevent_thread_exit_ = true;
-  // todo(user): add a local event to interrupt thread execution and join.
-  uevent_thread_.detach();
+  g_hwc_uevent_.Register(nullptr);
 
   DisplayError error = CoreInterface::DestroyCore();
   if (error != kErrorNone) {
@@ -435,16 +502,16 @@ int32_t HWCSession::RegisterCallback(hwc2_device_t *device, int32_t descriptor,
   if (!device) {
     return HWC2_ERROR_BAD_DISPLAY;
   }
+  SCOPE_LOCK(hwc_session->callbacks_lock_);
   auto desc = static_cast<HWC2::Callback>(descriptor);
   auto error = hwc_session->callbacks_.Register(desc, callback_data, pointer);
   DLOGD("Registering callback: %s", to_string(desc).c_str());
   if (descriptor == HWC2_CALLBACK_HOTPLUG) {
-    // If primary display (HDMI) is not created yet, wait for it to be hotplugged.
-    if (hwc_session->hwc_display_[HWC_DISPLAY_PRIMARY]) {
+    if (hwc_session->hwc_display_[HWC_DISPLAY_PRIMARY] && !hwc_session->hdmi_is_primary_) {
       hwc_session->callbacks_.Hotplug(HWC_DISPLAY_PRIMARY, HWC2::Connection::Connected);
     }
   }
-
+  hwc_session->callbacks_lock_.Broadcast();
   return INT32(error);
 }
 
@@ -608,7 +675,7 @@ int32_t HWCSession::ValidateDisplay(hwc2_device_t *device, hwc2_display_t displa
       }
 
       if (hwc_session->need_invalidate_) {
-        hwc_session->callbacks_.Refresh(display);
+        hwc_session->Refresh(display);
       }
 
       if (hwc_session->color_mgr_) {
@@ -1081,8 +1148,6 @@ android::status_t HWCSession::SetMixerResolution(const android::Parcel *input_pa
 }
 
 android::status_t HWCSession::SetColorModeOverride(const android::Parcel *input_parcel) {
-  SCOPE_LOCK(locker_);
-
   auto display = static_cast<hwc2_display_t >(input_parcel->readInt32());
   auto mode = static_cast<android_color_mode_t>(input_parcel->readInt32());
   auto device = static_cast<hwc2_device_t *>(this);
@@ -1149,8 +1214,6 @@ void HWCSession::DynamicDebug(const android::Parcel *input_parcel) {
 
 android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel,
                                              android::Parcel *output_parcel) {
-  SCOPE_LOCK(locker_);
-
   int ret = 0;
   int32_t *brightness_value = NULL;
   uint32_t display_id(0);
@@ -1185,7 +1248,7 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
 
   switch (pending_action.action) {
     case kInvalidating:
-      callbacks_.Refresh(HWC_DISPLAY_PRIMARY);
+      Refresh(HWC_DISPLAY_PRIMARY);
       break;
     case kEnterQDCMMode:
       ret = color_mgr_->EnableQDCMMode(true, hwc_display_[HWC_DISPLAY_PRIMARY]);
@@ -1196,12 +1259,12 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
     case kApplySolidFill:
       ret =
           color_mgr_->SetSolidFill(pending_action.params, true, hwc_display_[HWC_DISPLAY_PRIMARY]);
-      callbacks_.Refresh(HWC_DISPLAY_PRIMARY);
+      Refresh(HWC_DISPLAY_PRIMARY);
       break;
     case kDisableSolidFill:
       ret =
           color_mgr_->SetSolidFill(pending_action.params, false, hwc_display_[HWC_DISPLAY_PRIMARY]);
-      callbacks_.Refresh(HWC_DISPLAY_PRIMARY);
+      Refresh(HWC_DISPLAY_PRIMARY);
       break;
     case kSetPanelBrightness:
       brightness_value = reinterpret_cast<int32_t *>(resp_payload.payload);
@@ -1215,7 +1278,7 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
     case kEnableFrameCapture:
       ret = color_mgr_->SetFrameCapture(pending_action.params, true,
                                         hwc_display_[HWC_DISPLAY_PRIMARY]);
-      callbacks_.Refresh(HWC_DISPLAY_PRIMARY);
+      Refresh(HWC_DISPLAY_PRIMARY);
       break;
     case kDisableFrameCapture:
       ret = color_mgr_->SetFrameCapture(pending_action.params, false,
@@ -1224,7 +1287,7 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
     case kConfigureDetailedEnhancer:
       ret = color_mgr_->SetDetailedEnhancer(pending_action.params,
                                             hwc_display_[HWC_DISPLAY_PRIMARY]);
-      callbacks_.Refresh(HWC_DISPLAY_PRIMARY);
+      Refresh(HWC_DISPLAY_PRIMARY);
       break;
     case kNoAction:
       break;
@@ -1242,52 +1305,26 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
   return (ret ? -EINVAL : 0);
 }
 
-void *HWCSession::HWCUeventThread(void *context) {
-  if (context) {
-    return reinterpret_cast<HWCSession *>(context)->HWCUeventThreadHandler();
-  }
-
-  return NULL;
-}
-
-void *HWCSession::HWCUeventThreadHandler() {
-  static char uevent_data[PAGE_SIZE];
-  int length = 0;
-  prctl(PR_SET_NAME, uevent_thread_name_, 0, 0, 0);
-  setpriority(PRIO_PROCESS, 0, HAL_PRIORITY_URGENT_DISPLAY);
-  if (!uevent_init()) {
-    DLOGE("Failed to init uevent");
-    pthread_exit(0);
-    return NULL;
-  }
-
-  while (!uevent_thread_exit_) {
-    // keep last 2 zeroes to ensure double 0 termination
-    length = uevent_next_event(uevent_data, INT32(sizeof(uevent_data)) - 2);
-
-    if (strcasestr(HWC_UEVENT_SWITCH_HDMI, uevent_data)) {
-      DLOGI("Uevent HDMI = %s", uevent_data);
-      int connected = GetEventValue(uevent_data, length, "SWITCH_STATE=");
-      if (connected >= 0) {
-        DLOGI("HDMI = %s", connected ? "connected" : "disconnected");
-        if (HotPlugHandler(connected) == -1) {
-          DLOGE("Failed handling Hotplug = %s", connected ? "connected" : "disconnected");
-        }
+void HWCSession::UEventHandler(const char *uevent_data, int length) {
+  if (strcasestr(uevent_data, HWC_UEVENT_SWITCH_HDMI)) {
+    DLOGI("Uevent HDMI = %s", uevent_data);
+    int connected = GetEventValue(uevent_data, length, "SWITCH_STATE=");
+    if (connected >= 0) {
+      DLOGI("HDMI = %s", connected ? "connected" : "disconnected");
+      if (HotPlugHandler(connected) == -1) {
+        DLOGE("Failed handling Hotplug = %s", connected ? "connected" : "disconnected");
       }
-    } else if (strcasestr(HWC_UEVENT_GRAPHICS_FB0, uevent_data)) {
-      DLOGI("Uevent FB0 = %s", uevent_data);
-      int panel_reset = GetEventValue(uevent_data, length, "PANEL_ALIVE=");
-      if (panel_reset == 0) {
-        callbacks_.Refresh(0);
-        reset_panel_ = true;
-      }
-    } else if (strcasestr(uevent_data, HWC_UEVENT_DRM_EXT_HOTPLUG)) {
-      HandleExtHPD(uevent_data, length);
     }
+  } else if (strcasestr(uevent_data, HWC_UEVENT_GRAPHICS_FB0)) {
+    DLOGI("Uevent FB0 = %s", uevent_data);
+    int panel_reset = GetEventValue(uevent_data, length, "PANEL_ALIVE=");
+    if (panel_reset == 0) {
+      Refresh(0);
+      reset_panel_ = true;
+    }
+  } else if (strcasestr(uevent_data, HWC_UEVENT_DRM_EXT_HOTPLUG)) {
+    HandleExtHPD(uevent_data, length);
   }
-  pthread_exit(0);
-
-  return NULL;
 }
 
 void HWCSession::HandleExtHPD(const char *uevent_data, int length) {
@@ -1408,7 +1445,7 @@ int HWCSession::HotPlugHandler(bool connected) {
   } while (0);
 
   if (connected) {
-    callbacks_.Refresh(0);
+    Refresh(0);
 
     if (!hdmi_is_primary_) {
       // wait for sufficient time to ensure sufficient resources are available to process new
@@ -1420,8 +1457,8 @@ int HWCSession::HotPlugHandler(bool connected) {
 
   // notify client
   if (notify_hotplug) {
-    callbacks_.Hotplug(hdmi_is_primary_ ? HWC_DISPLAY_PRIMARY : HWC_DISPLAY_EXTERNAL,
-                       connected ? HWC2::Connection::Connected : HWC2::Connection::Disconnected);
+    HotPlug(hdmi_is_primary_ ? HWC_DISPLAY_PRIMARY : HWC_DISPLAY_EXTERNAL,
+            connected ? HWC2::Connection::Connected : HWC2::Connection::Disconnected);
   }
 
   qservice_->onHdmiHotplug(INT(connected));
@@ -1468,6 +1505,24 @@ android::status_t HWCSession::GetVisibleDisplayRect(const android::Parcel *input
   output_parcel->writeInt32(visible_rect.bottom);
 
   return android::NO_ERROR;
+}
+
+void HWCSession::Refresh(hwc2_display_t display) {
+  SCOPE_LOCK(callbacks_lock_);
+  HWC2::Error err = callbacks_.Refresh(display);
+  while (err != HWC2::Error::None) {
+    callbacks_lock_.Wait();
+    err = callbacks_.Refresh(display);
+  }
+}
+
+void HWCSession::HotPlug(hwc2_display_t display, HWC2::Connection state) {
+  SCOPE_LOCK(callbacks_lock_);
+  HWC2::Error err = callbacks_.Hotplug(display, state);
+  while (err != HWC2::Error::None) {
+    callbacks_lock_.Wait();
+    err = callbacks_.Hotplug(display, state);
+  }
 }
 
 }  // namespace sdm

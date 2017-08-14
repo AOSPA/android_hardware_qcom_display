@@ -63,7 +63,7 @@ class Debug {
   }
   static inline DebugHandler* Get() { return debug_.debug_handler_; }
   static int GetSimulationFlag();
-  static int GetHDMIResolution();
+  static bool GetExternalResolution(char *val);
   static void GetIdleTimeoutMs(uint32_t *active_ms, uint32_t *inactive_ms);
   static int GetBootAnimLayerCount();
   static bool IsRotatorDownScaleDisabled();
@@ -78,6 +78,7 @@ class Debug {
   static bool IsAVRDisabled();
   static bool IsExtAnimDisabled();
   static bool IsPartialSplitDisabled();
+  static bool IsSrcSplitPreferred();
   static DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
   static DisplayError GetReducedConfig(uint32_t *num_vig_pipes, uint32_t *num_dma_pipes);
   static int GetExtMaxlayers();

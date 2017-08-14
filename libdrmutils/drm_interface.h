@@ -318,6 +318,13 @@ enum struct QSEEDVersion {
   V3,
 };
 
+/* QSEED3 Step version */
+enum struct QSEEDStepVersion {
+  V2,
+  V3,
+  V4,
+};
+
 enum struct SmartDMARevision {
   V1,
   V2,
@@ -372,6 +379,7 @@ struct DRMPlaneTypeInfo {
   uint32_t max_vertical_deci;
   uint64_t max_pipe_bandwidth;
   uint32_t cache_size;  // cache size in bytes for inline rotation support.
+  QSEEDStepVersion qseed3_version;
 };
 
 // All DRM Planes as map<Plane_id , plane_type_info> listed from highest to lowest priority
@@ -399,8 +407,7 @@ struct DRMConnectorInfo {
   uint32_t mmWidth;
   uint32_t mmHeight;
   uint32_t type;
-  uint32_t num_modes;
-  drmModeModeInfo *modes;
+  std::vector<drmModeModeInfo> modes;
   DRMTopology topology;
   std::string panel_name;
   DRMPanelMode panel_mode;
@@ -422,6 +429,7 @@ struct DRMConnectorInfo {
   bool roi_merge;
   DRMRotation panel_orientation;
   drm_panel_hdr_properties panel_hdr_prop;
+  uint32_t transfer_time_us;
 };
 
 /* Identifier token for a display */

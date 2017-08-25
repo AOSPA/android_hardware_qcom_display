@@ -104,6 +104,7 @@ HWC2::Error HWCColorMode::GetColorModes(uint32_t *out_num_modes,
 }
 
 HWC2::Error HWCColorMode::SetColorMode(android_color_mode_t mode) {
+  DTRACE_SCOPED();
   // first mode in 2D matrix is the mode (identity)
   if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_P3) {
     DLOGE("Could not find mode: %d", mode);
@@ -136,6 +137,7 @@ HWC2::Error HWCColorMode::SetColorTransform(const float *matrix, android_color_t
     return HWC2::Error::BadParameter;
   }
 
+  DTRACE_SCOPED();
   double color_matrix[kColorTransformMatrixCount] = {0};
   CopyColorTransformMatrix(matrix, color_matrix);
 
@@ -634,6 +636,7 @@ HWC2::Error HWCDisplay::SetLayerZOrder(hwc2_layer_t layer_id, uint32_t z) {
 
 HWC2::Error HWCDisplay::SetVsyncEnabled(HWC2::Vsync enabled) {
   DLOGV("Display ID: %d enabled: %s", id_, to_string(enabled).c_str());
+  ATRACE_INT("SetVsyncState ", enabled == HWC2::Vsync::Enable ? 1 : 0);
   DisplayError error = kErrorNone;
 
   if (shutdown_pending_ || !callbacks_->VsyncCallbackRegistered()) {
@@ -697,6 +700,7 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode) {
       return HWC2::Error::BadParameter;
   }
 
+  ATRACE_INT("SetPowerMode ", state);
   DisplayError error = display_intf_->SetDisplayState(state);
   validated_.reset();
 
@@ -754,9 +758,18 @@ HWC2::Error HWCDisplay::GetDisplayConfigs(uint32_t *out_num_configs, hwc2_config
 HWC2::Error HWCDisplay::GetDisplayAttribute(hwc2_config_t config, HWC2::Attribute attribute,
                                             int32_t *out_value) {
   DisplayConfigVariableInfo variable_config;
-  if (GetDisplayAttributesForConfig(INT(config), &variable_config) != kErrorNone) {
-    DLOGE("Get variable config failed");
-    return HWC2::Error::BadDisplay;
+  // Get display attributes from config index only if resolution switch is supported.
+  // Otherwise always send mixer attributes. This is to support destination scaler.
+  if (num_configs_ > 1) {
+    if (GetDisplayAttributesForConfig(INT(config), &variable_config) != kErrorNone) {
+      DLOGE("Get variable config failed");
+      return HWC2::Error::BadDisplay;
+    }
+  } else {
+    if (display_intf_->GetFrameBufferConfig(&variable_config) != kErrorNone) {
+      DLOGV("Get variable config failed");
+      return HWC2::Error::BadDisplay;
+    }
   }
 
   switch (attribute) {

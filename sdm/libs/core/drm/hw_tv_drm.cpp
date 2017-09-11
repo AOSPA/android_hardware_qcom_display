@@ -56,6 +56,7 @@ using sde_drm::DRMConnectorInfo;
 using sde_drm::DRMPPFeatureInfo;
 using sde_drm::DRMOps;
 using sde_drm::DRMTopology;
+using sde_drm::DRMPowerMode;
 
 namespace sdm {
 
@@ -98,8 +99,10 @@ DisplayError HWTVDRM::Init() {
 
   return error;
 }
+
 DisplayError HWTVDRM::SetDisplayAttributes(uint32_t index) {
   if (index >= connector_info_.modes.size()) {
+    DLOGE("Invalid mode index %d mode size %d", index, UINT32(connector_info_.modes.size()));
     return kErrorNotSupported;
   }
 
@@ -146,14 +149,47 @@ DisplayError HWTVDRM::GetConfigIndex(char *mode, uint32_t *index) {
         (fps == connector_info_.modes[idex].vrefresh)) {
       if ((format >> 1) & (connector_info_.modes[idex].flags >> kBitYUV)) {
         *index = UINT32(idex);
+        break;
       }
 
       if (format & (connector_info_.modes[idex].flags >> kBitRGB)) {
         *index = UINT32(idex);
+        break;
       }
     }
   }
 
+  return kErrorNone;
+}
+
+/* overriding display state funcs to have special or NO OP implementation for TVs */
+DisplayError HWTVDRM::Deinit() {
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
+
+  return HWDeviceDRM::Deinit();
+}
+
+DisplayError HWTVDRM::PowerOff() {
+  DTRACE_SCOPED();
+
+  int ret = drm_atomic_intf_->Commit(true /* synchronous */);
+  if (ret) {
+    DLOGE("%s failed with error %d", __FUNCTION__, ret);
+    return kErrorHardware;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError HWTVDRM::Doze() {
+  return kErrorNone;
+}
+
+DisplayError HWTVDRM::DozeSuspend() {
+  return kErrorNone;
+}
+
+DisplayError HWTVDRM::Standby() {
   return kErrorNone;
 }
 

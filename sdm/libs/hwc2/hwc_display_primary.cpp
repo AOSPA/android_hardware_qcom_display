@@ -190,8 +190,11 @@ HWC2::Error HWCDisplayPrimary::Validate(uint32_t *out_num_types, uint32_t *out_n
     layer_stack_.flags.post_processed_output = post_processed_output_;
   }
 
-  bool one_updating_layer = SingleLayerUpdating();
-  ToggleCPUHint(one_updating_layer);
+  uint32_t num_updating_layers = GetUpdatingLayersCount();
+  bool one_updating_layer = (num_updating_layers == 1);
+  if (num_updating_layers != 0) {
+    ToggleCPUHint(one_updating_layer);
+  }
 
   uint32_t refresh_rate = GetOptimalRefreshRate(one_updating_layer);
   bool final_rate = force_refresh_rate_ ? true : false;
@@ -295,6 +298,7 @@ int HWCDisplayPrimary::Perform(uint32_t operation, ...) {
   va_list args;
   va_start(args, operation);
   int val = 0;
+  LayerSolidFill *solid_fill_color;
   LayerRect *rect = NULL;
 
   switch (operation) {
@@ -311,12 +315,12 @@ int HWCDisplayPrimary::Perform(uint32_t operation, ...) {
       SetDisplayMode(UINT32(val));
       break;
     case SET_QDCM_SOLID_FILL_INFO:
-      val = va_arg(args, int32_t);
-      SetQDCMSolidFillInfo(true, UINT32(val));
+      solid_fill_color = va_arg(args, LayerSolidFill*);
+      SetQDCMSolidFillInfo(true, *solid_fill_color);
       break;
     case UNSET_QDCM_SOLID_FILL_INFO:
-      val = va_arg(args, int32_t);
-      SetQDCMSolidFillInfo(false, UINT32(val));
+      solid_fill_color = va_arg(args, LayerSolidFill*);
+      SetQDCMSolidFillInfo(false, *solid_fill_color);
       break;
     case SET_QDCM_SOLID_FILL_RECT:
       rect = va_arg(args, LayerRect*);
@@ -353,7 +357,7 @@ void HWCDisplayPrimary::SetMetaDataRefreshRateFlag(bool enable) {
   use_metadata_refresh_rate_ = enable;
 }
 
-void HWCDisplayPrimary::SetQDCMSolidFillInfo(bool enable, uint32_t color) {
+void HWCDisplayPrimary::SetQDCMSolidFillInfo(bool enable, const LayerSolidFill &color) {
   solid_fill_enable_ = enable;
   solid_fill_color_ = color;
 }

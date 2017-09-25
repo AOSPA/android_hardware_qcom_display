@@ -236,7 +236,7 @@ class HWCDisplay : public DisplayEventHandler {
   void MarkLayersForGPUBypass(void);
   void MarkLayersForClientComposition(void);
   virtual void ApplyScanAdjustment(hwc_rect_t *display_frame);
-  bool SingleLayerUpdating(void);
+  uint32_t GetUpdatingLayersCount(void);
   bool IsSurfaceUpdated(const std::vector<LayerRect> &dirty_regions);
   bool IsLayerUpdating(const Layer *layer);
   uint32_t SanitizeRefreshRate(uint32_t req_refresh_rate);
@@ -285,7 +285,7 @@ class HWCDisplay : public DisplayEventHandler {
   bool solid_fill_enable_ = false;
   Layer *solid_fill_layer_ = NULL;
   LayerRect solid_fill_rect_ = {};
-  uint32_t solid_fill_color_ = 0;
+  LayerSolidFill solid_fill_color_ = {};
   LayerRect display_rect_;
   bool color_tranform_failed_ = false;
   HWCColorMode *color_mode_ = NULL;

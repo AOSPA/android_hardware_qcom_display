@@ -160,6 +160,4 @@ int getPanelBrightness();
 
 }; //namespace
 
-
-extern "C" int waitForComposerInit();
 #endif

@@ -163,6 +163,8 @@ int HWCSession::Init() {
     return -EINVAL;
   }
 
+  g_hwc_uevent_.Register(this);
+
   error = CoreInterface::CreateCore(HWCDebugHandler::Get(), &buffer_allocator_,
                                     &buffer_sync_handler_, &socket_handler_, &core_intf_);
   if (error != kErrorNone) {
@@ -171,7 +173,6 @@ int HWCSession::Init() {
     return -EINVAL;
   }
 
-  g_hwc_uevent_.Register(this);
 
   // If HDMI display is primary display, defer display creation until hotplug event is received.
   HWDisplayInterfaceInfo hw_disp_info = {};
@@ -209,6 +210,7 @@ int HWCSession::Init() {
     return status;
   }
 
+  is_composer_up_ = true;
   struct rlimit fd_limit = {};
   getrlimit(RLIMIT_NOFILE, &fd_limit);
   fd_limit.rlim_cur = fd_limit.rlim_cur * 2;
@@ -517,7 +519,7 @@ int32_t HWCSession::RegisterCallback(hwc2_device_t *device, int32_t descriptor,
   auto error = hwc_session->callbacks_.Register(desc, callback_data, pointer);
   DLOGD("Registering callback: %s", to_string(desc).c_str());
   if (descriptor == HWC2_CALLBACK_HOTPLUG) {
-    if (hwc_session->hwc_display_[HWC_DISPLAY_PRIMARY] && !hwc_session->hdmi_is_primary_) {
+    if (hwc_session->hwc_display_[HWC_DISPLAY_PRIMARY]) {
       hwc_session->callbacks_.Hotplug(HWC_DISPLAY_PRIMARY, HWC2::Connection::Connected);
     }
   }
@@ -1001,12 +1003,20 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
       status = SetColorModeById(input_parcel);
       break;
 
+    case qService::IQService::GET_COMPOSER_STATUS:
+      output_parcel->writeInt32(getComposerStatus());
+      break;
+
     default:
       DLOGW("QService command = %d is not supported", command);
       return -EINVAL;
   }
 
   return status;
+}
+
+android::status_t HWCSession::getComposerStatus() {
+  return is_composer_up_;
 }
 
 android::status_t HWCSession::HandleGetDisplayAttributesForConfig(const android::Parcel
@@ -1347,25 +1357,37 @@ void HWCSession::UEventHandler(const char *uevent_data, int length) {
   }
 }
 
-void HWCSession::HandleExtHPD(const char *uevent_data, int length) {
+const char *GetTokenValue(const char *uevent_data, int length, const char *token) {
   const char *iterator_str = uevent_data;
-  const char *event_info = "status=";
   const char *pstr = NULL;
   while (((iterator_str - uevent_data) <= length) && (*iterator_str)) {
-    pstr = strstr(iterator_str, event_info);
-    if (pstr != NULL) {
+    pstr = strstr(iterator_str, token);
+    if (pstr) {
       break;
     }
     iterator_str += strlen(iterator_str) + 1;
   }
 
+  if (pstr)
+    pstr = pstr+strlen(token);
+
+  return pstr;
+}
+
+void HWCSession::HandleExtHPD(const char *uevent_data, int length) {
+  const char *pstr = GetTokenValue(uevent_data, length, "name=");
+  if (!pstr || (strcmp(pstr, "DP-1") != 0)) {
+    return;
+  }
+
+  pstr = GetTokenValue(uevent_data, length, "status=");
   if (pstr) {
     bool connected = false;
-    if (strcmp(pstr+strlen(event_info), "connected") == 0) {
+    if (strcmp(pstr, "connected") == 0) {
       connected = true;
     }
 
-    DLOGI("Recived Ext HPD, connected:%d  status=%s", connected, pstr+strlen(event_info));
+    DLOGI("Recived Ext HPD, connected:%d  status=%s", connected, pstr);
     HotPlugHandler(connected);
   }
 }

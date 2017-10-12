@@ -287,6 +287,9 @@ void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   hw_resource->max_bandwidth_high = info.max_bandwidth_high / kKiloUnit;
   hw_resource->max_sde_clk = info.max_sde_clk;
   hw_resource->hw_revision = info.hw_version;
+  hw_resource->min_core_ib_kbps = info.min_core_ib / kKiloUnit;
+  hw_resource->min_llcc_ib_kbps = info.min_llcc_ib / kKiloUnit;
+  hw_resource->min_dram_ib_kbps = info.min_dram_ib / kKiloUnit;
 
   std::vector<LayerBufferFormat> sdm_format;
   for (auto &it : info.comp_ratio_rt_map) {
@@ -397,7 +400,7 @@ void HWInfoDRM::PopulatePipeCaps(const sde_drm::DRMPlaneTypeInfo &info,
 void HWInfoDRM::PopulateSupportedFmts(HWSubBlockType sub_blk_type,
                                       const sde_drm::DRMPlaneTypeInfo  &info,
                                       HWResourceInfo *hw_resource) {
-  vector<LayerBufferFormat> sdm_formats = {};
+  vector<LayerBufferFormat> sdm_formats;
   FormatsMap &fmts_map = hw_resource->supported_formats_map;
 
   if (fmts_map.find(sub_blk_type) == fmts_map.end()) {
@@ -411,7 +414,7 @@ void HWInfoDRM::PopulateSupportedFmts(HWSubBlockType sub_blk_type,
 
 void HWInfoDRM::GetWBInfo(HWResourceInfo *hw_resource) {
   HWSubBlockType sub_blk_type = kHWWBIntfOutput;
-  vector<LayerBufferFormat> supported_sdm_formats = {};
+  vector<LayerBufferFormat> supported_sdm_formats;
   sde_drm::DRMDisplayToken token;
 
   // Fake register

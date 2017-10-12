@@ -273,6 +273,12 @@ enum struct DRMOps {
    *      DRMRect * - Array of Connector ROIs
    */
   CONNECTOR_SET_ROI,
+  /*
+   * Op: Set FB secure mode for Writeback connector.
+   * Arg: uint32_t - Connector ID
+   *      uint32_t - FB Secure mode
+   */
+  CONNECTOR_SET_FB_SECURE_MODE,
 };
 
 enum struct DRMRotation {
@@ -359,6 +365,9 @@ struct DRMCrtcInfo {
   CompRatioMap comp_ratio_rt_map;
   CompRatioMap comp_ratio_nrt_map;
   uint32_t hw_version;
+  uint64_t min_core_ib;
+  uint64_t min_llcc_ib;
+  uint64_t min_dram_ib;
 };
 
 enum struct DRMPlaneType {
@@ -505,6 +514,11 @@ struct DRMSolidfillStage {
  DRMRect bounding_rect {};
  bool is_exclusion_rect = false;
  uint32_t color = 0xff000000; // in 8bit argb
+ uint32_t red = 0;
+ uint32_t blue = 0;
+ uint32_t green = 0;
+ uint32_t alpha = 0xff;
+ uint32_t color_bit_depth = 0;
  uint32_t z_order = 0;
  uint32_t plane_alpha = 0xff;
 };

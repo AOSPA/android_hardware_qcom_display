@@ -671,7 +671,7 @@ DisplayError HWDeviceDRM::PowerOn() {
 
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::ON);
-  int ret = drm_atomic_intf_->Commit(false /* synchronous */);
+  int ret = drm_atomic_intf_->Commit(true /* synchronous */);
   if (ret) {
     DLOGE("Failed with error: %d", ret);
     return kErrorHardware;
@@ -687,7 +687,7 @@ DisplayError HWDeviceDRM::PowerOff() {
 
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::OFF);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
-  int ret = drm_atomic_intf_->Commit(false /* synchronous */);
+  int ret = drm_atomic_intf_->Commit(true /* synchronous */);
   if (ret) {
     DLOGE("Failed with error: %d", ret);
     return kErrorHardware;
@@ -766,6 +766,7 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
     HWRotatorSession *hw_rotator_session = &hw_layers->config[i].hw_rotator_session;
 
     if (hw_layers->config[i].use_solidfill_stage) {
+      hw_layers->config[i].hw_solidfill_stage.solid_fill_info = layer.solid_fill_info;
       AddSolidfillStage(hw_layers->config[i].hw_solidfill_stage, layer.plane_alpha);
       continue;
     }
@@ -867,7 +868,19 @@ void HWDeviceDRM::AddSolidfillStage(const HWSolidfillStage &sf, uint32_t plane_a
   solidfill.is_exclusion_rect  = sf.is_exclusion_rect;
   solidfill.plane_alpha = plane_alpha;
   solidfill.z_order = sf.z_order;
-  solidfill.color = sf.color;
+  if (!sf.solid_fill_info.bit_depth) {
+    solidfill.color_bit_depth = 8;
+    solidfill.alpha = (0xff000000 & sf.color) >> 24;
+    solidfill.red = (0xff0000 & sf.color) >> 16;
+    solidfill.green = (0xff00 & sf.color) >> 8;
+    solidfill.blue = 0xff & sf.color;
+  } else {
+    solidfill.color_bit_depth = sf.solid_fill_info.bit_depth;
+    solidfill.alpha = sf.solid_fill_info.alpha;
+    solidfill.red = sf.solid_fill_info.red;
+    solidfill.green = sf.solid_fill_info.green;
+    solidfill.blue = sf.solid_fill_info.blue;
+  }
   solid_fills_.push_back(solidfill);
   DLOGI_IF(kTagDriverConfig, "Add a solidfill stage at z_order:%d argb_color:%x plane_alpha:%x",
            solidfill.z_order, solidfill.color, solidfill.plane_alpha);
@@ -1359,10 +1372,10 @@ void HWDeviceDRM::SetSecureConfig(const LayerBuffer &input_buffer, DRMSecureMode
       // Secure and non-secure planes can be attached to this CRTC.
       *fb_secure_mode = DRMSecureMode::SECURE_DIR_TRANSLATION;
     } else if (input_buffer.flags.secure_display) {
-      // IOMMU configuration for this framebuffer mode is non-secure domain & requires
+      // IOMMU configuration for this framebuffer mode is secure domain & requires
       // only stage II translation, when this buffer is accessed by Display H/W.
       // Only secure planes can be attached to this CRTC.
-      *fb_secure_mode = DRMSecureMode::NON_SECURE_DIR_TRANSLATION;
+      *fb_secure_mode = DRMSecureMode::SECURE_DIR_TRANSLATION;
       *security_level = DRMSecurityLevel::SECURE_ONLY;
     } else {
       // IOMMU configuration for this framebuffer mode is secure domain & requires both

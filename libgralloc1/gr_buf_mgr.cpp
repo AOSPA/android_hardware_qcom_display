@@ -452,17 +452,15 @@ int BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_han
   if (!handle)
     return -EINVAL;
 
-  int format = descriptor.GetFormat();
   gralloc1_producer_usage_t prod_usage = descriptor.GetProducerUsage();
   gralloc1_consumer_usage_t cons_usage = descriptor.GetConsumerUsage();
+  int format = allocator_->GetImplDefinedFormat(prod_usage, cons_usage, descriptor.GetFormat());
   uint32_t layer_count = descriptor.GetLayerCount();
-
-  // Get implementation defined format
-  int gralloc_format = allocator_->GetImplDefinedFormat(prod_usage, cons_usage, format);
 
   unsigned int size;
   unsigned int alignedw, alignedh;
-  int buffer_type = GetBufferType(gralloc_format);
+
+  int buffer_type = GetBufferType(format);
   BufferInfo info = GetBufferInfo(descriptor);
   GetBufferSizeAndDimensions(info, &size, &alignedw, &alignedh);
   size = (bufferSize >= size) ? bufferSize : size;
@@ -704,7 +702,7 @@ gralloc1_error_t BufferManager::Perform(int operation, va_list args) {
       *flag = hnd->flags &private_handle_t::PRIV_FLAGS_UBWC_ALIGNED;
       int linear_format = 0;
       if (getMetaData(hnd, GET_LINEAR_FORMAT, &linear_format) == 0) {
-        if (!linear_format) {
+        if (linear_format) {
          *flag = 0;
         }
       }

@@ -489,19 +489,38 @@ static int32_t GetReleaseFences(hwc2_device_t *device, hwc2_display_t display,
 int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display,
                                    int32_t *out_retire_fence) {
   HWCSession *hwc_session = static_cast<HWCSession *>(device);
+  bool notify_hotplug = false;
+  auto status = HWC2::Error::BadDisplay;
   DTRACE_SCOPED();
-  SEQUENCE_EXIT_SCOPE_LOCK(locker_[display]);
-  if (!device) {
-    return HWC2_ERROR_BAD_DISPLAY;
+  {
+    SEQUENCE_EXIT_SCOPE_LOCK(locker_[display]);
+    if (!device) {
+      return HWC2_ERROR_BAD_DISPLAY;
+    }
+
+    // TODO(user): Handle virtual display/HDMI concurrency
+    if (hwc_session->hwc_display_[display]) {
+      status = hwc_session->hwc_display_[display]->Present(out_retire_fence);
+      // This is only indicative of how many times SurfaceFlinger posts
+      // frames to the display.
+      CALC_FPS();
+    }
+  }
+  // Handle Pending external display connection
+  if (hwc_session->external_pending_connect_ && (display == HWC_DISPLAY_PRIMARY)) {
+    Locker::ScopeLock lock_e(locker_[HWC_DISPLAY_EXTERNAL]);
+    Locker::ScopeLock lock_v(locker_[HWC_DISPLAY_VIRTUAL]);
+
+    if (!hwc_session->hwc_display_[HWC_DISPLAY_VIRTUAL]) {
+      DLOGD("Process pending external display connection");
+      hwc_session->ConnectDisplay(HWC_DISPLAY_EXTERNAL);
+      hwc_session->external_pending_connect_ = false;
+      notify_hotplug = true;
+    }
   }
 
-  auto status = HWC2::Error::BadDisplay;
-  // TODO(user): Handle virtual display/HDMI concurrency
-  if (hwc_session->hwc_display_[display]) {
-    status = hwc_session->hwc_display_[display]->Present(out_retire_fence);
-    // This is only indicative of how many times SurfaceFlinger posts
-    // frames to the display.
-    CALC_FPS();
+  if (notify_hotplug) {
+    hwc_session->HotPlug(HWC_DISPLAY_EXTERNAL, HWC2::Connection::Connected);
   }
 
   return INT32(status);
@@ -519,7 +538,7 @@ int32_t HWCSession::RegisterCallback(hwc2_device_t *device, int32_t descriptor,
   auto error = hwc_session->callbacks_.Register(desc, callback_data, pointer);
   DLOGD("Registering callback: %s", to_string(desc).c_str());
   if (descriptor == HWC2_CALLBACK_HOTPLUG) {
-    if (hwc_session->hwc_display_[HWC_DISPLAY_PRIMARY] && !hwc_session->hdmi_is_primary_) {
+    if (hwc_session->hwc_display_[HWC_DISPLAY_PRIMARY]) {
       hwc_session->callbacks_.Hotplug(HWC_DISPLAY_PRIMARY, HWC2::Connection::Connected);
     }
   }
@@ -705,13 +724,6 @@ int32_t HWCSession::ValidateDisplay(hwc2_device_t *device, hwc2_display_t displa
     }
   }
 
-    // Handle pending external display connection
-    if (hwc_session->external_pending_connect_ && !hwc_session->hwc_display_[HWC_DISPLAY_VIRTUAL]) {
-      DLOGE("Process pending external display connection");
-      hwc_session->ConnectDisplay(HWC_DISPLAY_EXTERNAL);
-      hwc_session->external_pending_connect_ = false;
-      hwc_session->HotPlug(HWC_DISPLAY_EXTERNAL, HWC2::Connection::Connected);
-    }
   // If validate fails, cancel the sequence lock so that other operations
   // (such as Dump or SetPowerMode) may succeed without blocking on the condition
   if (status == HWC2::Error::BadDisplay) {
@@ -1323,7 +1335,7 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
 }
 
 void HWCSession::UEventHandler(const char *uevent_data, int length) {
-  if (strcasestr(uevent_data, HWC_UEVENT_SWITCH_HDMI)) {
+  if (!strcasecmp(uevent_data, HWC_UEVENT_SWITCH_HDMI)) {
     DLOGI("Uevent HDMI = %s", uevent_data);
     int connected = GetEventValue(uevent_data, length, "SWITCH_STATE=");
     if (connected >= 0) {
@@ -1332,7 +1344,7 @@ void HWCSession::UEventHandler(const char *uevent_data, int length) {
         DLOGE("Failed handling Hotplug = %s", connected ? "connected" : "disconnected");
       }
     }
-  } else if (strcasestr(uevent_data, HWC_UEVENT_GRAPHICS_FB0)) {
+  } else if (!strcasecmp(uevent_data, HWC_UEVENT_GRAPHICS_FB0)) {
     DLOGI("Uevent FB0 = %s", uevent_data);
     int panel_reset = GetEventValue(uevent_data, length, "PANEL_ALIVE=");
     if (panel_reset == 0) {

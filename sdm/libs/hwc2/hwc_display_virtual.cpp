@@ -123,6 +123,16 @@ HWC2::Error HWCDisplayVirtual::Validate(uint32_t *out_num_types, uint32_t *out_n
 
   BuildLayerStack();
   layer_stack_.output_buffer = output_buffer_;
+  // If Output buffer of Virtual Display is not secure, set SKIP flag on the secure layers.
+  if (output_buffer_ && !output_buffer_->flags.secure && layer_stack_.flags.secure_present) {
+    for (auto hwc_layer : layer_set_) {
+      Layer *layer = hwc_layer->GetSDMLayer();
+      if (layer->input_buffer.flags.secure) {
+        layer_stack_.flags.skip_present = true;
+        layer->flags.skip = true;
+      }
+    }
+  }
   status = PrepareLayerStack(out_num_types, out_num_requests);
   return status;
 }
@@ -131,7 +141,7 @@ HWC2::Error HWCDisplayVirtual::Present(int32_t *out_retire_fence) {
   auto status = HWC2::Error::None;
   if (display_paused_) {
     DisplayError error = display_intf_->Flush();
-    validated_.reset();
+    validated_ = false;
     if (error != kErrorNone) {
       DLOGE("Flush failed. Error = %d", error);
     }

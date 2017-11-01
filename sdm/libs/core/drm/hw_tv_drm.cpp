@@ -110,14 +110,19 @@ DisplayError HWTVDRM::SetDisplayAttributes(uint32_t index) {
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
 
   // Commit to setup pipeline with mode, which then tells us the topology etc
-  if (drm_atomic_intf_->Commit(true /* synchronous */)) {
+  if (drm_atomic_intf_->Commit(true /* synchronous */, false /* retain_planes*/)) {
     DLOGE("Setting up CRTC %d, Connector %d for %s failed", token_.crtc_id,
           token_.conn_id, device_name_);
     return kErrorResources;
   }
 
-  // Reload connector info for updated info after 1st commit
+  // Reload connector info for updated info after 1st commit and validate
   drm_mgr_intf_->GetConnectorInfo(token_.conn_id, &connector_info_);
+  if (index >= connector_info_.modes.size()) {
+    DLOGE("Invalid mode index %d mode size %d", index, UINT32(connector_info_.modes.size()));
+    return kErrorNotSupported;
+  }
+
   DLOGI("Setup CRTC %d, Connector %d for %s", token_.crtc_id, token_.conn_id, device_name_);
 
   current_mode_index_ = index;
@@ -172,7 +177,7 @@ DisplayError HWTVDRM::Deinit() {
 DisplayError HWTVDRM::PowerOff() {
   DTRACE_SCOPED();
 
-  int ret = drm_atomic_intf_->Commit(true /* synchronous */);
+  int ret = drm_atomic_intf_->Commit(true /* synchronous */, false /* retain_planes*/);
   if (ret) {
     DLOGE("%s failed with error %d", __FUNCTION__, ret);
     return kErrorHardware;

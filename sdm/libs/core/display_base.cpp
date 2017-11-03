@@ -1455,8 +1455,10 @@ DisplayError DisplayBase::SetHDRMode(bool set) {
   }
 
   // DPPS and HDR features are mutually exclusive
-  comp_manager_->ControlDpps(!set);
-  hdr_mode_ = set;
+  if (error == kErrorNone) {
+    comp_manager_->ControlDpps(!set);
+    hdr_mode_ = set;
+  }
 
   return error;
 }

@@ -209,15 +209,9 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   GetHWPlanesInfo(hw_resource);
   GetWBInfo(hw_resource);
 
-  // Disable destination scalar count to 0 if extension library is not present or disabled
-  // through property
-  int value = 0;
-  bool disable_dest_scalar = false;
-  if (Debug::Get()->GetProperty("sdm.debug.disable_dest_scalar", &value) == kErrorNone) {
-    disable_dest_scalar = (value == 1);
-  }
+  // Disable destination scalar count to 0 if extension library is not present
   DynLib extension_lib;
-  if (!extension_lib.Open("libsdmextension.so") || disable_dest_scalar) {
+  if (!extension_lib.Open("libsdmextension.so")) {
     hw_resource->hw_dest_scalar_info.count = 0;
   }
 

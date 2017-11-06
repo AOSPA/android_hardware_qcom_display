@@ -27,45 +27,34 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __HW_VIRTUAL_DRM_H__
-#define __HW_VIRTUAL_DRM_H__
+#ifndef __HW_PERIPHERAL_DRM_H__
+#define __HW_PERIPHERAL_DRM_H__
 
-#include "hw_device_drm.h"
-#include <drm/msm_drm.h>
-#include <drm/sde_drm.h>
 #include <vector>
+#include "hw_device_drm.h"
 
 namespace sdm {
 
-class HWVirtualDRM : public HWDeviceDRM {
+class HWPeripheralDRM : public HWDeviceDRM {
  public:
-  HWVirtualDRM(BufferSyncHandler *buffer_sync_handler,
-               BufferAllocator *buffer_allocator, HWInfoInterface *hw_info_intf);
-  virtual ~HWVirtualDRM() {}
-  virtual DisplayError SetVSyncState(bool enable) { return kErrorNotSupported; }
-  virtual DisplayError SetMixerAttributes(const HWMixerAttributes &mixer_attributes) {
-    return kErrorNotSupported;
-  }
-  virtual DisplayError SetDisplayAttributes(const HWDisplayAttributes &display_attributes);
-  virtual DisplayError PowerOn();
+  explicit HWPeripheralDRM(BufferSyncHandler *buffer_sync_handler,
+                           BufferAllocator *buffer_allocator,
+                           HWInfoInterface *hw_info_intf);
+  virtual ~HWPeripheralDRM() {}
 
  protected:
   virtual DisplayError Init();
   virtual DisplayError Validate(HWLayers *hw_layers);
   virtual DisplayError Commit(HWLayers *hw_layers);
-  virtual DisplayError GetPPFeaturesVersion(PPFeatureVersion *vers);
-
+  virtual DisplayError PowerOn();
+  virtual DisplayError Flush();
  private:
-  void ConfigureWbConnectorFbId(uint32_t fb_id);
-  void ConfigureWbConnectorDestRect();
-  void ConfigureWbConnectorSecureMode(bool secure);
-  void InitializeConfigs();
-  void DumpConnectorModeInfo();
-  DisplayError SetWbConfigs(const HWDisplayAttributes &display_attributes);
-  void GetModeIndex(const HWDisplayAttributes &display_attributes, int *mode_index);
+  void SetDestScalarData(HWLayersInfo hw_layer_info);
+  void ResetDisplayParams();
+  sde_drm_dest_scaler_data sde_dest_scalar_data_ = {};
+  std::vector<SDEScaler> scalar_data_ = {};
 };
 
 }  // namespace sdm
 
-#endif  // __HW_VIRTUAL_DRM_H__
-
+#endif  // __HW_PERIPHERAL_DRM_H__

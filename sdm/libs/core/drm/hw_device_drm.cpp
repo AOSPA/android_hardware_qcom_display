@@ -329,8 +329,6 @@ HWDeviceDRM::HWDeviceDRM(BufferSyncHandler *buffer_sync_handler, BufferAllocator
                          HWInfoInterface *hw_info_intf)
     : hw_info_intf_(hw_info_intf), buffer_sync_handler_(buffer_sync_handler),
       registry_(buffer_allocator) {
-  disp_type_ = DRMDisplayType::PERIPHERAL;
-  device_name_ = "Peripheral Display";
   hw_info_intf_ = hw_info_intf;
 }
 
@@ -346,36 +344,19 @@ DisplayError HWDeviceDRM::Init() {
       DLOGE("RegisterDisplay failed for %s", device_name_);
       return kErrorResources;
     }
+
     drm_mgr_intf_->CreateAtomicReq(token_, &drm_atomic_intf_);
     drm_mgr_intf_->GetConnectorInfo(token_.conn_id, &connector_info_);
-    // Commit to setup pipeline with mode, which then tells us the topology etc
-    if (!deferred_initialize_) {
-      drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id,
-                                &connector_info_.modes[current_mode_index_]);
-      drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
-      if (drm_atomic_intf_->Commit(true /* synchronous */, false /* retain_planes*/)) {
-        DRM_LOGI("Setting up CRTC %d, Connector %d for %s failed", token_.crtc_id,
-          token_.conn_id, device_name_);
-        return kErrorResources;
-      }
-      // Reload connector info for updated info after 1st commit
-      drm_mgr_intf_->GetConnectorInfo(token_.conn_id, &connector_info_);
-    }
-    InitializeConfigs();
   } else {
     display_attributes_.push_back(HWDisplayAttributes());
     PopulateDisplayAttributes(current_mode_index_);
   }
-  PopulateHWPanelInfo();
-  UpdateMixerAttributes();
 
   hw_info_intf_->GetHWResourceInfo(&hw_resource_);
-
   // TODO(user): In future, remove has_qseed3 member, add version and pass version to constructor
   if (hw_resource_.has_qseed3) {
     hw_scale_ = new HWScaleDRM(HWScaleDRM::Version::V2);
   }
-  scalar_data_.resize(hw_resource_.hw_dest_scalar_info.count);
   return kErrorNone;
 }
 
@@ -493,7 +474,12 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   snprintf(hw_panel_info_.panel_name, sizeof(hw_panel_info_.panel_name), "%s",
            connector_info_.panel_name.c_str());
 
-  UpdatePanelSplitInfo();
+  uint32_t index = current_mode_index_;
+  hw_panel_info_.split_info.left_split = display_attributes_[index].x_pixels;
+  if (display_attributes_[index].is_device_split) {
+    hw_panel_info_.split_info.left_split = hw_panel_info_.split_info.right_split =
+        display_attributes_[index].x_pixels / 2;
+  }
 
   hw_panel_info_.partial_update = connector_info_.num_roi;
   hw_panel_info_.left_roi_count = UINT32(connector_info_.num_roi);
@@ -681,14 +667,13 @@ DisplayError HWDeviceDRM::SetDisplayAttributes(uint32_t index) {
     DLOGE("Invalid mode index %d mode size %d", index, UINT32(display_attributes_.size()));
     return kErrorParameters;
   }
-
   current_mode_index_ = index;
-  UpdatePanelSplitInfo();
+  // TODO(user): Topology/panel roi alignment information will be updated as a part of next commit
+  // which is too late for the requested mode that has different panel alignments. So driver needs
+  // to update panel/topology information for all modes during probe to reslove this issue.
+  PopulateHWPanelInfo();
   UpdateMixerAttributes();
-
-  DLOGI("Setting mode index %d for CRTC %d, Connector %d display %s is successful", index,
-         token_.crtc_id, token_.conn_id, device_name_);
-
+  switch_mode_ = true;
   return kErrorNone;
 }
 
@@ -714,6 +699,7 @@ DisplayError HWDeviceDRM::PowerOn() {
     DLOGE("Failed with error: %d", ret);
     return kErrorHardware;
   }
+
   return kErrorNone;
 }
 
@@ -731,6 +717,7 @@ DisplayError HWDeviceDRM::PowerOff() {
     DLOGE("Failed with error: %d", ret);
     return kErrorHardware;
   }
+
   return kErrorNone;
 }
 
@@ -929,7 +916,6 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_IDLE_TIMEOUT, token_.crtc_id,
                               hw_layer_info.set_idle_time_ms);
   }
-  SetDestScalarData(hw_layer_info);
 }
 
 void HWDeviceDRM::AddSolidfillStage(const HWSolidfillStage &sf, uint32_t plane_alpha) {
@@ -974,7 +960,7 @@ DisplayError HWDeviceDRM::Validate(HWLayers *hw_layers) {
 
   int ret = drm_atomic_intf_->Validate();
   if (ret) {
-    DLOGE("%s failed with error %d", __FUNCTION__, ret);
+    DLOGE("failed with error %d for %s", ret, device_name_);
     vrefresh_ = 0;
     return kErrorHardware;
   }
@@ -1095,6 +1081,13 @@ DisplayError HWDeviceDRM::AtomicCommit(HWLayers *hw_layers) {
     vrefresh_ = 0;
   }
 
+  if (switch_mode_) {
+    // Reload connector info for updated info after 1st commit
+    drm_mgr_intf_->GetConnectorInfo(token_.conn_id, &connector_info_);
+    PopulateHWPanelInfo();
+    switch_mode_ = false;
+  }
+
   return kErrorNone;
 }
 
@@ -1106,7 +1099,6 @@ DisplayError HWDeviceDRM::Flush() {
     return kErrorHardware;
   }
 
-  ResetDisplayParams();
   return kErrorNone;
 }
 
@@ -1200,13 +1192,6 @@ void HWDeviceDRM::SetRotation(LayerTransform transform, const HWRotatorMode &mod
 
 bool HWDeviceDRM::EnableHotPlugDetection(int enable) {
   return true;
-}
-
-void HWDeviceDRM::ResetDisplayParams() {
-  sde_dest_scalar_data_ = {};
-  for (uint32_t j = 0; j < scalar_data_.size(); j++) {
-    scalar_data_[j] = {};
-  }
 }
 
 DisplayError HWDeviceDRM::SetCursorPosition(HWLayers *hw_layers, int x, int y) {
@@ -1469,6 +1454,7 @@ void HWDeviceDRM::UpdateMixerAttributes() {
   mixer_attributes_.split_left = display_attributes_[index].is_device_split
                                      ? hw_panel_info_.split_info.left_split
                                      : mixer_attributes_.width;
+  DLOGI("Mixer WxH %dx%d for %s", mixer_attributes_.width, mixer_attributes_.height, device_name_);
 }
 
 void HWDeviceDRM::SetSecureConfig(const LayerBuffer &input_buffer, DRMSecureMode *fb_secure_mode,
@@ -1497,15 +1483,6 @@ void HWDeviceDRM::SetSecureConfig(const LayerBuffer &input_buffer, DRMSecureMode
   }
 }
 
-void HWDeviceDRM::UpdatePanelSplitInfo() {
-  uint32_t index = current_mode_index_;
-  hw_panel_info_.split_info.left_split = display_attributes_[index].x_pixels;
-  if (display_attributes_[index].is_device_split) {
-    hw_panel_info_.split_info.left_split = hw_panel_info_.split_info.right_split =
-        display_attributes_[index].x_pixels / 2;
-  }
-}
-
 void HWDeviceDRM::SetTopology(sde_drm::DRMTopology drm_topology, HWTopology *hw_topology) {
   switch (drm_topology) {
     case DRMTopology::SINGLE_LM:          *hw_topology = kSingleLM;        break;
@@ -1518,47 +1495,6 @@ void HWDeviceDRM::SetTopology(sde_drm::DRMTopology drm_topology, HWTopology *hw_
     case DRMTopology::PPSPLIT:            *hw_topology = kPPSplit;         break;
     default:                              *hw_topology = kUnknown;         break;
   }
-}
-
-void HWDeviceDRM::SetDestScalarData(HWLayersInfo hw_layer_info) {
-  if (!hw_resource_.hw_dest_scalar_info.count) {
-    return;
-  }
-
-  uint32_t index = 0;
-  for (uint32_t i = 0; i < hw_resource_.hw_dest_scalar_info.count; i++) {
-    DestScaleInfoMap::iterator it = hw_layer_info.dest_scale_info_map.find(i);
-
-    if (it == hw_layer_info.dest_scale_info_map.end()) {
-      continue;
-    }
-
-    HWDestScaleInfo *dest_scale_info = it->second;
-    SDEScaler *scale = &scalar_data_[index];
-    hw_scale_->SetScaler(dest_scale_info->scale_data, scale);
-    sde_drm_dest_scaler_cfg *dest_scalar_data = &sde_dest_scalar_data_.ds_cfg[index];
-    dest_scalar_data->flags = 0;
-    if (scale->scaler_v2.enable) {
-      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_ENABLE;
-    }
-    if (scale->scaler_v2.de.enable) {
-      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_ENHANCER_UPDATE;
-    }
-    if (dest_scale_info->scale_update) {
-      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_SCALE_UPDATE;
-    }
-    dest_scalar_data->index = i;
-    dest_scalar_data->lm_width = dest_scale_info->mixer_width;
-    dest_scalar_data->lm_height = dest_scale_info->mixer_height;
-    dest_scalar_data->scaler_cfg = reinterpret_cast<uint64_t>(&scale->scaler_v2);
-    if (hw_panel_info_.partial_update) {
-      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_PU_ENABLE;
-    }
-    index++;
-  }
-  sde_dest_scalar_data_.num_dest_scaler = UINT32(hw_layer_info.dest_scale_info_map.size());
-  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DEST_SCALER_CONFIG, token_.crtc_id,
-                            reinterpret_cast<uint64_t>(&sde_dest_scalar_data_));
 }
 
 }  // namespace sdm

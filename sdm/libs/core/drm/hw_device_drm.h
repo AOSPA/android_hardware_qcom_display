@@ -116,7 +116,6 @@ class HWDeviceDRM : public HWInterface {
   void PopulateHWPanelInfo();
   void GetHWDisplayPortAndMode();
   void GetHWPanelMaxBrightness();
-  void ResetDisplayParams();
   bool EnableHotPlugDetection(int enable);
   void UpdateMixerAttributes();
   void SetSolidfillStages();
@@ -132,7 +131,6 @@ class HWDeviceDRM : public HWInterface {
   void SetSecureConfig(const LayerBuffer &input_buffer, sde_drm::DRMSecureMode *fb_secure_mode,
                        sde_drm::DRMSecurityLevel *security_level);
   bool IsResolutionSwitchEnabled() const { return resolution_switch_enabled_; }
-  void UpdatePanelSplitInfo();
   void SetTopology(sde_drm::DRMTopology drm_topology, HWTopology *hw_topology);
 
   class Registry {
@@ -161,7 +159,6 @@ class HWDeviceDRM : public HWInterface {
 
  protected:
   const char *device_name_ = {};
-  bool deferred_initialize_ = false;
   bool default_mode_ = false;
   sde_drm::DRMDisplayType disp_type_ = {};
   HWInfoInterface *hw_info_intf_ = {};
@@ -177,17 +174,16 @@ class HWDeviceDRM : public HWInterface {
   std::vector<HWDisplayAttributes> display_attributes_ = {};
   uint32_t current_mode_index_ = 0;
   sde_drm::DRMConnectorInfo connector_info_ = {};
+  bool first_cycle_ = true;
 
  private:
-  void SetDestScalarData(HWLayersInfo hw_layer_info);
   bool synchronous_commit_ = false;
   HWMixerAttributes mixer_attributes_ = {};
   std::string interface_str_ = "DSI";
   std::vector<sde_drm::DRMSolidfillStage> solid_fills_ {};
   bool resolution_switch_enabled_ = false;
   uint32_t vrefresh_ = 0;
-  sde_drm_dest_scaler_data sde_dest_scalar_data_ = {};
-  std::vector<SDEScaler> scalar_data_ = {};
+  bool switch_mode_ = false;
 };
 
 }  // namespace sdm

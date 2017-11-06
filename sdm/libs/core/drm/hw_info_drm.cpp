@@ -193,11 +193,11 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   hw_resource->has_concurrent_writeback = false;
   hw_resource->has_hdr = true;
 
-  hw_resource->hw_version = kHWMdssVersion5;
+  hw_resource->hw_version = SDEVERSION(4, 0, 1);
   hw_resource->hw_revision = 0;
 
   // TODO(user): Deprecate
-  hw_resource->max_mixer_width = 0;
+  hw_resource->max_mixer_width = 2560;
   hw_resource->writeback_index = 0;
   hw_resource->has_bwc = false;
   hw_resource->has_ubwc = true;
@@ -209,9 +209,15 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   GetHWPlanesInfo(hw_resource);
   GetWBInfo(hw_resource);
 
-  // Disable destination scalar count to 0 if extension library is not present
+  // Disable destination scalar count to 0 if extension library is not present or disabled
+  // through property
+  int value = 0;
+  bool disable_dest_scalar = false;
+  if (Debug::Get()->GetProperty("sdm.debug.disable_dest_scalar", &value) == kErrorNone) {
+    disable_dest_scalar = (value == 1);
+  }
   DynLib extension_lib;
-  if (!extension_lib.Open("libsdmextension.so")) {
+  if (!extension_lib.Open("libsdmextension.so") || disable_dest_scalar) {
     hw_resource->hw_dest_scalar_info.count = 0;
   }
 
@@ -236,7 +242,7 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   DLOGI("\tLinear = %d", hw_resource->linear_factor);
   DLOGI("\tScale = %d", hw_resource->scale_factor);
   DLOGI("\tFudge_factor = %d", hw_resource->extra_fudge_factor);
-  DLOGI("\tib_fudge_factor = %d", hw_resource->ib_fudge_factor);
+  DLOGI("\tib_fudge_factor = %f", hw_resource->ib_fudge_factor);
 
   if (hw_resource->separate_rotator || hw_resource->num_dma_pipe) {
     GetHWRotatorInfo(hw_resource);
@@ -286,10 +292,7 @@ void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   hw_resource->max_bandwidth_low = info.max_bandwidth_low / kKiloUnit;
   hw_resource->max_bandwidth_high = info.max_bandwidth_high / kKiloUnit;
   hw_resource->max_sde_clk = info.max_sde_clk;
-  hw_resource->hw_revision = info.hw_version;
-  hw_resource->min_core_ib_kbps = info.min_core_ib / kKiloUnit;
-  hw_resource->min_llcc_ib_kbps = info.min_llcc_ib / kKiloUnit;
-  hw_resource->min_dram_ib_kbps = info.min_dram_ib / kKiloUnit;
+  hw_resource->hw_version = info.hw_version;
 
   std::vector<LayerBufferFormat> sdm_format;
   for (auto &it : info.comp_ratio_rt_map) {

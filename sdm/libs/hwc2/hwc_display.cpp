@@ -40,6 +40,7 @@
 #include "hwc_display.h"
 #include "hwc_debugger.h"
 #include "hwc_tonemapper.h"
+#include "hwc_session.h"
 
 #ifndef USE_GRALLOC1
 #include <gr.h>
@@ -461,6 +462,7 @@ void HWCDisplay::BuildLayerStack() {
   display_rect_ = LayerRect();
   metadata_refresh_rate_ = 0;
   auto working_primaries = ColorPrimaries_BT709_5;
+  bool secure_display_active = false;
 
   // Add one layer for fb target
   // TODO(user): Add blit target layers
@@ -517,6 +519,10 @@ void HWCDisplay::BuildLayerStack() {
 
     if (layer->flags.skip) {
       layer_stack_.flags.skip_present = true;
+    }
+
+    if (layer->input_buffer.flags.secure_display) {
+      secure_display_active = true;
     }
 
     if (hwc_layer->GetClientRequestedCompositionType() == HWC2::Composition::Cursor) {
@@ -598,6 +604,8 @@ void HWCDisplay::BuildLayerStack() {
     // Must fall back to client composition
     MarkLayersForClientComposition();
   }
+  // set secure display
+  SetSecureDisplay(secure_display_active);
 }
 
 void HWCDisplay::BuildSolidFillStack() {
@@ -728,28 +736,18 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode) {
 
 HWC2::Error HWCDisplay::GetClientTargetSupport(uint32_t width, uint32_t height, int32_t format,
                                                int32_t dataspace) {
-  DisplayConfigVariableInfo variable_config;
-  HWC2::Error supported = HWC2::Error::None;
-  display_intf_->GetFrameBufferConfig(&variable_config);
-  if (format != HAL_PIXEL_FORMAT_RGBA_8888 && format != HAL_PIXEL_FORMAT_RGBA_1010102) {
-     DLOGW("Unsupported format = %d", format);
-    supported = HWC2::Error::Unsupported;
-  } else if (width != variable_config.x_pixels || height != variable_config.y_pixels) {
-    DLOGW("Unsupported width = %d height = %d", width, height);
-    supported = HWC2::Error::Unsupported;
-  } else if (dataspace != HAL_DATASPACE_UNKNOWN) {
-    ColorMetaData color_metadata = {};
-    if (sdm::GetSDMColorSpace(dataspace, &color_metadata) == false) {
-      DLOGW("Unsupported dataspace = %d", dataspace);
-      supported = HWC2::Error::Unsupported;
-    }
-    if (sdm::IsBT2020(color_metadata.colorPrimaries)) {
-      DLOGW("Unsupported color Primary BT2020");
-      supported = HWC2::Error::Unsupported;
-    }
+  ColorMetaData color_metadata = {};
+  LayerBufferFormat sdm_format = GetSDMFormat(format, 0);
+  GetColorPrimary(dataspace, &(color_metadata.colorPrimaries));
+  GetTransfer(dataspace, &(color_metadata.transfer));
+  GetRange(dataspace, &(color_metadata.range));
+
+  if (display_intf_->GetClientTargetSupport(width, height, sdm_format,
+                                            color_metadata) != kErrorNone) {
+    return HWC2::Error::Unsupported;
   }
 
-  return supported;
+  return HWC2::Error::None;
 }
 
 HWC2::Error HWCDisplay::GetColorModes(uint32_t *out_num_modes, android_color_mode_t *out_modes) {
@@ -952,6 +950,8 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
   switch (event) {
     case kIdleTimeout:
     case kThermalEvent:
+    case kIdlePowerCollapse:
+      HWCSession::WaitForSequence(id_);
       validated_.reset();
       break;
     default:
@@ -1233,15 +1233,19 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(int32_t *out_retire_fence) {
       // release fences and discard fences from driver
       if (swap_interval_zero_ || layer->flags.single_buffer) {
         close(layer_buffer->release_fence_fd);
-        layer_buffer->release_fence_fd = -1;
       } else if (layer->composition != kCompositionGPU) {
         hwc_layer->PushReleaseFence(layer_buffer->release_fence_fd);
-        layer_buffer->release_fence_fd = -1;
       } else {
         hwc_layer->PushReleaseFence(-1);
       }
+    } else {
+      // In case of flush, we don't return an error to f/w, so it will get a release fence out of
+      // the hwc_layer's release fence queue. We should push a -1 to preserve release fence
+      // circulation semantics.
+      hwc_layer->PushReleaseFence(-1);
     }
 
+    layer_buffer->release_fence_fd = -1;
     if (layer_buffer->acquire_fence_fd >= 0) {
       close(layer_buffer->acquire_fence_fd);
       layer_buffer->acquire_fence_fd = -1;
@@ -1837,7 +1841,12 @@ int HWCDisplay::GetVisibleDisplayRect(hwc_rect_t *visible_rect) {
 }
 
 void HWCDisplay::SetSecureDisplay(bool secure_display_active) {
-  secure_display_active_ = secure_display_active;
+  if (secure_display_active_ != secure_display_active) {
+    DLOGI("SecureDisplay state changed from %d to %d Needs Flush!!", secure_display_active_,
+          secure_display_active);
+    secure_display_active_ = secure_display_active;
+    skip_prepare_ = true;
+  }
   return;
 }
 
@@ -1964,6 +1973,10 @@ std::string HWCDisplay::Dump() {
 }
 
 bool HWCDisplay::CanSkipValidate() {
+  if (solid_fill_enable_) {
+    return false;
+  }
+
   // Layer Stack checks
   if (layer_stack_.flags.hdr_present && (tone_mapper_ && tone_mapper_->IsActive())) {
     return false;

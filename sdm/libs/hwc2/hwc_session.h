@@ -78,6 +78,10 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static int32_t CallDisplayFunction(hwc2_device_t *device, hwc2_display_t display,
                                      HWC2::Error (HWCDisplay::*member)(Args...), Args... args) {
     if (!device) {
+      return HWC2_ERROR_BAD_PARAMETER;
+    }
+
+    if (display >= HWC_NUM_DISPLAY_TYPES) {
       return HWC2_ERROR_BAD_DISPLAY;
     }
 
@@ -95,6 +99,10 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                    hwc2_layer_t layer, HWC2::Error (HWCLayer::*member)(Args...),
                                    Args... args) {
     if (!device) {
+      return HWC2_ERROR_BAD_PARAMETER;
+    }
+
+    if (display >= HWC_NUM_DISPLAY_TYPES) {
       return HWC2_ERROR_BAD_DISPLAY;
     }
 
@@ -140,11 +148,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static int32_t SetColorTransform(hwc2_device_t *device, hwc2_display_t display,
                                    const float *matrix, int32_t /*android_color_transform_t*/ hint);
 
-  // Meant to be called by HWCDisplay to preserve sequence of validate/present during events from
-  // polling thread
-  static void WaitForSequence(hwc2_display_t display) {
-    SEQUENCE_WAIT_SCOPE_LOCK(locker_[display]);
-  }
+  static Locker locker_[HWC_NUM_DISPLAY_TYPES];
 
  private:
   static const int kExternalConnectionTimeoutMs = 500;
@@ -174,6 +178,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   int32_t SetSecondaryDisplayStatus(int disp_id, HWCDisplay::DisplayStatus status);
   int32_t GetPanelBrightness(int *level);
   int32_t MinHdcpEncryptionLevelChanged(int disp_id, uint32_t min_enc_level);
+  int32_t CreateExternalDisplay(int disp_id, uint32_t primary_width, uint32_t primary_height,
+                                bool use_primary_res);
 
   // service methods
   void StartServices();
@@ -228,7 +234,6 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   void Refresh(hwc2_display_t display);
   void HotPlug(hwc2_display_t display, HWC2::Connection state);
 
-  static Locker locker_[HWC_NUM_DISPLAY_TYPES];
   CoreInterface *core_intf_ = nullptr;
   HWCDisplay *hwc_display_[HWC_NUM_DISPLAY_TYPES] = {nullptr};
   HWCCallbacks callbacks_;
@@ -246,6 +251,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   bool hdmi_is_primary_ = false;
   bool is_composer_up_ = false;
   Locker callbacks_lock_;
+  int hpd_bpp_ = 0;
+  int hpd_pattern_ = 0;
 };
 
 }  // namespace sdm

@@ -375,7 +375,7 @@ DisplayError HWDeviceDRM::Init() {
   if (hw_resource_.has_qseed3) {
     hw_scale_ = new HWScaleDRM(HWScaleDRM::Version::V2);
   }
-
+  scalar_data_.resize(hw_resource_.hw_dest_scalar_info.count);
   return kErrorNone;
 }
 
@@ -391,8 +391,15 @@ DisplayError HWDeviceDRM::Deinit() {
 }
 
 void HWDeviceDRM::InitializeConfigs() {
-  // TODO(user): Choose Best Mode
   current_mode_index_ = 0;
+  // Update current mode with preferred mode
+  for (uint32_t mode_index = 0; mode_index < connector_info_.modes.size(); mode_index++) {
+      if (connector_info_.modes[mode_index].type & DRM_MODE_TYPE_PREFERRED) {
+        current_mode_index_ = mode_index;
+        break;
+      }
+  }
+
   display_attributes_.resize(connector_info_.modes.size());
 
   uint32_t width = connector_info_.modes[current_mode_index_].hdisplay;
@@ -499,8 +506,28 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   hw_panel_info_.min_roi_height = connector_info_.hmin;
   hw_panel_info_.needs_roi_merge = connector_info_.roi_merge;
   hw_panel_info_.dynamic_fps = connector_info_.dynamic_fps;
-  hw_panel_info_.min_fps = 60;
-  hw_panel_info_.max_fps = 60;
+  drmModeModeInfo current_mode = connector_info_.modes[current_mode_index_];
+  if (hw_panel_info_.dynamic_fps) {
+    uint32_t min_fps = current_mode.vrefresh;
+    uint32_t max_fps = current_mode.vrefresh;
+    for (uint32_t mode_index = 0; mode_index < connector_info_.modes.size(); mode_index++) {
+      if ((current_mode.vdisplay == connector_info_.modes[mode_index].vdisplay) &&
+          (current_mode.hdisplay == connector_info_.modes[mode_index].hdisplay)) {
+        if (min_fps > connector_info_.modes[mode_index].vrefresh)  {
+          min_fps = connector_info_.modes[mode_index].vrefresh;
+        }
+        if (max_fps < connector_info_.modes[mode_index].vrefresh)  {
+          max_fps = connector_info_.modes[mode_index].vrefresh;
+        }
+      }
+    }
+    hw_panel_info_.min_fps = min_fps;
+    hw_panel_info_.max_fps = max_fps;
+  } else {
+    hw_panel_info_.min_fps = current_mode.vrefresh;
+    hw_panel_info_.max_fps = current_mode.vrefresh;
+  }
+
   hw_panel_info_.is_primary_panel = connector_info_.is_primary;
   hw_panel_info_.is_pluggable = 0;
   hw_panel_info_.hdr_enabled = connector_info_.panel_hdr_prop.hdr_enabled;
@@ -537,7 +564,7 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
         hw_panel_info_.width_align, hw_panel_info_.top_align, hw_panel_info_.height_align);
   DLOGI("ROI: min_width = %d, min_height = %d, need_merge = %d", hw_panel_info_.min_roi_width,
         hw_panel_info_.min_roi_height, hw_panel_info_.needs_roi_merge);
-  DLOGI("FPS: min = %d, max =%d", hw_panel_info_.min_fps, hw_panel_info_.max_fps);
+  DLOGI("FPS: min = %d, max = %d", hw_panel_info_.min_fps, hw_panel_info_.max_fps);
   DLOGI("Left Split = %d, Right Split = %d", hw_panel_info_.split_info.left_split,
         hw_panel_info_.split_info.right_split);
   DLOGI("Panel Transfer time = %d us", hw_panel_info_.transfer_time_us);
@@ -607,14 +634,22 @@ void HWDeviceDRM::GetHWPanelMaxBrightness() {
 }
 
 DisplayError HWDeviceDRM::GetActiveConfig(uint32_t *active_config) {
-  *active_config = current_mode_index_;
+  if (IsResolutionSwitchEnabled()) {
+    *active_config = current_mode_index_;
+  } else {
+    *active_config = 0;
+  }
   return kErrorNone;
 }
 
 DisplayError HWDeviceDRM::GetNumDisplayAttributes(uint32_t *count) {
-  *count = UINT32(display_attributes_.size());
-  if (*count <= 0) {
-    return kErrorHardware;
+  if (IsResolutionSwitchEnabled()) {
+    *count = UINT32(display_attributes_.size());
+    if (*count <= 0) {
+       return kErrorHardware;
+    }
+  } else {
+    *count = 1;
   }
   return kErrorNone;
 }
@@ -624,8 +659,11 @@ DisplayError HWDeviceDRM::GetDisplayAttributes(uint32_t index,
   if (index >= display_attributes_.size()) {
     return kErrorParameters;
   }
-
-  *display_attributes = display_attributes_[index];
+  if (IsResolutionSwitchEnabled()) {
+    *display_attributes = display_attributes_[index];
+  } else {
+    *display_attributes = display_attributes_[current_mode_index_];
+  }
   return kErrorNone;
 }
 
@@ -635,12 +673,14 @@ DisplayError HWDeviceDRM::GetHWPanelInfo(HWPanelInfo *panel_info) {
 }
 
 DisplayError HWDeviceDRM::SetDisplayAttributes(uint32_t index) {
-  if (index >= display_attributes_.size()) {
-    return kErrorParameters;
+  if (!IsResolutionSwitchEnabled()) {
+    return kErrorNotSupported;
   }
 
-  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id, &connector_info_.modes[index]);
-  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
+  if (index >= display_attributes_.size()) {
+    DLOGE("Invalid mode index %d mode size %d", index, UINT32(display_attributes_.size()));
+    return kErrorParameters;
+  }
 
   current_mode_index_ = index;
   UpdatePanelSplitInfo();
@@ -735,6 +775,7 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
   HWQosData &qos_data = hw_layers->qos_data;
   DRMSecurityLevel crtc_security_level = DRMSecurityLevel::SECURE_NON_SECURE;
   uint32_t index = current_mode_index_;
+  drmModeModeInfo current_mode = connector_info_.modes[index];
 
   solid_fills_.clear();
 
@@ -753,6 +794,8 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
       crtc_rects[i].top = UINT32(roi.top);
       crtc_rects[i].bottom = UINT32(roi.bottom);
       // TODO(user): In Dest scaler + PU, populate from HWDestScaleInfo->panel_roi
+      // TODO(user): panel_roi need to be made as a vector in HWLayersInfo and
+      // needs to be removed from  HWDestScaleInfo.
       conn_rects[i].left = UINT32(roi.left);
       conn_rects[i].right = UINT32(roi.right);
       conn_rects[i].top = UINT32(roi.top);
@@ -834,7 +877,7 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
         }
         if (hw_scale_) {
           SDEScaler scaler_output = {};
-          hw_scale_->SetPlaneScaler(pipe_info->scale_data, &scaler_output);
+          hw_scale_->SetScaler(pipe_info->scale_data, &scaler_output);
           // TODO(user): Remove qseed3 and add version check, then send appropriate scaler object
           if (hw_resource_.has_qseed3) {
             drm_atomic_intf_->Perform(DRMOps::PLANE_SET_SCALER_CONFIG, pipe_id,
@@ -865,6 +908,28 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
            qos_data.clock_hz, qos_data.core_ab_bps, qos_data.core_ib_bps, qos_data.llcc_ab_bps,
            qos_data.llcc_ib_bps, qos_data.dram_ab_bps, qos_data.dram_ib_bps,
            qos_data.rot_clock_hz);
+
+  // Set refresh rate
+  if (vrefresh_) {
+    for (uint32_t mode_index = 0; mode_index < connector_info_.modes.size(); mode_index++) {
+      if ((current_mode.vdisplay == connector_info_.modes[mode_index].vdisplay) &&
+          (current_mode.hdisplay == connector_info_.modes[mode_index].hdisplay) &&
+          (vrefresh_ == connector_info_.modes[mode_index].vrefresh)) {
+        current_mode = connector_info_.modes[mode_index];
+        break;
+      }
+    }
+  }
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id, &current_mode);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
+
+  if (!validate && (hw_layer_info.set_idle_time_ms >= 0)) {
+    DLOGI_IF(kTagDriverConfig, "Setting idle timeout to = %d ms",
+             hw_layer_info.set_idle_time_ms);
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_IDLE_TIMEOUT, token_.crtc_id,
+                              hw_layer_info.set_idle_time_ms);
+  }
+  SetDestScalarData(hw_layer_info);
 }
 
 void HWDeviceDRM::AddSolidfillStage(const HWSolidfillStage &sf, uint32_t plane_alpha) {
@@ -910,6 +975,7 @@ DisplayError HWDeviceDRM::Validate(HWLayers *hw_layers) {
   int ret = drm_atomic_intf_->Validate();
   if (ret) {
     DLOGE("%s failed with error %d", __FUNCTION__, ret);
+    vrefresh_ = 0;
     return kErrorHardware;
   }
 
@@ -989,6 +1055,7 @@ DisplayError HWDeviceDRM::AtomicCommit(HWLayers *hw_layers) {
   int ret = drm_atomic_intf_->Commit(false /* synchronous */, false /* retain_planes*/);
   if (ret) {
     DLOGE("%s failed with error %d crtc %d", __FUNCTION__, ret, token_.crtc_id);
+    vrefresh_ = 0;
     return kErrorHardware;
   }
 
@@ -1014,6 +1081,20 @@ DisplayError HWDeviceDRM::AtomicCommit(HWLayers *hw_layers) {
 
   hw_layer_info.sync_handle = release_fence;
 
+  if (vrefresh_) {
+    // Update current mode index if refresh rate is changed
+    drmModeModeInfo current_mode = connector_info_.modes[current_mode_index_];
+    for (uint32_t mode_index = 0; mode_index < connector_info_.modes.size(); mode_index++) {
+      if ((current_mode.vdisplay == connector_info_.modes[mode_index].vdisplay) &&
+          (current_mode.hdisplay == connector_info_.modes[mode_index].hdisplay) &&
+          (vrefresh_ == connector_info_.modes[mode_index].vrefresh)) {
+        current_mode_index_ = mode_index;
+        break;
+      }
+    }
+    vrefresh_ = 0;
+  }
+
   return kErrorNone;
 }
 
@@ -1025,6 +1106,7 @@ DisplayError HWDeviceDRM::Flush() {
     return kErrorHardware;
   }
 
+  ResetDisplayParams();
   return kErrorNone;
 }
 
@@ -1120,7 +1202,12 @@ bool HWDeviceDRM::EnableHotPlugDetection(int enable) {
   return true;
 }
 
-void HWDeviceDRM::ResetDisplayParams() {}
+void HWDeviceDRM::ResetDisplayParams() {
+  sde_dest_scalar_data_ = {};
+  for (uint32_t j = 0; j < scalar_data_.size(); j++) {
+    scalar_data_[j] = {};
+  }
+}
 
 DisplayError HWDeviceDRM::SetCursorPosition(HWLayers *hw_layers, int x, int y) {
   DTRACE_SCOPED();
@@ -1135,7 +1222,7 @@ DisplayError HWDeviceDRM::GetPPFeaturesVersion(PPFeatureVersion *vers) {
     if (info.id >= sde_drm::kPPFeaturesMax)
       continue;
     // use crtc_id_ = 0 since PP features are same across all CRTCs
-    drm_mgr_intf_->GetCrtcPPInfo(0, info);
+    drm_mgr_intf_->GetCrtcPPInfo(0, &info);
     vers->version[i] = HWColorManagerDrm::GetFeatureVersion(info);
   }
   return kErrorNone;
@@ -1153,14 +1240,22 @@ DisplayError HWDeviceDRM::SetPPFeatures(PPFeaturesConfig *feature_list) {
 
     if (feature) {
       DLOGV_IF(kTagDriverConfig, "feature_id = %d", feature->feature_id_);
-      if (!HWColorManagerDrm::GetDrmFeature[feature->feature_id_]) {
-        DLOGE("GetDrmFeature is not valid for feature %d", feature->feature_id_);
+      auto drm_features = DrmPPfeatureMap_.find(feature->feature_id_);
+      if (drm_features == DrmPPfeatureMap_.end()) {
+        DLOGE("DrmFeatures not valid for feature %d", feature->feature_id_);
         continue;
       }
-      ret = HWColorManagerDrm::GetDrmFeature[feature->feature_id_](*feature, &kernel_params);
-      if (!ret)
-        drm_atomic_intf_->Perform(DRMOps::CRTC_SET_POST_PROC, token_.crtc_id, &kernel_params);
-      HWColorManagerDrm::FreeDrmFeatureData(&kernel_params);
+
+      for (uint32_t drm_feature : drm_features->second) {
+        if (!HWColorManagerDrm::GetDrmFeature[drm_feature]) {
+          DLOGE("GetDrmFeature is not valid for DRM feature %d", drm_feature);
+          continue;
+        }
+        ret = HWColorManagerDrm::GetDrmFeature[drm_feature](*feature, &kernel_params);
+        if (!ret)
+          drm_atomic_intf_->Perform(DRMOps::CRTC_SET_POST_PROC, token_.crtc_id, &kernel_params);
+        HWColorManagerDrm::FreeDrmFeatureData(&kernel_params);
+      }
     }
   }
 
@@ -1174,13 +1269,26 @@ DisplayError HWDeviceDRM::SetVSyncState(bool enable) {
   return kErrorNotSupported;
 }
 
-void HWDeviceDRM::SetIdleTimeoutMs(uint32_t timeout_ms) {}
+void HWDeviceDRM::SetIdleTimeoutMs(uint32_t timeout_ms) {
+  // TODO(user): This function can be removed after fb is deprecated
+}
 
 DisplayError HWDeviceDRM::SetDisplayMode(const HWDisplayMode hw_display_mode) {
   return kErrorNotSupported;
 }
 
 DisplayError HWDeviceDRM::SetRefreshRate(uint32_t refresh_rate) {
+  // Check if requested refresh rate is valid
+  drmModeModeInfo current_mode = connector_info_.modes[current_mode_index_];
+  for (uint32_t mode_index = 0; mode_index < connector_info_.modes.size(); mode_index++) {
+    if ((current_mode.vdisplay == connector_info_.modes[mode_index].vdisplay) &&
+        (current_mode.hdisplay == connector_info_.modes[mode_index].hdisplay) &&
+        (refresh_rate == connector_info_.modes[mode_index].vrefresh)) {
+      vrefresh_ = refresh_rate;
+      DLOGV_IF(kTagDriverConfig, "Set refresh rate to %d", refresh_rate);
+      return kErrorNone;
+    }
+  }
   return kErrorNotSupported;
 }
 
@@ -1343,12 +1451,6 @@ DisplayError HWDeviceDRM::GetMixerAttributes(HWMixerAttributes *mixer_attributes
     return kErrorParameters;
   }
 
-  uint32_t index = current_mode_index_;
-  mixer_attributes_.width = display_attributes_[index].x_pixels;
-  mixer_attributes_.height = display_attributes_[index].y_pixels;
-  mixer_attributes_.split_left = display_attributes_[index].is_device_split
-                                     ? hw_panel_info_.split_info.left_split
-                                     : mixer_attributes_.width;
   *mixer_attributes = mixer_attributes_;
 
   return kErrorNone;
@@ -1416,6 +1518,47 @@ void HWDeviceDRM::SetTopology(sde_drm::DRMTopology drm_topology, HWTopology *hw_
     case DRMTopology::PPSPLIT:            *hw_topology = kPPSplit;         break;
     default:                              *hw_topology = kUnknown;         break;
   }
+}
+
+void HWDeviceDRM::SetDestScalarData(HWLayersInfo hw_layer_info) {
+  if (!hw_resource_.hw_dest_scalar_info.count) {
+    return;
+  }
+
+  uint32_t index = 0;
+  for (uint32_t i = 0; i < hw_resource_.hw_dest_scalar_info.count; i++) {
+    DestScaleInfoMap::iterator it = hw_layer_info.dest_scale_info_map.find(i);
+
+    if (it == hw_layer_info.dest_scale_info_map.end()) {
+      continue;
+    }
+
+    HWDestScaleInfo *dest_scale_info = it->second;
+    SDEScaler *scale = &scalar_data_[index];
+    hw_scale_->SetScaler(dest_scale_info->scale_data, scale);
+    sde_drm_dest_scaler_cfg *dest_scalar_data = &sde_dest_scalar_data_.ds_cfg[index];
+    dest_scalar_data->flags = 0;
+    if (scale->scaler_v2.enable) {
+      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_ENABLE;
+    }
+    if (scale->scaler_v2.de.enable) {
+      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_ENHANCER_UPDATE;
+    }
+    if (dest_scale_info->scale_update) {
+      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_SCALE_UPDATE;
+    }
+    dest_scalar_data->index = i;
+    dest_scalar_data->lm_width = dest_scale_info->mixer_width;
+    dest_scalar_data->lm_height = dest_scale_info->mixer_height;
+    dest_scalar_data->scaler_cfg = reinterpret_cast<uint64_t>(&scale->scaler_v2);
+    if (hw_panel_info_.partial_update) {
+      dest_scalar_data->flags |= SDE_DRM_DESTSCALER_PU_ENABLE;
+    }
+    index++;
+  }
+  sde_dest_scalar_data_.num_dest_scaler = UINT32(hw_layer_info.dest_scale_info_map.size());
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DEST_SCALER_CONFIG, token_.crtc_id,
+                            reinterpret_cast<uint64_t>(&sde_dest_scalar_data_));
 }
 
 }  // namespace sdm

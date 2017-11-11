@@ -346,7 +346,6 @@ DisplayError HWDeviceDRM::Init() {
     }
 
     drm_mgr_intf_->CreateAtomicReq(token_, &drm_atomic_intf_);
-    drm_mgr_intf_->GetConnectorInfo(token_.conn_id, &connector_info_);
   } else {
     display_attributes_.push_back(HWDisplayAttributes());
     PopulateDisplayAttributes(current_mode_index_);
@@ -361,14 +360,24 @@ DisplayError HWDeviceDRM::Init() {
 }
 
 DisplayError HWDeviceDRM::Deinit() {
-  PowerOff();
+  DisplayError err = kErrorNone;
+  drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, token_.conn_id, 0);
+  drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::OFF);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id, nullptr);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
+  int ret = drm_atomic_intf_->Commit(true /* synchronous */, false /* retain_planes */);
+  if (ret) {
+    DLOGE("Commit failed with error: %d", ret);
+    err = kErrorHardware;
+  }
+
   delete hw_scale_;
   registry_.Clear();
   display_attributes_ = {};
   drm_mgr_intf_->DestroyAtomicReq(drm_atomic_intf_);
   drm_atomic_intf_ = {};
   drm_mgr_intf_->UnregisterDisplay(token_);
-  return kErrorNone;
+  return err;
 }
 
 void HWDeviceDRM::InitializeConfigs() {
@@ -915,6 +924,10 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
              hw_layer_info.set_idle_time_ms);
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_IDLE_TIMEOUT, token_.crtc_id,
                               hw_layer_info.set_idle_time_ms);
+  }
+
+  if (hw_panel_info_.mode == kModeCommand) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_AUTOREFRESH, token_.conn_id, autorefresh_);
   }
 }
 

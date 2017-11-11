@@ -446,6 +446,9 @@ static int32_t GetClientTargetSupport(hwc2_device_t *device, hwc2_display_t disp
 static int32_t GetColorModes(hwc2_device_t *device, hwc2_display_t display, uint32_t *out_num_modes,
                              int32_t /*android_color_mode_t*/ *int_out_modes) {
   auto out_modes = reinterpret_cast<android_color_mode_t *>(int_out_modes);
+  if (out_num_modes == nullptr) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetColorModes, out_num_modes,
                                          out_modes);
 }
@@ -453,6 +456,10 @@ static int32_t GetColorModes(hwc2_device_t *device, hwc2_display_t display, uint
 static int32_t GetDisplayAttribute(hwc2_device_t *device, hwc2_display_t display,
                                    hwc2_config_t config, int32_t int_attribute,
                                    int32_t *out_value) {
+  if (out_value == nullptr || int_attribute < HWC2_ATTRIBUTE_INVALID ||
+      int_attribute > HWC2_ATTRIBUTE_DPI_Y) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   auto attribute = static_cast<HWC2::Attribute>(int_attribute);
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayAttribute, config,
                                          attribute, out_value);
@@ -510,6 +517,10 @@ static int32_t GetHdrCapabilities(hwc2_device_t* device, hwc2_display_t display,
 }
 
 static uint32_t GetMaxVirtualDisplayCount(hwc2_device_t *device) {
+  if (device == nullptr) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
+
   return 1;
 }
 
@@ -528,7 +539,9 @@ int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display
   if (!device) {
     return HWC2_ERROR_BAD_DISPLAY;
   }
-
+  if (out_retire_fence == nullptr) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   auto status = HWC2::Error::BadDisplay;
   // TODO(user): Handle virtual display/HDMI concurrency
   if (hwc_session->hwc_display_[display]) {
@@ -544,10 +557,10 @@ int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display
 int32_t HWCSession::RegisterCallback(hwc2_device_t *device, int32_t descriptor,
                                      hwc2_callback_data_t callback_data,
                                      hwc2_function_pointer_t pointer) {
-  HWCSession *hwc_session = static_cast<HWCSession *>(device);
-  if (!device) {
-    return HWC2_ERROR_BAD_DISPLAY;
+  if (!device || pointer == nullptr) {
+    return HWC2_ERROR_BAD_PARAMETER;
   }
+  HWCSession *hwc_session = static_cast<HWCSession *>(device);
   SCOPE_LOCK(hwc_session->callbacks_lock_);
   auto desc = static_cast<HWC2::Callback>(descriptor);
   auto error = hwc_session->callbacks_.Register(desc, callback_data, pointer);
@@ -575,6 +588,12 @@ static int32_t SetClientTarget(hwc2_device_t *device, hwc2_display_t display,
 
 int32_t HWCSession::SetColorMode(hwc2_device_t *device, hwc2_display_t display,
                                  int32_t /*android_color_mode_t*/ int_mode) {
+  if (display >= HWC_NUM_DISPLAY_TYPES) {
+    return HWC2_ERROR_BAD_DISPLAY;
+  }
+  if (int_mode < HAL_COLOR_MODE_NATIVE || int_mode > HAL_COLOR_MODE_DISPLAY_P3) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   auto mode = static_cast<android_color_mode_t>(int_mode);
   SCOPE_LOCK(locker_[display]);
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::SetColorMode, mode);
@@ -583,6 +602,13 @@ int32_t HWCSession::SetColorMode(hwc2_device_t *device, hwc2_display_t display,
 int32_t HWCSession::SetColorTransform(hwc2_device_t *device, hwc2_display_t display,
                                       const float *matrix,
                                       int32_t /*android_color_transform_t*/ hint) {
+  if (display >= HWC_NUM_DISPLAY_TYPES) {
+    return HWC2_ERROR_BAD_DISPLAY;
+  }
+  if (!matrix || hint < HAL_COLOR_TRANSFORM_IDENTITY ||
+       hint > HAL_COLOR_TRANSFORM_CORRECT_TRITANOPIA) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   SCOPE_LOCK(locker_[display]);
   android_color_transform_t transform_hint = static_cast<android_color_transform_t>(hint);
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::SetColorTransform, matrix,
@@ -603,6 +629,9 @@ static int32_t SetCursorPosition(hwc2_device_t *device, hwc2_display_t display, 
 
 static int32_t SetLayerBlendMode(hwc2_device_t *device, hwc2_display_t display, hwc2_layer_t layer,
                                  int32_t int_mode) {
+  if (int_mode < HWC2_BLEND_MODE_INVALID || int_mode > HWC2_BLEND_MODE_COVERAGE) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   auto mode = static_cast<HWC2::BlendMode>(int_mode);
   return HWCSession::CallLayerFunction(device, display, layer, &HWCLayer::SetLayerBlendMode, mode);
 }
@@ -760,6 +789,7 @@ int32_t HWCSession::ValidateDisplay(hwc2_device_t *device, hwc2_display_t displa
 
         if (hwc_session->need_invalidate_) {
           hwc_session->Refresh(display);
+          hwc_session->need_invalidate_ = false;
         }
 
         if (hwc_session->color_mgr_) {
@@ -1693,11 +1723,7 @@ int HWCSession::HotPlugHandler(bool connected) {
       }
     } else {
       SEQUENCE_WAIT_SCOPE_LOCK(locker_[HWC_DISPLAY_EXTERNAL]);
-      // Do not return error if external display is not in connected status.
-      // Due to virtual display concurrency, external display connection might be still pending
-      // but hdmi got disconnected before pending connection could be processed.
       if (hwc_display_[HWC_DISPLAY_EXTERNAL]) {
-        status = DisconnectDisplay(HWC_DISPLAY_EXTERNAL);
         notify_hotplug = true;
       }
       external_pending_connect_ = false;
@@ -1705,6 +1731,7 @@ int HWCSession::HotPlugHandler(bool connected) {
   } while (0);
 
   if (connected) {
+    // In connect case, we send hotplug after we create display
     Refresh(0);
 
     if (!hdmi_is_primary_) {
@@ -1713,13 +1740,35 @@ int HWCSession::HotPlugHandler(bool connected) {
       uint32_t vsync_period = UINT32(GetVsyncPeriod(HWC_DISPLAY_PRIMARY));
       usleep(vsync_period * 2 / 1000);
     }
+    if (notify_hotplug) {
+      HotPlug(hdmi_is_primary_ ? HWC_DISPLAY_PRIMARY : HWC_DISPLAY_EXTERNAL,
+              HWC2::Connection::Connected);
+    }
+  } else {
+    // In disconnect case, we notify hotplug first to let the listener state update happen first
+    // Then we can destroy the underlying display object
+    if (notify_hotplug) {
+      HotPlug(hdmi_is_primary_ ? HWC_DISPLAY_PRIMARY : HWC_DISPLAY_EXTERNAL,
+              HWC2::Connection::Disconnected);
+    }
+    Refresh(0);
+    if (!hdmi_is_primary_) {
+      uint32_t vsync_period = UINT32(GetVsyncPeriod(HWC_DISPLAY_PRIMARY));
+      usleep(vsync_period * 2 / 1000);
+    }
+    // Now disconnect the display
+    {
+      SEQUENCE_WAIT_SCOPE_LOCK(locker_[HWC_DISPLAY_EXTERNAL]);
+      // Do not return error if external display is not in connected status.
+      // Due to virtual display concurrency, external display connection might be still pending
+      // but hdmi got disconnected before pending connection could be processed.
+      if (hwc_display_[HWC_DISPLAY_EXTERNAL]) {
+        status = DisconnectDisplay(HWC_DISPLAY_EXTERNAL);
+      }
+    }
   }
 
   // notify client
-  if (notify_hotplug) {
-    HotPlug(hdmi_is_primary_ ? HWC_DISPLAY_PRIMARY : HWC_DISPLAY_EXTERNAL,
-            connected ? HWC2::Connection::Connected : HWC2::Connection::Disconnected);
-  }
 
   qservice_->onHdmiHotplug(INT(connected));
 

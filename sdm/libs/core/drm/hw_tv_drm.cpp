@@ -73,6 +73,7 @@ DisplayError HWTVDRM::Init() {
     DLOGE("Init failed for %s", device_name_);
     return error;
   }
+  drm_mgr_intf_->GetConnectorInfo(token_.conn_id, &connector_info_);
 
   InitializeConfigs();
 
@@ -149,13 +150,6 @@ DisplayError HWTVDRM::GetConfigIndex(char *mode, uint32_t *index) {
   }
 
   return kErrorNone;
-}
-
-/* overriding display state funcs to have special or NO OP implementation for TVs */
-DisplayError HWTVDRM::Deinit() {
-  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
-
-  return HWDeviceDRM::Deinit();
 }
 
 DisplayError HWTVDRM::PowerOff() {

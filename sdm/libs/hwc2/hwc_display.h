@@ -160,8 +160,8 @@ class HWCDisplay : public DisplayEventHandler {
   int GetVisibleDisplayRect(hwc_rect_t *rect);
   void BuildLayerStack(void);
   void BuildSolidFillStack(void);
-  HWCLayer *GetHWCLayer(hwc2_layer_t layer);
-  void ResetValidation() { validated_.reset(); }
+  HWCLayer *GetHWCLayer(hwc2_layer_t layer_id);
+  void ResetValidation() { validated_ = false; }
   uint32_t GetGeometryChanges() { return geometry_changes_; }
 
   // HWC2 APIs
@@ -249,7 +249,7 @@ class HWCDisplay : public DisplayEventHandler {
     OUTPUT_LAYER_DUMP,
   };
 
-  static std::bitset<kDisplayMax> validated_;
+  bool validated_ = false;
   CoreInterface *core_intf_ = nullptr;
   HWCCallbacks *callbacks_  = nullptr;
   HWCBufferAllocator *buffer_allocator_ = NULL;

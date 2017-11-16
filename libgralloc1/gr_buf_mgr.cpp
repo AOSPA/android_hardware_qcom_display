@@ -681,6 +681,7 @@ gralloc1_error_t BufferManager::Perform(int operation, va_list args) {
             *color_space = HAL_CSC_ITU_R_709;
             break;
           case ColorPrimaries_BT601_6_525:
+          case ColorPrimaries_BT601_6_625:
             *color_space = ((color_metadata.range) ? HAL_CSC_ITU_R_601_FR : HAL_CSC_ITU_R_601);
             break;
           case ColorPrimaries_BT2020:
@@ -831,6 +832,9 @@ static bool IsYuvFormat(const private_handle_t *hnd) {
     case HAL_PIXEL_FORMAT_RAW10:
     case HAL_PIXEL_FORMAT_YV12:
     case HAL_PIXEL_FORMAT_Y8:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010:
+    case HAL_PIXEL_FORMAT_YCbCr_420_TP10_UBWC:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010_UBWC:
       return true;
     default:
       return false;

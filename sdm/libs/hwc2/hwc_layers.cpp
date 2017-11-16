@@ -184,6 +184,9 @@ HWCLayer::~HWCLayer() {
     release_fences_.pop();
   }
   if (layer_) {
+    if (layer_->input_buffer.acquire_fence_fd >= 0) {
+      close(layer_->input_buffer.acquire_fence_fd);
+    }
     delete layer_;
   }
 }
@@ -251,10 +254,13 @@ HWC2::Error HWCLayer::SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fen
   layer_buffer->flags.secure_camera = secure_camera;
   layer_buffer->flags.secure_display = secure_display;
 
+  if (layer_buffer->acquire_fence_fd >= 0) {
+    close(layer_buffer->acquire_fence_fd);
+  }
+  layer_buffer->acquire_fence_fd = acquire_fence;
   layer_buffer->planes[0].fd = handle->fd;
   layer_buffer->planes[0].offset = handle->offset;
   layer_buffer->planes[0].stride = UINT32(handle->width);
-  layer_buffer->acquire_fence_fd = acquire_fence;
   layer_buffer->size = handle->size;
   layer_buffer->buffer_id = reinterpret_cast<uint64_t>(handle);
 
@@ -541,6 +547,12 @@ LayerBufferFormat HWCLayer::GetSDMFormat(const int32_t &source, const int flags)
       case HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS_UBWC:
       case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:
         format = kFormatYCbCr420SPVenusUbwc;
+        break;
+      case HAL_PIXEL_FORMAT_RGBA_1010102:
+        format = kFormatRGBA1010102Ubwc;
+        break;
+      case HAL_PIXEL_FORMAT_RGBX_1010102:
+        format = kFormatRGBX1010102Ubwc;
         break;
       case HAL_PIXEL_FORMAT_YCbCr_420_TP10_UBWC:
         format = kFormatYCbCr420TP10Ubwc;

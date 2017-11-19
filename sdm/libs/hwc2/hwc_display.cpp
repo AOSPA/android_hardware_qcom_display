@@ -94,11 +94,12 @@ uint32_t HWCColorMode::GetColorModeCount() {
 HWC2::Error HWCColorMode::GetColorModes(uint32_t *out_num_modes,
                                         android_color_mode_t *out_modes) {
   auto it = color_mode_transform_map_.begin();
-  for (auto i = 0; it != color_mode_transform_map_.end(); it++, i++) {
+  *out_num_modes = std::min(*out_num_modes, UINT32(color_mode_transform_map_.size()));
+  for (uint32_t i = 0; i < *out_num_modes; it++, i++) {
     out_modes[i] = it->first;
     DLOGI("Supports color mode[%d] = %d", i, it->first);
   }
-  *out_num_modes = UINT32(color_mode_transform_map_.size());
+
   return HWC2::Error::None;
 }
 
@@ -131,11 +132,6 @@ HWC2::Error HWCColorMode::SetColorModeById(int32_t color_mode_id) {
 }
 
 HWC2::Error HWCColorMode::SetColorTransform(const float *matrix, android_color_transform_t hint) {
-  if (!matrix || (hint < HAL_COLOR_TRANSFORM_IDENTITY ||
-      hint > HAL_COLOR_TRANSFORM_CORRECT_TRITANOPIA)) {
-    return HWC2::Error::BadParameter;
-  }
-
   DTRACE_SCOPED();
   double color_matrix[kColorTransformMatrixCount] = {0};
   CopyColorTransformMatrix(matrix, color_matrix);
@@ -594,6 +590,7 @@ void HWCDisplay::BuildLayerStack() {
   layer_stack_.flags.geometry_changed = UINT32(geometry_changes_ > 0);
   // Append client target to the layer stack
   Layer *sdm_client_target = client_target_->GetSDMLayer();
+  sdm_client_target->flags.updating = IsLayerUpdating(sdm_client_target);
   layer_stack_.layers.push_back(sdm_client_target);
   // fall back frame composition to GPU when client target is 10bit
   // TODO(user): clarify the behaviour from Client(SF) and SDM Extn -
@@ -749,23 +746,28 @@ HWC2::Error HWCDisplay::GetClientTargetSupport(uint32_t width, uint32_t height, 
 }
 
 HWC2::Error HWCDisplay::GetColorModes(uint32_t *out_num_modes, android_color_mode_t *out_modes) {
-  if (out_modes) {
+  if (out_modes == nullptr) {
+    *out_num_modes = 1;
+  } else if (out_modes && *out_num_modes > 0) {
+    *out_num_modes = 1;
     out_modes[0] = HAL_COLOR_MODE_NATIVE;
   }
-  *out_num_modes = 1;
 
   return HWC2::Error::None;
 }
 
 HWC2::Error HWCDisplay::GetDisplayConfigs(uint32_t *out_num_configs, hwc2_config_t *out_configs) {
+  if (out_num_configs == nullptr) {
+    return HWC2::Error::BadParameter;
+  }
+
   if (out_configs == nullptr) {
     *out_num_configs = num_configs_;
     return HWC2::Error::None;
   }
 
-  *out_num_configs = num_configs_;
-
-  for (uint32_t i = 0; i < num_configs_; i++) {
+  *out_num_configs = std::min(*out_num_configs, num_configs_);
+  for (uint32_t i = 0; i < *out_num_configs; i++) {
     out_configs[i] = i;
   }
 
@@ -816,27 +818,38 @@ HWC2::Error HWCDisplay::GetDisplayAttribute(hwc2_config_t config, HWC2::Attribut
 
 HWC2::Error HWCDisplay::GetDisplayName(uint32_t *out_size, char *out_name) {
   // TODO(user): Get panel name and EDID name and populate it here
-  if (out_name == nullptr) {
-    *out_size = 32;
-  } else {
-    std::string name;
-    switch (id_) {
-      case HWC_DISPLAY_PRIMARY:
-        name = "Primary Display";
-        break;
-      case HWC_DISPLAY_EXTERNAL:
-        name = "External Display";
-        break;
-      case HWC_DISPLAY_VIRTUAL:
-        name = "Virtual Display";
-        break;
-      default:
-        name = "Unknown";
-        break;
-    }
-    std::strncpy(out_name, name.c_str(), name.size());
-    *out_size = UINT32(name.size());
+  if (out_size == nullptr) {
+    return HWC2::Error::BadParameter;
   }
+
+  std::string name;
+  switch (id_) {
+    case HWC_DISPLAY_PRIMARY:
+      name = "Primary Display";
+      break;
+    case HWC_DISPLAY_EXTERNAL:
+      name = "External Display";
+      break;
+    case HWC_DISPLAY_VIRTUAL:
+      name = "Virtual Display";
+      break;
+    default:
+      name = "Unknown";
+      break;
+  }
+
+  if (out_name == nullptr) {
+    *out_size = UINT32(name.size()) + 1;
+  } else {
+    *out_size = std::min((UINT32(name.size()) + 1), *out_size);
+    if (*out_size > 0) {
+      std::strncpy(out_name, name.c_str(), *out_size);
+      out_name[*out_size - 1] = '\0';
+    } else {
+      DLOGW("Invalid size requested");
+    }
+  }
+
   return HWC2::Error::None;
 }
 
@@ -883,6 +896,8 @@ HWC2::Error HWCDisplay::SetClientTarget(buffer_handle_t target, int32_t acquire_
     return HWC2::Error::BadParameter;
   }
 
+  Layer *sdm_layer = client_target_->GetSDMLayer();
+  sdm_layer->frame_rate = current_refresh_rate_;
   client_target_->SetLayerBuffer(target, acquire_fence);
   client_target_->SetLayerSurfaceDamage(damage);
   if (client_target_->GetLayerDataspace() != dataspace) {
@@ -908,7 +923,7 @@ DisplayError HWCDisplay::SetMixerResolution(uint32_t width, uint32_t height) {
   return kErrorNotSupported;
 }
 
-void HWCDisplay::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type) {
+HWC2::Error HWCDisplay::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type) {
   dump_frame_count_ = count;
   dump_frame_index_ = 0;
   dump_input_layers_ = ((bit_mask_layer_type & (1 << INPUT_LAYER_DUMP)) != 0);
@@ -919,6 +934,7 @@ void HWCDisplay::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type
 
   DLOGI("num_frame_dump %d, input_layer_dump_enable %d", dump_frame_count_, dump_input_layers_);
   validated_ = false;
+  return HWC2::Error::None;
 }
 
 HWC2::PowerMode HWCDisplay::GetLastPowerMode() {
@@ -1069,15 +1085,22 @@ HWC2::Error HWCDisplay::GetChangedCompositionTypes(uint32_t *out_num_elements,
 
 HWC2::Error HWCDisplay::GetReleaseFences(uint32_t *out_num_elements, hwc2_layer_t *out_layers,
                                          int32_t *out_fences) {
+  if (out_num_elements == nullptr) {
+    return HWC2::Error::BadParameter;
+  }
+
   if (out_layers != nullptr && out_fences != nullptr) {
-    int i = 0;
-    for (auto hwc_layer : layer_set_) {
+    *out_num_elements = std::min(*out_num_elements, UINT32(layer_set_.size()));
+    auto it = layer_set_.begin();
+    for (uint32_t i = 0; i < *out_num_elements; i++, it++) {
+      auto hwc_layer = *it;
       out_layers[i] = hwc_layer->GetId();
       out_fences[i] = hwc_layer->PopReleaseFence();
-      i++;
     }
+  } else {
+    *out_num_elements = UINT32(layer_set_.size());
   }
-  *out_num_elements = UINT32(layer_set_.size());
+
   return HWC2::Error::None;
 }
 
@@ -1086,6 +1109,10 @@ HWC2::Error HWCDisplay::GetDisplayRequests(int32_t *out_display_requests,
                                            int32_t *out_layer_requests) {
   if (layer_set_.empty()) {
     return HWC2::Error::None;
+  }
+
+  if (out_display_requests == nullptr || out_num_elements == nullptr) {
+    return HWC2::Error::BadParameter;
   }
 
   // No display requests for now
@@ -1098,14 +1125,15 @@ HWC2::Error HWCDisplay::GetDisplayRequests(int32_t *out_display_requests,
   }
 
   *out_display_requests = 0;
-  *out_num_elements = UINT32(layer_requests_.size());
   if (out_layers != nullptr && out_layer_requests != nullptr) {
-    int i = 0;
-    for (auto &request : layer_requests_) {
-      out_layers[i] = request.first;
-      out_layer_requests[i] = INT32(request.second);
-      i++;
+    *out_num_elements = std::min(*out_num_elements, UINT32(layer_requests_.size()));
+    auto it = layer_requests_.begin();
+    for (uint32_t i = 0; i < *out_num_elements; i++, it++) {
+      out_layers[i] = it->first;
+      out_layer_requests[i] = INT32(it->second);
     }
+  } else {
+    *out_num_elements = UINT32(layer_requests_.size());
   }
 
   auto client_target_layer = client_target_->GetSDMLayer();
@@ -1120,6 +1148,11 @@ HWC2::Error HWCDisplay::GetHdrCapabilities(uint32_t *out_num_types, int32_t *out
                                            float *out_max_luminance,
                                            float *out_max_average_luminance,
                                            float *out_min_luminance) {
+  if (out_num_types == nullptr || out_max_luminance == nullptr ||
+      out_max_average_luminance == nullptr || out_min_luminance == nullptr) {
+    return HWC2::Error::BadParameter;
+  }
+
   DisplayConfigFixedInfo fixed_info = {};
   display_intf_->GetConfig(&fixed_info);
 
@@ -1434,6 +1467,7 @@ void HWCDisplay::DumpInputBuffers() {
     return;
   }
 
+  DLOGI("dump_frame_count %d dump_input_layers %d", dump_frame_count_, dump_input_layers_);
   snprintf(dir_path, sizeof(dir_path), "%s/frame_dump_%s", HWCDebugHandler::DumpDir(),
            GetDisplayString());
 
@@ -1462,22 +1496,43 @@ void HWCDisplay::DumpInputBuffers() {
       }
     }
 
-    if (pvt_handle && pvt_handle->base) {
-      char dump_file_name[PATH_MAX];
-      size_t result = 0;
+    DLOGI("Dump layer[%d] of %d pvt_handle %x pvt_handle->base %x", i, layer_stack_.layers.size(),
+          pvt_handle, pvt_handle? pvt_handle->base : 0);
 
-      snprintf(dump_file_name, sizeof(dump_file_name), "%s/input_layer%d_%dx%d_%s_frame%d.raw",
-               dir_path, i, pvt_handle->width, pvt_handle->height,
-               qdutils::GetHALPixelFormatString(pvt_handle->format), dump_frame_index_);
-
-      FILE *fp = fopen(dump_file_name, "w+");
-      if (fp) {
-        result = fwrite(reinterpret_cast<void *>(pvt_handle->base), pvt_handle->size, 1, fp);
-        fclose(fp);
-      }
-
-      DLOGI("Frame Dump %s: is %s", dump_file_name, result ? "Successful" : "Failed");
+    if (!pvt_handle) {
+      DLOGE("Buffer handle is null");
+      return;
     }
+
+    if (!pvt_handle->base) {
+      DisplayError error = buffer_allocator_->MapBuffer(pvt_handle, -1);
+      if (error != kErrorNone) {
+        DLOGE("Failed to map buffer, error = %d", error);
+        return;
+      }
+    }
+
+    char dump_file_name[PATH_MAX];
+    size_t result = 0;
+
+    snprintf(dump_file_name, sizeof(dump_file_name), "%s/input_layer%d_%dx%d_%s_frame%d.raw",
+             dir_path, i, pvt_handle->width, pvt_handle->height,
+             qdutils::GetHALPixelFormatString(pvt_handle->format), dump_frame_index_);
+
+    FILE *fp = fopen(dump_file_name, "w+");
+    if (fp) {
+      result = fwrite(reinterpret_cast<void *>(pvt_handle->base), pvt_handle->size, 1, fp);
+      fclose(fp);
+    }
+
+    int release_fence = -1;
+    DisplayError error = buffer_allocator_->UnmapBuffer(pvt_handle, &release_fence);
+    if (error != kErrorNone) {
+      DLOGE("Failed to unmap buffer, error = %d", error);
+      return;
+    }
+
+    DLOGI("Frame Dump %s: is %s", dump_file_name, result ? "Successful" : "Failed");
   }
 }
 
@@ -1918,22 +1973,6 @@ uint32_t HWCDisplay::SanitizeRefreshRate(uint32_t req_refresh_rate) {
 
 DisplayClass HWCDisplay::GetDisplayClass() {
   return display_class_;
-}
-
-void HWCDisplay::CloseAcquireFds() {
-  for (auto hwc_layer : layer_set_) {
-    auto layer = hwc_layer->GetSDMLayer();
-    if (layer->input_buffer.acquire_fence_fd >= 0) {
-      close(layer->input_buffer.acquire_fence_fd);
-      layer->input_buffer.acquire_fence_fd = -1;
-    }
-  }
-  int32_t &client_target_acquire_fence =
-      client_target_->GetSDMLayer()->input_buffer.acquire_fence_fd;
-  if (client_target_acquire_fence >= 0) {
-    close(client_target_acquire_fence);
-    client_target_acquire_fence = -1;
-  }
 }
 
 void HWCDisplay::ClearRequestFlags() {

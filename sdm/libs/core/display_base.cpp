@@ -1062,9 +1062,9 @@ DisplayError DisplayBase::ReconfigureDisplay() {
   if (error != kErrorNone) {
     return error;
   }
-  if (mixer_attributes != mixer_attributes_) {
-    DisablePartialUpdateOneFrame();
-  }
+
+  // Disable partial update for one frame on any display changes
+  DisablePartialUpdateOneFrame();
 
   display_attributes_ = display_attributes;
   mixer_attributes_ = mixer_attributes;
@@ -1455,8 +1455,10 @@ DisplayError DisplayBase::SetHDRMode(bool set) {
   }
 
   // DPPS and HDR features are mutually exclusive
-  comp_manager_->ControlDpps(!set);
-  hdr_mode_ = set;
+  if (error == kErrorNone) {
+    comp_manager_->ControlDpps(!set);
+    hdr_mode_ = set;
+  }
 
   return error;
 }

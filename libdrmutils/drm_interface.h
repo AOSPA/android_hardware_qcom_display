@@ -287,11 +287,23 @@ enum struct DRMOps {
    */
   CONNECTOR_SET_ROI,
   /*
+   * Op: Sets the connector to autorefresh mode.
+   * Arg: uint32_t - Connector ID
+   *      uint32_t - Enable-1, Disable-0
+   */
+  CONNECTOR_SET_AUTOREFRESH,
+  /*
    * Op: Set FB secure mode for Writeback connector.
    * Arg: uint32_t - Connector ID
    *      uint32_t - FB Secure mode
    */
   CONNECTOR_SET_FB_SECURE_MODE,
+  /*
+   * Op: Sets a crtc id to this connector
+   * Arg: uint32_t - Connector ID
+   *      uint32_t - CRTC ID
+   */
+  CONNECTOR_SET_CRTC,
 };
 
 enum struct DRMRotation {
@@ -378,9 +390,6 @@ struct DRMCrtcInfo {
   CompRatioMap comp_ratio_rt_map;
   CompRatioMap comp_ratio_nrt_map;
   uint32_t hw_version;
-  uint64_t min_core_ib;
-  uint64_t min_llcc_ib;
-  uint64_t min_dram_ib;
   uint32_t dest_scaler_count = 0;
   uint32_t max_dest_scaler_input_width = 0;
   uint32_t max_dest_scaler_output_width = 0;

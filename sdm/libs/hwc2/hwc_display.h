@@ -107,7 +107,7 @@ class HWCDisplay : public DisplayEventHandler {
 
   // Framebuffer configurations
   virtual void SetIdleTimeoutMs(uint32_t timeout_ms);
-  virtual void SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type);
+  virtual HWC2::Error SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type);
   virtual DisplayError SetMaxMixerStages(uint32_t max_mixer_stages);
   virtual DisplayError ControlPartialUpdate(bool enable, uint32_t *pending) {
     return kErrorNotSupported;
@@ -240,7 +240,6 @@ class HWCDisplay : public DisplayEventHandler {
   bool IsSurfaceUpdated(const std::vector<LayerRect> &dirty_regions);
   bool IsLayerUpdating(const Layer *layer);
   uint32_t SanitizeRefreshRate(uint32_t req_refresh_rate);
-  virtual void CloseAcquireFds();
   virtual void ClearRequestFlags();
   virtual void GetUnderScanConfig() { }
 

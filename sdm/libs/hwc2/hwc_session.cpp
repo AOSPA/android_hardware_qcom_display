@@ -566,6 +566,7 @@ int32_t HWCSession::RegisterCallback(hwc2_device_t *device, int32_t descriptor,
       hwc_session->callbacks_.Hotplug(HWC_DISPLAY_PRIMARY, HWC2::Connection::Connected);
     }
   }
+  hwc_session->need_invalidate_ = false;
   hwc_session->callbacks_lock_.Broadcast();
   return INT32(error);
 }
@@ -737,6 +738,7 @@ int32_t HWCSession::ValidateDisplay(hwc2_device_t *device, hwc2_display_t displa
 
         if (hwc_session->need_invalidate_) {
           hwc_session->Refresh(display);
+          hwc_session->need_invalidate_ = false;
         }
 
         if (hwc_session->color_mgr_) {

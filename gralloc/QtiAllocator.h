@@ -62,7 +62,6 @@ using vendor::qti::hardware::display::allocator::V3_0::IQtiAllocator;
 class QtiAllocator : public IQtiAllocator {
  public:
   QtiAllocator();
-
   // Methods from ::android::hardware::graphics::allocator::V2_0::IAllocator follow.
   Return<void> dumpDebugInfo(dumpDebugInfo_cb _hidl_cb) override;
   Return<void> allocate(const hidl_vec<uint32_t> &descriptor, uint32_t count,

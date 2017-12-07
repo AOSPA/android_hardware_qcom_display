@@ -19,7 +19,7 @@ LOCAL_CLANG                   := true
 LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware libhardware_legacy \
                                  libutils libcutils libsync libqdutils libqdMetaData libdl \
                                  libsdmutils libc++ liblog libgrallocutils libui libgpu_tonemapper \
-                                 libhidlbase libhidltransport vendor.display.config@1.0_vendor
+                                 libhidlbase libhidltransport vendor.display.config@1.0
 
 LOCAL_SRC_FILES               := hwc_session.cpp \
                                  hwc_session_services.cpp \

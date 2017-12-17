@@ -598,7 +598,7 @@ void DisplayBase::AppendDump(char *buffer, uint32_t length) {
   DumpImpl::AppendString(buffer, length, newline);
 
   for (uint32_t i = 0; i < num_hw_layers; i++) {
-    uint32_t layer_index = hw_layers_.info.index[i];
+    uint32_t layer_index = hw_layers_.info.index.at(i);
     // sdm-layer from client layer stack
     Layer *sdm_layer = hw_layers_.info.stack->layers.at(layer_index);
     // hw-layer from hw layers info
@@ -619,14 +619,15 @@ void DisplayBase::AppendDump(char *buffer, uint32_t length) {
       HWRotateInfo &rotate = hw_rotator_session.hw_rotate_info[count];
       LayerRect &src_roi = rotate.src_roi;
       LayerRect &dst_roi = rotate.dst_roi;
-      const char *rotate_split[2] = { "Rot-1", "Rot-2" };
+      char rot[8] = { 0 };
       int pipe_id = 0;
 
       if (hw_rotator_session.mode == kRotatorOffline) {
         snprintf(writeback_id, sizeof(writeback_id), "%d", rotate.writeback_id);
         pipe_id = rotate.pipe_id;
       }
-      DumpImpl::AppendString(buffer, length, format, idx, comp_type, rotate_split[count],
+      snprintf(rot, sizeof(rot), "Rot-%d", count + 1);
+      DumpImpl::AppendString(buffer, length, format, idx, comp_type, rot,
                              writeback_id, pipe_id, input_buffer->width,
                              input_buffer->height, buffer_format, INT(src_roi.left),
                              INT(src_roi.top), INT(src_roi.right), INT(src_roi.bottom),
@@ -1318,7 +1319,7 @@ void DisplayBase::CommitLayerParams(LayerStack *layer_stack) {
   uint32_t hw_layers_count = UINT32(hw_layers_.info.hw_layers.size());
 
   for (uint32_t i = 0; i < hw_layers_count; i++) {
-    Layer *sdm_layer = layer_stack->layers.at(hw_layers_.info.index[i]);
+    Layer *sdm_layer = layer_stack->layers.at(hw_layers_.info.index.at(i));
     Layer &hw_layer = hw_layers_.info.hw_layers.at(i);
 
     hw_layer.input_buffer.planes[0].fd = sdm_layer->input_buffer.planes[0].fd;
@@ -1338,7 +1339,7 @@ void DisplayBase::PostCommitLayerParams(LayerStack *layer_stack) {
   std::vector<uint32_t> fence_dup_flag;
 
   for (uint32_t i = 0; i < hw_layers_count; i++) {
-    uint32_t sdm_layer_index = hw_layers_.info.index[i];
+    uint32_t sdm_layer_index = hw_layers_.info.index.at(i);
     Layer *sdm_layer = layer_stack->layers.at(sdm_layer_index);
     Layer &hw_layer = hw_layers_.info.hw_layers.at(i);
 
@@ -1455,10 +1456,8 @@ DisplayError DisplayBase::SetHDRMode(bool set) {
   }
 
   // DPPS and HDR features are mutually exclusive
-  if (error == kErrorNone) {
-    comp_manager_->ControlDpps(!set);
-    hdr_mode_ = set;
-  }
+  comp_manager_->ControlDpps(!set);
+  hdr_mode_ = set;
 
   return error;
 }
@@ -1525,28 +1524,28 @@ DisplayError DisplayBase::ValidateHDR(LayerStack *layer_stack) {
 DisplayError DisplayBase::GetClientTargetSupport(uint32_t width, uint32_t height,
                                                  LayerBufferFormat format,
                                                  const ColorMetaData &color_metadata) {
-  DisplayError error = kErrorNone;
-
   if (format != kFormatRGBA8888 && format != kFormatRGBA1010102) {
     DLOGW("Unsupported format = %d", format);
-    error = kErrorNotSupported;
+    return kErrorNotSupported;
   } else if (ValidateScaling(width, height) != kErrorNone) {
     DLOGW("Unsupported width = %d height = %d", width, height);
-    error = kErrorNotSupported;
-  } else {
-    error = ValidateDataspace(color_metadata);
+    return kErrorNotSupported;
+  } else if (color_metadata.transfer && color_metadata.colorPrimaries) {
+    DisplayError error = ValidateDataspace(color_metadata);
     if (error != kErrorNone) {
+      DLOGW("Unsupported Transfer Request = %d Color Primary = %d",
+             color_metadata.transfer, color_metadata.colorPrimaries);
       return error;
     }
 
     // Check for BT2020 support
     if (color_metadata.colorPrimaries == ColorPrimaries_BT2020) {
-      DLOGW("Unsupported dataspace");
-      error = kErrorNotSupported;
+      DLOGW("Unsupported Color Primary = %d", color_metadata.colorPrimaries);
+      return kErrorNotSupported;
     }
   }
 
-  return error;
+  return kErrorNone;
 }
 
 DisplayError DisplayBase::ValidateScaling(uint32_t width, uint32_t height) {

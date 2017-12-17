@@ -68,6 +68,24 @@ DisplayError DisplayPrimary::Init() {
     }
   }
 
+  if (hw_panel_info_.mode == kModeCommand) {
+    event_list_ = { HWEvent::VSYNC,
+                    HWEvent::EXIT,
+                    HWEvent::SHOW_BLANK_EVENT,
+                    HWEvent::THERMAL_LEVEL,
+                    HWEvent::IDLE_POWER_COLLAPSE,
+                    HWEvent::PINGPONG_TIMEOUT,
+                    HWEvent::PANEL_DEAD };
+  } else {
+    event_list_ = { HWEvent::VSYNC,
+                    HWEvent::EXIT,
+                    HWEvent::IDLE_NOTIFY,
+                    HWEvent::SHOW_BLANK_EVENT,
+                    HWEvent::THERMAL_LEVEL,
+                    HWEvent::PINGPONG_TIMEOUT,
+                    HWEvent::PANEL_DEAD };
+  }
+
   avr_prop_disabled_ = Debug::IsAVRDisabled();
 
   error = HWEventsInterface::Create(INT(display_type_), this, event_list_, hw_intf_,
@@ -283,9 +301,7 @@ DisplayError DisplayPrimary::VSync(int64_t timestamp) {
 }
 
 void DisplayPrimary::IdleTimeout() {
-  if (hw_panel_info_.mode == kModeCommand) {
-    IdlePowerCollapse();
-  } else {
+  if (hw_panel_info_.mode == kModeVideo) {
     event_handler_->HandleEvent(kIdleTimeout);
     handle_idle_timeout_ = true;
     event_handler_->Refresh();
@@ -306,9 +322,11 @@ void DisplayPrimary::ThermalEvent(int64_t thermal_level) {
 }
 
 void DisplayPrimary::IdlePowerCollapse() {
-  event_handler_->HandleEvent(kIdlePowerCollapse);
-  lock_guard<recursive_mutex> obj(recursive_mutex_);
-  comp_manager_->ProcessIdlePowerCollapse(display_comp_ctx_);
+  if (hw_panel_info_.mode == kModeCommand) {
+    event_handler_->HandleEvent(kIdlePowerCollapse);
+    lock_guard<recursive_mutex> obj(recursive_mutex_);
+    comp_manager_->ProcessIdlePowerCollapse(display_comp_ctx_);
+  }
 }
 
 void DisplayPrimary::PanelDead() {

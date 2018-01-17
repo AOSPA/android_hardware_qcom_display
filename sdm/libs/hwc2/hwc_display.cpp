@@ -396,6 +396,9 @@ int HWCDisplay::Deinit() {
   }
 
   delete client_target_;
+  for (auto hwc_layer : layer_set_) {
+    delete hwc_layer;
+  }
 
   if (color_mode_) {
     color_mode_->DeInit();
@@ -457,6 +460,7 @@ void HWCDisplay::BuildLayerStack() {
   metadata_refresh_rate_ = 0;
   auto working_primaries = ColorPrimaries_BT709_5;
   bool secure_display_active = false;
+  layer_stack_.flags.animating = animating_;
 
   // Add one layer for fb target
   // TODO(user): Add blit target layers
@@ -1985,7 +1989,7 @@ void HWCDisplay::ClearRequestFlags() {
 
 std::string HWCDisplay::Dump() {
   std::ostringstream os;
-  os << "-------------------------------" << std::endl;
+  os << "\n------------HWC----------------\n";
   os << "HWC2 display_id: " << id_ << std::endl;
   for (auto layer : layer_set_) {
     auto sdm_layer = layer->GetSDMLayer();
@@ -2005,10 +2009,19 @@ std::string HWCDisplay::Dump() {
     os << " buffer_id: " << std::hex << "0x" << sdm_layer->input_buffer.buffer_id << std::dec
        << std::endl;
   }
+
   if (color_mode_) {
+    os << "\n----------Color Modes---------\n";
     color_mode_->Dump(&os);
   }
-  os << "-------------------------------" << std::endl;
+
+  if (display_intf_) {
+    os << "\n------------SDM----------------\n";
+    os << display_intf_->Dump();
+  }
+
+  os << "\n";
+
   return os.str();
 }
 

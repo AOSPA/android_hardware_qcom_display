@@ -122,7 +122,7 @@ class HWCDisplay : public DisplayEventHandler {
   virtual DisplayError SetMixerResolution(uint32_t width, uint32_t height);
   virtual DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
   virtual void GetPanelResolution(uint32_t *width, uint32_t *height);
-  virtual std::string Dump(void);
+  virtual std::string Dump();
 
   // Captures frame output in the buffer specified by output_buffer_info. The API is
   // non-blocking and the client is expected to check operation status later on.
@@ -210,6 +210,10 @@ class HWCDisplay : public DisplayEventHandler {
                                          float* out_max_luminance,
                                          float* out_max_average_luminance,
                                          float* out_min_luminance);
+  virtual HWC2::Error SetDisplayAnimating(bool animating) {
+    animating_ = animating;
+    return HWC2::Error::None;
+  }
 
  protected:
   // Maximum number of layers supported by display manager.
@@ -299,6 +303,7 @@ class HWCDisplay : public DisplayEventHandler {
   DisplayClass display_class_;
   uint32_t geometry_changes_ = GeometryChanges::kNone;
   bool skip_validate_ = false;
+  bool animating_ = false;
 };
 
 inline int HWCDisplay::Perform(uint32_t operation, ...) {

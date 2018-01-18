@@ -44,7 +44,7 @@ namespace sdm {
 using std::recursive_mutex;
 using std::lock_guard;
 
-class DisplayBase : public DisplayInterface, DumpImpl {
+class DisplayBase : public DisplayInterface {
  public:
   DisplayBase(DisplayType display_type, DisplayEventHandler *event_handler,
               HWDeviceType hw_device_type, BufferSyncHandler *buffer_sync_handler,
@@ -118,6 +118,7 @@ class DisplayBase : public DisplayInterface, DumpImpl {
   virtual DisplayError GetClientTargetSupport(uint32_t width, uint32_t height,
                                               LayerBufferFormat format,
                                               const ColorMetaData &color_metadata);
+  virtual std::string Dump();
 
  protected:
   DisplayError BuildLayerStackStats(LayerStack *layer_stack);
@@ -130,9 +131,6 @@ class DisplayBase : public DisplayInterface, DumpImpl {
   DisplayError ValidateScaling(uint32_t width, uint32_t height);
   DisplayError ValidateDataspace(const ColorMetaData &color_metadata);
 
-  // DumpImpl method
-  void AppendDump(char *buffer, uint32_t length);
-
   const char *GetName(const LayerComposition &composition);
   DisplayError ReconfigureDisplay();
   bool NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *new_mixer_width,
@@ -140,6 +138,7 @@ class DisplayBase : public DisplayInterface, DumpImpl {
   DisplayError ReconfigureMixer(uint32_t width, uint32_t height);
   bool NeedsDownScale(const LayerRect &src_rect, const LayerRect &dst_rect, bool needs_rotation);
   DisplayError InitializeColorModes();
+  void DeInitializeColorModes();
   DisplayError SetColorModeInternal(const std::string &color_mode);
   DisplayError GetValueOfModeAttribute(const AttrVal &attr, const std::string &type,
                                        std::string *value);
@@ -147,6 +146,7 @@ class DisplayBase : public DisplayInterface, DumpImpl {
   bool IsSupportColorModeAttribute(const std::string &color_mode);
   DisplayState GetLastPowerMode();
   void SetPUonDestScaler();
+  void ClearColorInfo();
 
   recursive_mutex recursive_mutex_;
   DisplayType display_type_;

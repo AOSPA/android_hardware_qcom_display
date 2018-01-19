@@ -85,17 +85,18 @@ namespace sdm {
 
 class DRMLoggerImpl : public DRMLogger {
  public:
-#define PRINTLOG(method, format, buf)        \
+#define PRINTLOG(tag, method, format, buf)        \
   va_list list;                              \
   va_start(list, format);                    \
   vsnprintf(buf, sizeof(buf), format, list); \
   va_end(list);                              \
-  Debug::Get()->method(kTagNone, "%s", buf);
+  Debug::Get()->method(tag, "%s", buf);
 
-  void Error(const char *format, ...) { PRINTLOG(Error, format, buf_); }
-  void Warning(const char *format, ...) { PRINTLOG(Warning, format, buf_); }
-  void Info(const char *format, ...) { PRINTLOG(Info, format, buf_); }
-  void Debug(const char *format, ...) { PRINTLOG(Debug, format, buf_); }
+  void Error(const char *format, ...) { PRINTLOG(kTagNone, Error, format, buf_); }
+  void Warning(const char *format, ...) { PRINTLOG(kTagDriverConfig, Warning, format, buf_); }
+  void Info(const char *format, ...) { PRINTLOG(kTagDriverConfig, Info, format, buf_); }
+  void Debug(const char *format, ...) { PRINTLOG(kTagDriverConfig, Debug, format, buf_); }
+  void Verbose(const char *format, ...) { PRINTLOG(kTagDriverConfig, Verbose, format, buf_); }
 
  private:
   char buf_[1024] = {};
@@ -191,7 +192,6 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   hw_resource->has_dyn_bw_support = false;
   hw_resource->has_qseed3 = false;
   hw_resource->has_concurrent_writeback = false;
-  hw_resource->has_hdr = true;
 
   hw_resource->hw_version = SDEVERSION(4, 0, 1);
   // TODO(user): On FB driver hw_revision comprises of major version, minor version and hw_revision.
@@ -278,6 +278,7 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
 void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   DRMCrtcInfo info;
   drm_mgr_intf_->GetCrtcInfo(0 /* system_info */, &info);
+  hw_resource->has_hdr = info.has_hdr;
   hw_resource->is_src_split = info.has_src_split;
   hw_resource->has_qseed3 = (info.qseed_version == sde_drm::QSEEDVersion::V3);
   hw_resource->num_blending_stages = info.max_blend_stages;
@@ -322,6 +323,7 @@ void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   hw_resource->hw_dest_scalar_info.max_scale_up = info.max_dest_scale_up;
   hw_resource->hw_dest_scalar_info.max_input_width = info.max_dest_scaler_input_width;
   hw_resource->hw_dest_scalar_info.max_output_width = info.max_dest_scaler_output_width;
+  hw_resource->min_prefill_lines = info.min_prefill_lines;
 }
 
 void HWInfoDRM::GetHWPlanesInfo(HWResourceInfo *hw_resource) {
@@ -491,8 +493,9 @@ void HWInfoDRM::GetSDMFormat(uint32_t v4l2_format, LayerBufferFormat *sdm_format
     case SDE_PIX_FMT_RGBA_1010102_UBWC: *sdm_format = kFormatRGBA1010102Ubwc;          break;
     case SDE_PIX_FMT_RGBX_1010102_UBWC: *sdm_format = kFormatRGBX1010102Ubwc;          break;
     case SDE_PIX_FMT_Y_CBCR_H2V2_P010:  *sdm_format = kFormatYCbCr420P010;             break;
-    case SDE_PIX_FMT_Y_CBCR_H2V2_TP10_UBWC: *sdm_format = kFormatYCbCr420TP10Ubwc;     break;
-    case SDE_PIX_FMT_Y_CBCR_H2V2_P010_UBWC: *sdm_format = kFormatYCbCr420P010Ubwc;     break;
+    case SDE_PIX_FMT_Y_CBCR_H2V2_TP10_UBWC:  *sdm_format = kFormatYCbCr420TP10Ubwc;     break;
+    case SDE_PIX_FMT_Y_CBCR_H2V2_P010_UBWC:  *sdm_format = kFormatYCbCr420P010Ubwc;     break;
+    case SDE_PIX_FMT_Y_CBCR_H2V2_P010_VENUS: *sdm_format = kFormatYCbCr420P010Venus;    break;
     default: *sdm_format = kFormatInvalid;
   }
 }
@@ -661,7 +664,8 @@ void HWInfoDRM::GetSDMFormat(uint32_t drm_format, uint64_t drm_format_modifier,
       } else if (drm_format_modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED) {
          fmts.push_back(kFormatYCbCr420SPVenusUbwc);
       } else if (drm_format_modifier == DRM_FORMAT_MOD_QCOM_DX) {
-         fmts.push_back(kFormatYCbCr420P010);
+        fmts.push_back(kFormatYCbCr420P010);
+        fmts.push_back(kFormatYCbCr420P010Venus);
       } else {
          fmts.push_back(kFormatYCbCr420SemiPlanarVenus);
          fmts.push_back(kFormatYCbCr420SemiPlanar);

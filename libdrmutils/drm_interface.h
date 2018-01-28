@@ -304,6 +304,12 @@ enum struct DRMOps {
    *      uint32_t - CRTC ID
    */
   CONNECTOR_SET_CRTC,
+  /*
+   * Op: Sets connector hdr metadata
+   * Arg: uint32_t - Connector ID
+   *      drm_msm_ext_hdr_metadata - hdr_metadata
+   */
+  CONNECTOR_SET_HDR_METADATA,
 };
 
 enum struct DRMRotation {
@@ -370,6 +376,7 @@ enum struct SmartDMARevision {
 /* Per CRTC Resource Info*/
 struct DRMCrtcInfo {
   bool has_src_split;
+  bool has_hdr;
   uint32_t max_blend_stages;
   uint32_t max_solidfill_stages;
   QSEEDVersion qseed_version;
@@ -394,6 +401,7 @@ struct DRMCrtcInfo {
   uint32_t max_dest_scaler_input_width = 0;
   uint32_t max_dest_scaler_output_width = 0;
   uint32_t max_dest_scale_up = 1;
+  uint32_t min_prefill_lines = 0;
 };
 
 enum struct DRMPlaneType {
@@ -476,6 +484,7 @@ struct DRMConnectorInfo {
   DRMRotation panel_orientation;
   drm_panel_hdr_properties panel_hdr_prop;
   uint32_t transfer_time_us;
+  drm_msm_ext_hdr_properties ext_hdr_prop;
 };
 
 /* Identifier token for a display */

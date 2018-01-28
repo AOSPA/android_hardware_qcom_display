@@ -228,6 +228,7 @@ struct HWResourceInfo {
   CompRatioMap comp_ratio_nrt_map;
   uint32_t cache_size = 0;  // cache size in bytes
   HWQseedStepVersion pipe_qseed3_version = kQseed3v2;  // only valid when has_qseed3=true
+  uint32_t min_prefill_lines = 0;
 
   void Reset() { *this = HWResourceInfo(); }
 };
@@ -292,6 +293,8 @@ struct HWPanelInfo {
   uint32_t left_roi_count = 1;        // Number if ROI supported on left panel
   uint32_t right_roi_count = 1;       // Number if ROI supported on right panel
   bool hdr_enabled = false;           // HDR feature supported
+  bool hdr_metadata_type_one = false;     // Static HDR metadata type one
+  uint32_t hdr_eotf = 0;              // Electro optical transfer function
   uint32_t peak_luminance = 0;        // Panel's peak luminance level
   uint32_t average_luminance = 0;     // Panel's average luminance level
   uint32_t blackness_level = 0;       // Panel's blackness level

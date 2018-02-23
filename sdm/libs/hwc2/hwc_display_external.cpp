@@ -293,4 +293,8 @@ void HWCDisplayExternal::GetUnderScanConfig() {
   }
 }
 
+DisplayError HWCDisplayExternal::Flush() {
+  return display_intf_->Flush();
+}
+
 }  // namespace sdm

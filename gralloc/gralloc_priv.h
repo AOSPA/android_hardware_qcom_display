@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2018, The Linux Foundation. All rights reserved.
  * Not a Contribution
  *
  * Copyright (C) 2008 The Android Open Source Project
@@ -20,6 +20,7 @@
 #ifndef __GRALLOC_PRIV_H__
 #define __GRALLOC_PRIV_H__
 
+#include <errno.h>
 #include <unistd.h>
 #include "gr_priv_handle.h"
 
@@ -66,7 +67,7 @@ inline int roundUpToPageSize(int x) {
 #define GRALLOC1_CONSUMER_USAGE_PRIVATE_WFD            0x00200000
 
 /* This flag is used for SECURE display usecase */
-#define GRALLOC1_CONSUMER_USAGE_PRIVATE_SECURE_DISPLAY 0x01000000
+#define GRALLOC1_CONSUMER_USAGE_PRIVATE_SECURE_DISPLAY 0x02000000
 
 /* This flag is used to indicate P010 format */
 #define GRALLOC1_CONSUMER_USAGE_PRIVATE_10BIT       GRALLOC1_PRODUCER_USAGE_PRIVATE_10BIT

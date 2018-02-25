@@ -28,7 +28,6 @@
 */
 
 #include <errno.h>
-
 #include <sync/sync.h>
 #include <utils/constants.h>
 #include <utils/debug.h>

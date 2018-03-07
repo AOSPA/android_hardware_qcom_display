@@ -328,6 +328,7 @@ class HWCDisplay : public DisplayEventHandler {
 
  private:
   void DumpInputBuffers(void);
+  void UpdateRefreshRate();
   qService::QService *qservice_ = NULL;
   DisplayClass display_class_;
   uint32_t geometry_changes_ = GeometryChanges::kNone;

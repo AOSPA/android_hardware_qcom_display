@@ -399,8 +399,10 @@ void HWInfoDRM::GetHWPlanesInfo(HWResourceInfo *hw_resource) {
     }
     pipe_caps.id = pipe_obj.first;
     pipe_caps.master_pipe_id = pipe_obj.second.master_plane_id;
-    DLOGI("Adding %s Pipe : Id %x, master_pipe_id : Id %x",
-          name.c_str(), pipe_obj.first, pipe_obj.second.master_plane_id);
+    pipe_caps.block_sec_ui = pipe_obj.second.block_sec_ui;
+    DLOGI("Adding %s Pipe : Id %d, master_pipe_id : Id %d block_sec_ui: %d",
+          name.c_str(), pipe_obj.first, pipe_obj.second.master_plane_id,
+          pipe_obj.second.block_sec_ui);
     hw_resource->hw_pipes.push_back(std::move(pipe_caps));
   }
 }

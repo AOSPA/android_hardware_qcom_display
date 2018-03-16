@@ -232,7 +232,6 @@ unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int
   } else if (IsCompressedRGBFormat(format)) {
     size = alignedw * alignedh * ASTC_BLOCK_SIZE;
   } else {
-
     // Below switch should be for only YUV/custom formats
     switch (format) {
       case HAL_PIXEL_FORMAT_RAW16:
@@ -289,9 +288,11 @@ unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int
         size = ALIGN(alignedw * alignedh * 2, SIZE_4K);
         break;
       case HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS:
-      case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:size = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
+      case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:
+        size = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
         break;
       case HAL_PIXEL_FORMAT_YCrCb_420_SP_VENUS:
+      case HAL_PIXEL_FORMAT_NV21_ENCODEABLE:
         size = VENUS_BUFFER_SIZE(COLOR_FMT_NV21, width, height);
         break;
       case HAL_PIXEL_FORMAT_BLOB:

@@ -521,6 +521,7 @@ void HWCDisplay::BuildLayerStack() {
       }
     }
 
+    bool is_secure = false;
     const private_handle_t *handle =
         reinterpret_cast<const private_handle_t *>(layer->input_buffer.buffer_id);
     if (handle) {
@@ -528,21 +529,17 @@ void HWCDisplay::BuildLayerStack() {
         layer_stack_.flags.video_present = true;
       }
       // TZ Protected Buffer - L1
-      if (handle->flags & private_handle_t::PRIV_FLAGS_SECURE_BUFFER) {
-        layer_stack_.flags.secure_present = true;
-      }
       // Gralloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback
-      if (handle->flags & private_handle_t::PRIV_FLAGS_PROTECTED_BUFFER) {
+      if (handle->flags & private_handle_t::PRIV_FLAGS_PROTECTED_BUFFER ||
+          handle->flags & private_handle_t::PRIV_FLAGS_SECURE_BUFFER) {
         layer_stack_.flags.secure_present = true;
+        is_secure = true;
       }
-    }
-
-    if (layer->flags.skip) {
-      layer_stack_.flags.skip_present = true;
     }
 
     if (layer->input_buffer.flags.secure_display) {
       secure_display_active = true;
+      is_secure = true;
     }
 
     if (hwc_layer->IsSingleBuffered() &&
@@ -566,6 +563,14 @@ void HWCDisplay::BuildLayerStack() {
       // dont honor HDR when its handling is disabled
       layer->input_buffer.flags.hdr = true;
       layer_stack_.flags.hdr_present = true;
+    }
+
+    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !hdr_layer) {
+      layer->flags.skip = true;
+    }
+
+    if (layer->flags.skip) {
+      layer_stack_.flags.skip_present = true;
     }
 
     // TODO(user): Move to a getter if this is needed at other places
@@ -636,8 +641,6 @@ void HWCDisplay::BuildLayerStack() {
   }
   // set secure display
   SetSecureDisplay(secure_display_active);
-
-  layer_stack_invalid_ = false;
 }
 
 void HWCDisplay::BuildSolidFillStack() {
@@ -747,9 +750,10 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode) {
     default:
       return HWC2::Error::BadParameter;
   }
+  int release_fence = -1;
 
   ATRACE_INT("SetPowerMode ", state);
-  DisplayError error = display_intf_->SetDisplayState(state);
+  DisplayError error = display_intf_->SetDisplayState(state, &release_fence);
   validated_ = false;
 
   if (error == kErrorNone) {
@@ -763,6 +767,20 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode) {
     return HWC2::Error::BadParameter;
   }
 
+  if (release_fence >= 0) {
+    for (auto hwc_layer : layer_set_) {
+      auto fence = hwc_layer->PopBackReleaseFence();
+      auto merged_fence = -1;
+      if (fence >= 0) {
+        merged_fence = sync_merge("sync_merge", release_fence, fence);
+        ::close(fence);
+      } else {
+        merged_fence = ::dup(release_fence);
+      }
+      hwc_layer->PushBackReleaseFence(merged_fence);
+    }
+    ::close(release_fence);
+  }
   return HWC2::Error::None;
 }
 
@@ -1001,7 +1019,17 @@ DisplayError HWCDisplay::CECMessage(char *message) {
 
 DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
   switch (event) {
-    case kIdleTimeout:
+    case kIdleTimeout: {
+      SCOPE_LOCK(HWCSession::locker_[type_]);
+      if (pending_commit_) {
+        // If idle timeout event comes in between prepare
+        // and commit, drop it since device is not really
+        // idle.
+        return kErrorNotSupported;
+      }
+      validated_ = false;
+      break;
+    }
     case kThermalEvent:
     case kIdlePowerCollapse:
     case kPanelDeadEvent: {
@@ -1078,7 +1106,7 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
   *out_num_requests = UINT32(layer_requests_.size());
   validate_state_ = kNormalValidate;
   validated_ = true;
-
+  layer_stack_invalid_ = false;
   return ((*out_num_types > 0) ? HWC2::Error::HasChanges : HWC2::Error::None);
 }
 
@@ -1138,7 +1166,7 @@ HWC2::Error HWCDisplay::GetReleaseFences(uint32_t *out_num_elements, hwc2_layer_
     for (uint32_t i = 0; i < *out_num_elements; i++, it++) {
       auto hwc_layer = *it;
       out_layers[i] = hwc_layer->GetId();
-      out_fences[i] = hwc_layer->PopReleaseFence();
+      out_fences[i] = hwc_layer->PopFrontReleaseFence();
     }
   } else {
     *out_num_elements = UINT32(layer_set_.size());
@@ -1305,15 +1333,15 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(int32_t *out_retire_fence) {
       if (swap_interval_zero_ || layer->flags.single_buffer) {
         close(layer_buffer->release_fence_fd);
       } else if (layer->composition != kCompositionGPU) {
-        hwc_layer->PushReleaseFence(layer_buffer->release_fence_fd);
+        hwc_layer->PushBackReleaseFence(layer_buffer->release_fence_fd);
       } else {
-        hwc_layer->PushReleaseFence(-1);
+        hwc_layer->PushBackReleaseFence(-1);
       }
     } else {
       // In case of flush, we don't return an error to f/w, so it will get a release fence out of
       // the hwc_layer's release fence queue. We should push a -1 to preserve release fence
       // circulation semantics.
-      hwc_layer->PushReleaseFence(-1);
+      hwc_layer->PushBackReleaseFence(-1);
     }
 
     layer_buffer->release_fence_fd = -1;

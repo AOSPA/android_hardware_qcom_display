@@ -163,7 +163,7 @@ int HWCSession::Init() {
 
   DisplayError error = buffer_allocator_.Init();
   if (error != kErrorNone) {
-    ALOGE("%s::%s: Buffer allocaor initialization failed. Error = %d",
+    ALOGE("%s::%s: Buffer allocator initialization failed. Error = %d",
           __CLASS__, __FUNCTION__, error);
     return -EINVAL;
   }

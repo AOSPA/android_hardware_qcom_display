@@ -133,6 +133,7 @@ class HWDeviceDRM : public HWInterface {
   void SetTopology(sde_drm::DRMTopology drm_topology, HWTopology *hw_topology);
   void SetMultiRectMode(const uint32_t flags, sde_drm::DRMMultiRectMode *target);
   void SetFullROI();
+  void DumpConnectorModeInfo();
 
   class Registry {
    public:

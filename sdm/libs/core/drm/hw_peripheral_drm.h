@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, The Linux Foundation. All rights reserved.
+Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -35,6 +35,11 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace sdm {
 
+struct CWBConfig {
+  bool enabled = false;
+  sde_drm::DRMDisplayToken token = {};
+};
+
 class HWPeripheralDRM : public HWDeviceDRM {
  public:
   explicit HWPeripheralDRM(BufferSyncHandler *buffer_sync_handler,
@@ -50,8 +55,14 @@ class HWPeripheralDRM : public HWDeviceDRM {
  private:
   void SetDestScalarData(HWLayersInfo hw_layer_info);
   void ResetDisplayParams();
+  DisplayError SetupConcurrentWritebackModes();
+  void SetupConcurrentWriteback(HWLayersInfo &hw_layer_info, bool validate);
+  void ConfigureConcurrentWriteback(LayerStack *stack);
+  void PostCommitConcurrentWriteback(HWLayersInfo &hw_layer_info);
+
   sde_drm_dest_scaler_data sde_dest_scalar_data_ = {};
   std::vector<SDEScaler> scalar_data_ = {};
+  CWBConfig cwb_config_ = {};
 };
 
 }  // namespace sdm

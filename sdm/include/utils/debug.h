@@ -34,6 +34,7 @@
 #include <core/sdm_types.h>
 #include <core/debug_interface.h>
 #include <core/display_interface.h>
+#include <display_properties.h>
 
 #define DLOG(tag, method, format, ...) Debug::Get()->method(tag, __CLASS__ "::%s: " format, \
                                                             __FUNCTION__, ##__VA_ARGS__)

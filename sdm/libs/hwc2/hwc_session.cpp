@@ -161,23 +161,10 @@ int HWCSession::Init() {
 
   StartServices();
 
-  DisplayError error = buffer_allocator_.Init();
-  if (error != kErrorNone) {
-    ALOGE("%s::%s: Buffer allocator initialization failed. Error = %d",
-          __CLASS__, __FUNCTION__, error);
-    return -EINVAL;
-  }
-
   g_hwc_uevent_.Register(this);
 
-  error = CoreInterface::CreateCore(HWCDebugHandler::Get(), &buffer_allocator_,
-                                    &buffer_sync_handler_, &socket_handler_, &core_intf_);
-  if (error != kErrorNone) {
-    buffer_allocator_.Deinit();
-    ALOGE("%s::%s: Display core initialization failed. Error = %d", __CLASS__, __FUNCTION__, error);
-    return -EINVAL;
-  }
-
+  auto error = CoreInterface::CreateCore(HWCDebugHandler::Get(), &buffer_allocator_,
+                                         &buffer_sync_handler_, &socket_handler_, &core_intf_);
 
   // If HDMI display is primary display, defer display creation until hotplug event is received.
   HWDisplayInterfaceInfo hw_disp_info = {};
@@ -185,7 +172,6 @@ int HWCSession::Init() {
   if (error != kErrorNone) {
     g_hwc_uevent_.Register(nullptr);
     CoreInterface::DestroyCore();
-    buffer_allocator_.Deinit();
     DLOGE("Primary display type not recognized. Error = %d", error);
     return -EINVAL;
   }
@@ -210,7 +196,6 @@ int HWCSession::Init() {
   if (status) {
     g_hwc_uevent_.Register(nullptr);
     CoreInterface::DestroyCore();
-    buffer_allocator_.Deinit();
     return status;
   }
 
@@ -960,6 +945,10 @@ int HWCSession::DisconnectDisplay(int disp) {
   DLOGI("Display = %d", disp);
 
   if (disp == HWC_DISPLAY_EXTERNAL) {
+    DisplayError error = hwc_display_[disp]->Flush();
+    if (error != kErrorNone) {
+        DLOGW("Flush failed. Error = %d", error);
+    }
     HWCDisplayExternal::Destroy(hwc_display_[disp]);
   } else if (disp == HWC_DISPLAY_VIRTUAL) {
     HWCDisplayVirtual::Destroy(hwc_display_[disp]);

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2017, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -60,6 +60,7 @@ DisplayError DisplayBase::Init() {
   hw_intf_->GetHWPanelInfo(&hw_panel_info_);
 
   uint32_t active_index = 0;
+  int drop_vsync = 0;
   hw_intf_->GetActiveConfig(&active_index);
   hw_intf_->GetDisplayAttributes(active_index, &display_attributes_);
   fb_config_ = display_attributes_;
@@ -117,7 +118,8 @@ DisplayError DisplayBase::Init() {
   // TODO(user): Temporary changes, to be removed when DRM driver supports
   // Partial update with Destination scaler enabled.
   SetPUonDestScaler();
-
+  Debug::Get()->GetProperty("sdm.drop_skewed_vsync", &drop_vsync);
+  drop_skewed_vsync_ = (drop_vsync == 1);
   return kErrorNone;
 
 CleanupOnError:
@@ -342,7 +344,8 @@ DisplayError DisplayBase::Commit(LayerStack *layer_stack) {
   if (error != kErrorNone) {
     return error;
   }
-
+  // Stop dropping vsync when first commit is received after idle fallback.
+  drop_hw_vsync_ = false;
   DLOGI_IF(kTagDisplay, "Exiting commit for display type : %d", display_type_);
   return kErrorNone;
 }
@@ -430,7 +433,7 @@ DisplayState DisplayBase::GetLastPowerMode() {
   return last_power_mode_;
 }
 
-DisplayError DisplayBase::SetDisplayState(DisplayState state) {
+DisplayError DisplayBase::SetDisplayState(DisplayState state, int *release_fence) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   DisplayError error = kErrorNone;
   bool active = false;
@@ -452,7 +455,7 @@ DisplayError DisplayBase::SetDisplayState(DisplayState state) {
     break;
 
   case kStateOn:
-    error = hw_intf_->PowerOn();
+    error = hw_intf_->PowerOn(release_fence);
     if (error != kErrorNone) {
       return error;
     }
@@ -468,13 +471,13 @@ DisplayError DisplayBase::SetDisplayState(DisplayState state) {
     break;
 
   case kStateDoze:
-    error = hw_intf_->Doze();
+    error = hw_intf_->Doze(release_fence);
     active = true;
     last_power_mode_ = kStateDoze;
     break;
 
   case kStateDozeSuspend:
-    error = hw_intf_->DozeSuspend();
+    error = hw_intf_->DozeSuspend(release_fence);
     if (display_type_ != kPrimary) {
       active = true;
     }
@@ -1029,6 +1032,10 @@ DisplayError DisplayBase::SetVSyncState(bool enable) {
   if (vsync_enable_ != enable) {
     error = hw_intf_->SetVSyncState(enable);
     if (error == kErrorNotSupported) {
+      if (drop_skewed_vsync_ && (hw_panel_info_.mode == kModeVideo) &&
+        enable && (current_refresh_rate_ == hw_panel_info_.min_fps)) {
+        drop_hw_vsync_ = true;
+      }
       error = hw_events_intf_->SetEventState(HWEvent::VSYNC, enable);
     }
     if (error == kErrorNone) {
@@ -1527,7 +1534,7 @@ DisplayError DisplayBase::ValidateHDR(LayerStack *layer_stack) {
     // HDR color mode is set when hdr layer is present in layer_stack.
     // If client flags HDR layer as skipped, then blending happens
     // in SDR color space. Hence, need to restore the SDR color mode.
-    if (layer_stack->blend_cs != ColorPrimaries_BT2020) {
+    if (layer_stack->blend_cs.first != ColorPrimaries_BT2020) {
       error = SetHDRMode(false);
       if (error != kErrorNone) {
         DLOGW("Failed to restore SDR mode");

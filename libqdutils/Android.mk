@@ -9,6 +9,7 @@ LOCAL_SHARED_LIBRARIES        := $(common_libs) libbinder libqservice
 LOCAL_C_INCLUDES              := $(common_includes) $(kernel_includes)
 LOCAL_HEADER_LIBRARIES        := display_headers
 LOCAL_HEADER_LIBRARIES        += libhardware_headers
+LOCAL_HEADER_LIBRARIES        += libutils_headers
 LOCAL_CFLAGS                  := $(common_flags) -DLOG_TAG=\"qdutils\" -Wno-sign-conversion
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
 LOCAL_COPY_HEADERS_TO         := $(common_header_export_path)
@@ -24,6 +25,8 @@ LOCAL_COPY_HEADERS              := qdMetaData.h qd_utils.h
 LOCAL_SHARED_LIBRARIES          := liblog libcutils
 LOCAL_C_INCLUDES                := $(common_includes)
 LOCAL_HEADER_LIBRARIES          := display_headers
+LOCAL_HEADER_LIBRARIES          += libhardware_headers
+LOCAL_HEADER_LIBRARIES          += libutils_headers
 LOCAL_ADDITIONAL_DEPENDENCIES   := $(common_deps)
 LOCAL_SRC_FILES                 := qdMetaData.cpp qd_utils.cpp
 LOCAL_CFLAGS                    := $(common_flags) -Wno-sign-conversion
@@ -40,6 +43,8 @@ include $(CLEAR_VARS)
 LOCAL_SHARED_LIBRARIES          := liblog libcutils
 LOCAL_C_INCLUDES                := $(common_includes)
 LOCAL_HEADER_LIBRARIES          := display_headers
+LOCAL_HEADER_LIBRARIES          += libhardware_headers
+LOCAL_HEADER_LIBRARIES          += libutils_headers
 LOCAL_ADDITIONAL_DEPENDENCIES   := $(common_deps)
 LOCAL_SRC_FILES                 := qdMetaData.cpp qd_utils.cpp
 LOCAL_CFLAGS                    := $(common_flags) -Wno-sign-conversion

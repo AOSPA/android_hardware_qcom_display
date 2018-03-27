@@ -23,6 +23,7 @@ LOCAL_VENDOR_MODULE := true
 LOCAL_CFLAGS := -Wno-sign-conversion
 LOCAL_CLANG  := true
 LOCAL_SHARED_LIBRARIES := liblog
+LOCAL_HEADER_LIBRARIES := libhardware_headers
 LOCAL_SRC_FILES := memtrack_msm.c kgsl.c
 LOCAL_MODULE := memtrack.$(TARGET_BOARD_PLATFORM)
 LOCAL_HEADER_LIBRARIES := libhardware_headers

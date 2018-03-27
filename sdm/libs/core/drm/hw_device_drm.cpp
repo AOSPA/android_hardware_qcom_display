@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -57,6 +57,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <limits>
 
 #include "hw_device_drm.h"
 #include "hw_info_interface.h"
@@ -737,6 +738,7 @@ DisplayError HWDeviceDRM::PowerOff() {
     return kErrorUndefined;
   }
 
+  SetFullROI();
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::OFF);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
   int ret = drm_atomic_intf_->Commit(true /* synchronous */, false /* retain_planes */);
@@ -918,14 +920,17 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_LLCC_IB, token_.crtc_id, qos_data.llcc_ib_bps);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_AB, token_.crtc_id, qos_data.dram_ab_bps);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DRAM_IB, token_.crtc_id, qos_data.dram_ib_bps);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_PREFILL_BW, token_.crtc_id,
+                            qos_data.rot_prefill_bw_bps);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_CLK, token_.crtc_id, qos_data.rot_clock_hz);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_SECURITY_LEVEL, token_.crtc_id, crtc_security_level);
 
-  DLOGI_IF(kTagDriverConfig, "System Clock=%d Hz, Core: AB=%llu Bps, IB=%llu Bps, " \
-           "LLCC: AB=%llu Bps, IB=%llu Bps, DRAM AB=%llu Bps, IB=%llu Bps Rot Clock=%d",
+  DLOGI_IF(kTagDriverConfig, "%s::%s System Clock=%d Hz, Core: AB=%llu Bps, IB=%llu Bps, " \
+           "LLCC: AB=%llu Bps, IB=%llu Bps, DRAM AB=%llu Bps, IB=%llu Bps, "\
+           "Rot: Bw=%llu Bps, Clock=%d Hz", validate ? "Validate" : "Commit", device_name_,
            qos_data.clock_hz, qos_data.core_ab_bps, qos_data.core_ib_bps, qos_data.llcc_ab_bps,
            qos_data.llcc_ib_bps, qos_data.dram_ab_bps, qos_data.dram_ib_bps,
-           qos_data.rot_clock_hz);
+           qos_data.rot_prefill_bw_bps, qos_data.rot_clock_hz);
 
   // Set refresh rate
   if (vrefresh_) {
@@ -1258,13 +1263,18 @@ DisplayError HWDeviceDRM::GetPPFeaturesVersion(PPFeatureVersion *vers) {
 DisplayError HWDeviceDRM::SetPPFeatures(PPFeaturesConfig *feature_list) {
   int ret = 0;
   PPFeatureInfo *feature = NULL;
+  DRMPPFeatureInfo kernel_params = {};
+  bool crtc_feature = true;
 
   while (true) {
-    DRMPPFeatureInfo kernel_params = {};
+    crtc_feature = true;
     ret = feature_list->RetrieveNextFeature(&feature);
     if (ret)
       break;
-
+    kernel_params.id = HWColorManagerDrm::ToDrmFeatureId(feature->feature_id_);
+    drm_mgr_intf_->GetCrtcPPInfo(0, &kernel_params);
+    if (kernel_params.version == std::numeric_limits<uint32_t>::max())
+        crtc_feature = false;
     if (feature) {
       DLOGV_IF(kTagDriverConfig, "feature_id = %d", feature->feature_id_);
       auto drm_features = DrmPPfeatureMap_.find(feature->feature_id_);
@@ -1279,9 +1289,11 @@ DisplayError HWDeviceDRM::SetPPFeatures(PPFeaturesConfig *feature_list) {
           continue;
         }
         ret = HWColorManagerDrm::GetDrmFeature[drm_feature](*feature, &kernel_params);
-        if (!ret)
-          drm_atomic_intf_->Perform(DRMOps::CRTC_SET_POST_PROC, token_.crtc_id, &kernel_params);
-        HWColorManagerDrm::FreeDrmFeatureData(&kernel_params);
+      if (!ret && crtc_feature)
+        drm_atomic_intf_->Perform(DRMOps::CRTC_SET_POST_PROC, token_.crtc_id, &kernel_params);
+      else if (!ret && !crtc_feature)
+        drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POST_PROC, token_.conn_id, &kernel_params);
+      HWColorManagerDrm::FreeDrmFeatureData(&kernel_params);
       }
     }
   }
@@ -1484,8 +1496,7 @@ DisplayError HWDeviceDRM::GetMixerAttributes(HWMixerAttributes *mixer_attributes
 }
 
 void HWDeviceDRM::GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const {
-  token->conn_id = token_.conn_id;
-  token->crtc_id = token_.crtc_id;
+  *token = token_;
 }
 
 void HWDeviceDRM::UpdateMixerAttributes() {
@@ -1547,6 +1558,19 @@ void HWDeviceDRM::SetMultiRectMode(const uint32_t flags, DRMMultiRectMode *targe
       *target = DRMMultiRectMode::PARALLEL;
     }
   }
+}
+
+void HWDeviceDRM::SetFullROI() {
+  // Reset the CRTC ROI and connector ROI only for the panel that supports partial update
+  if (!hw_panel_info_.partial_update) {
+    return;
+  }
+  uint32_t index = current_mode_index_;
+  DRMRect crtc_rects = {0, 0, mixer_attributes_.width, mixer_attributes_.height};
+  DRMRect conn_rects = {0, 0, display_attributes_[index].x_pixels,
+                         display_attributes_[index].y_pixels};
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROI, token_.crtc_id, 1, &crtc_rects);
+  drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_ROI, token_.conn_id, 1, &conn_rects);
 }
 
 }  // namespace sdm

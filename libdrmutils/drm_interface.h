@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -211,6 +211,12 @@ enum struct DRMOps {
    */
   CRTC_SET_DRAM_IB,
   /*
+   * Op: Sets Rotator BW for inline rotation
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - rot_bw
+   */
+  CRTC_SET_ROT_PREFILL_BW,
+  /*
    * Op: Sets rotator clock for inline rotation
    * Arg: uint32_t - CRTC ID
    *      uint32_t - rot_clk
@@ -310,6 +316,12 @@ enum struct DRMOps {
    *      uint32_t - CRTC ID
    */
   CONNECTOR_SET_CRTC,
+  /*
+   * Op: Sets PP feature
+   * Arg: uint32_t - Connector ID
+   * DRMPPFeatureInfo * - PP feature data pointer
+   */
+   CONNECTOR_SET_POST_PROC,
   /*
    * Op: Sets connector hdr metadata
    * Arg: uint32_t - Connector ID
@@ -498,6 +510,7 @@ struct DRMConnectorInfo {
 struct DRMDisplayToken {
   uint32_t conn_id;
   uint32_t crtc_id;
+  uint32_t crtc_index;
 };
 
 enum DRMPPFeatureID {
@@ -531,6 +544,7 @@ struct DRMPPFeatureInfo {
   uint32_t version;
   uint32_t payload_size;
   void *payload;
+  uint32_t object_type;
 };
 
 enum DRMCscType {

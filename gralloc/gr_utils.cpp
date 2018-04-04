@@ -32,7 +32,6 @@
 
 #include "gr_adreno_info.h"
 #include "gr_utils.h"
-#include "qdMetaData.h"
 
 #define ASTC_BLOCK_SIZE 16
 
@@ -42,8 +41,8 @@
 
 namespace gralloc {
 
-bool IsYuvFormat(const private_handle_t *hnd) {
-  switch (hnd->format) {
+bool IsYuvFormat(int format) {
+  switch (format) {
     case HAL_PIXEL_FORMAT_YCbCr_420_SP:
     case HAL_PIXEL_FORMAT_YCbCr_422_SP:
     case HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS:
@@ -942,6 +941,41 @@ int GetBufferLayout(private_handle_t *hnd, uint32_t stride[4], uint32_t offset[4
   }
 
   return 0;
+}
+
+void GetGpuResourceSizeAndDimensions(const BufferInfo &info, unsigned int *size,
+                                     unsigned int *alignedw, unsigned int *alignedh,
+                                     GraphicsMetadata *graphics_metadata) {
+  GetAlignedWidthAndHeight(info, alignedw, alignedh);
+  AdrenoMemInfo* adreno_mem_info = AdrenoMemInfo::GetInstance();
+  graphics_metadata->size = adreno_mem_info->AdrenoGetMetadataBlobSize();
+  uint64_t adreno_usage = info.usage;
+  // If gralloc disables UBWC based on any of the checks,
+  // we pass modified usage flag to adreno to convey this.
+  int is_ubwc_enabled = IsUBwcEnabled(info.format, info.usage);
+  if (!is_ubwc_enabled) {
+    adreno_usage &= ~(GRALLOC_USAGE_PRIVATE_ALLOC_UBWC);
+  }
+
+  // Call adreno api for populating metadata blob
+  int ret = adreno_mem_info->AdrenoInitMemoryLayout(graphics_metadata->data, info.width,
+                                                    info.height, 1, info.format, 1,
+                                                    is_ubwc_enabled, adreno_usage, 1);
+  if (ret != 0) {
+    ALOGE("%s Graphics metadata init failed", __FUNCTION__);
+    *size = 0;
+    return;
+  }
+  // Call adreno api with the metadata blob to get buffer size
+  *size = adreno_mem_info->AdrenoGetAlignedGpuBufferSize(graphics_metadata->data);
+}
+
+bool GetAdrenoSizeAPIStatus() {
+  AdrenoMemInfo* adreno_mem_info = AdrenoMemInfo::GetInstance();
+  if (adreno_mem_info) {
+    return adreno_mem_info->AdrenoSizeAPIAvaliable();
+  }
+  return false;
 }
 
 }  // namespace gralloc

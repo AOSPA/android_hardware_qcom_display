@@ -481,6 +481,8 @@ void HWCDisplay::BuildLayerStack() {
   uint32_t color_mode_count = 0;
   display_intf_->GetColorModeCount(&color_mode_count);
 
+  bool extended_range = false;
+
   // Add one layer for fb target
   // TODO(user): Add blit target layers
   for (auto hwc_layer : layer_set_) {
@@ -501,6 +503,11 @@ void HWCDisplay::BuildLayerStack() {
 #endif
     }
 
+    auto range = hwc_layer->GetLayerDataspace() & HAL_DATASPACE_RANGE_MASK;
+    if (range == HAL_DATASPACE_RANGE_EXTENDED) {
+      extended_range = true;
+    }
+
     working_primaries = WidestPrimaries(working_primaries,
                                         layer->input_buffer.color_metadata.colorPrimaries);
 
@@ -514,6 +521,7 @@ void HWCDisplay::BuildLayerStack() {
       }
     }
 
+    bool is_secure = false;
     const private_handle_t *handle =
         reinterpret_cast<const private_handle_t *>(layer->input_buffer.buffer_id);
     if (handle) {
@@ -521,21 +529,17 @@ void HWCDisplay::BuildLayerStack() {
         layer_stack_.flags.video_present = true;
       }
       // TZ Protected Buffer - L1
-      if (handle->flags & private_handle_t::PRIV_FLAGS_SECURE_BUFFER) {
-        layer_stack_.flags.secure_present = true;
-      }
       // Gralloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback
-      if (handle->flags & private_handle_t::PRIV_FLAGS_PROTECTED_BUFFER) {
+      if (handle->flags & private_handle_t::PRIV_FLAGS_PROTECTED_BUFFER ||
+          handle->flags & private_handle_t::PRIV_FLAGS_SECURE_BUFFER) {
         layer_stack_.flags.secure_present = true;
+        is_secure = true;
       }
-    }
-
-    if (layer->flags.skip) {
-      layer_stack_.flags.skip_present = true;
     }
 
     if (layer->input_buffer.flags.secure_display) {
       secure_display_active = true;
+      is_secure = true;
     }
 
     if (hwc_layer->IsSingleBuffered() &&
@@ -559,6 +563,14 @@ void HWCDisplay::BuildLayerStack() {
       // dont honor HDR when its handling is disabled
       layer->input_buffer.flags.hdr = true;
       layer_stack_.flags.hdr_present = true;
+    }
+
+    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !hdr_layer) {
+      layer->flags.skip = true;
+    }
+
+    if (layer->flags.skip) {
+      layer_stack_.flags.skip_present = true;
     }
 
     // TODO(user): Move to a getter if this is needed at other places
@@ -623,14 +635,12 @@ void HWCDisplay::BuildLayerStack() {
   // fall back frame composition to GPU when client target is 10bit
   // TODO(user): clarify the behaviour from Client(SF) and SDM Extn -
   // when handling 10bit FBT, as it would affect blending
-  if (Is10BitFormat(sdm_client_target->input_buffer.format)) {
+  if (Is10BitFormat(sdm_client_target->input_buffer.format) || extended_range) {
     // Must fall back to client composition
     MarkLayersForClientComposition();
   }
   // set secure display
   SetSecureDisplay(secure_display_active);
-
-  layer_stack_invalid_ = false;
 }
 
 void HWCDisplay::BuildSolidFillStack() {
@@ -740,9 +750,10 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode) {
     default:
       return HWC2::Error::BadParameter;
   }
+  int release_fence = -1;
 
   ATRACE_INT("SetPowerMode ", state);
-  DisplayError error = display_intf_->SetDisplayState(state);
+  DisplayError error = display_intf_->SetDisplayState(state, &release_fence);
   validated_ = false;
 
   if (error == kErrorNone) {
@@ -756,6 +767,20 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode) {
     return HWC2::Error::BadParameter;
   }
 
+  if (release_fence >= 0) {
+    for (auto hwc_layer : layer_set_) {
+      auto fence = hwc_layer->PopBackReleaseFence();
+      auto merged_fence = -1;
+      if (fence >= 0) {
+        merged_fence = sync_merge("sync_merge", release_fence, fence);
+        ::close(fence);
+      } else {
+        merged_fence = ::dup(release_fence);
+      }
+      hwc_layer->PushBackReleaseFence(merged_fence);
+    }
+    ::close(release_fence);
+  }
   return HWC2::Error::None;
 }
 
@@ -994,7 +1019,17 @@ DisplayError HWCDisplay::CECMessage(char *message) {
 
 DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
   switch (event) {
-    case kIdleTimeout:
+    case kIdleTimeout: {
+      SCOPE_LOCK(HWCSession::locker_[type_]);
+      if (pending_commit_) {
+        // If idle timeout event comes in between prepare
+        // and commit, drop it since device is not really
+        // idle.
+        return kErrorNotSupported;
+      }
+      validated_ = false;
+      break;
+    }
     case kThermalEvent:
     case kIdlePowerCollapse:
     case kPanelDeadEvent: {
@@ -1012,7 +1047,10 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
 HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out_num_requests) {
   layer_changes_.clear();
   layer_requests_.clear();
+  has_client_composition_ = false;
+
   if (shutdown_pending_) {
+    validated_ = false;
     return HWC2::Error::BadDisplay;
   }
 
@@ -1027,9 +1065,8 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
         // so that previous buffer and fences are released, and override the error.
         flush_ = true;
       }
+      validated_ = false;
       return HWC2::Error::BadDisplay;
-    } else {
-      validated_ = true;
     }
   } else {
     // Skip is not set
@@ -1053,6 +1090,9 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
     // Set SDM composition to HWC2 type in HWCLayer
     hwc_layer->SetComposition(composition);
     HWC2::Composition device_composition  = hwc_layer->GetDeviceSelectedCompositionType();
+    if (device_composition == HWC2::Composition::Client) {
+      has_client_composition_ = true;
+    }
     // Update the changes list only if the requested composition is different from SDM comp type
     // TODO(user): Take Care of other comptypes(BLIT)
     if (requested_composition != device_composition) {
@@ -1060,15 +1100,14 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
     }
     hwc_layer->ResetValidation();
   }
+
   client_target_->ResetValidation();
   *out_num_types = UINT32(layer_changes_.size());
   *out_num_requests = UINT32(layer_requests_.size());
-  skip_validate_ = false;
-  if (*out_num_types > 0) {
-    return HWC2::Error::HasChanges;
-  } else {
-    return HWC2::Error::None;
-  }
+  validate_state_ = kNormalValidate;
+  validated_ = true;
+  layer_stack_invalid_ = false;
+  return ((*out_num_types > 0) ? HWC2::Error::HasChanges : HWC2::Error::None);
 }
 
 HWC2::Error HWCDisplay::AcceptDisplayChanges() {
@@ -1127,7 +1166,7 @@ HWC2::Error HWCDisplay::GetReleaseFences(uint32_t *out_num_elements, hwc2_layer_
     for (uint32_t i = 0; i < *out_num_elements; i++, it++) {
       auto hwc_layer = *it;
       out_layers[i] = hwc_layer->GetId();
-      out_fences[i] = hwc_layer->PopReleaseFence();
+      out_fences[i] = hwc_layer->PopFrontReleaseFence();
     }
   } else {
     *out_num_elements = UINT32(layer_set_.size());
@@ -1212,10 +1251,6 @@ HWC2::Error HWCDisplay::GetHdrCapabilities(uint32_t *out_num_types, int32_t *out
 
 
 HWC2::Error HWCDisplay::CommitLayerStack(void) {
-  if (skip_validate_ && !CanSkipValidate()) {
-    validated_ = false;
-  }
-
   if (!validated_) {
     DLOGV_IF(kTagClient, "Display %d is not validated", id_);
     return HWC2::Error::NotValidated;
@@ -1261,7 +1296,7 @@ HWC2::Error HWCDisplay::CommitLayerStack(void) {
     }
   }
 
-  skip_validate_ = true;
+  validate_state_ = kSkipValidate;
   return HWC2::Error::None;
 }
 
@@ -1298,15 +1333,15 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(int32_t *out_retire_fence) {
       if (swap_interval_zero_ || layer->flags.single_buffer) {
         close(layer_buffer->release_fence_fd);
       } else if (layer->composition != kCompositionGPU) {
-        hwc_layer->PushReleaseFence(layer_buffer->release_fence_fd);
+        hwc_layer->PushBackReleaseFence(layer_buffer->release_fence_fd);
       } else {
-        hwc_layer->PushReleaseFence(-1);
+        hwc_layer->PushBackReleaseFence(-1);
       }
     } else {
       // In case of flush, we don't return an error to f/w, so it will get a release fence out of
       // the hwc_layer's release fence queue. We should push a -1 to preserve release fence
       // circulation semantics.
-      hwc_layer->PushReleaseFence(-1);
+      hwc_layer->PushBackReleaseFence(-1);
     }
 
     layer_buffer->release_fence_fd = -1;
@@ -1755,7 +1790,7 @@ HWC2::Error HWCDisplay::SetCursorPosition(hwc2_layer_t layer, int x, int y) {
   if (hwc_layer->GetDeviceSelectedCompositionType() != HWC2::Composition::Cursor) {
     return HWC2::Error::None;
   }
-  if (!skip_validate_ && validated_) {
+  if ((validate_state_ != kSkipValidate) && validated_) {
     // the device is currently in the middle of the validate/present sequence,
     // cannot set the Position(as per HWC2 spec)
     return HWC2::Error::NotValidated;
@@ -1814,6 +1849,7 @@ void HWCDisplay::MarkLayersForClientComposition() {
     Layer *layer = hwc_layer->GetSDMLayer();
     layer->flags.skip = true;
   }
+  layer_stack_.flags.skip_present = true;
 }
 
 void HWCDisplay::ApplyScanAdjustment(hwc_rect_t *display_frame) {
@@ -2062,8 +2098,7 @@ std::string HWCDisplay::Dump() {
 }
 
 bool HWCDisplay::CanSkipValidate() {
-  if (solid_fill_enable_) {
-    DLOGV_IF(kTagClient, "Solid fill is enabled. Returning false.");
+  if (!validated_ || solid_fill_enable_) {
     return false;
   }
 
@@ -2095,6 +2130,14 @@ bool HWCDisplay::CanSkipValidate() {
   }
 
   return true;
+}
+
+HWC2::Error HWCDisplay::GetValidateDisplayOutput(uint32_t *out_num_types,
+                                                 uint32_t *out_num_requests) {
+  *out_num_types = UINT32(layer_changes_.size());
+  *out_num_requests = UINT32(layer_requests_.size());
+
+  return ((*out_num_types > 0) ? HWC2::Error::HasChanges : HWC2::Error::None);
 }
 
 }  // namespace sdm

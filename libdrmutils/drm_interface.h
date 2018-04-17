@@ -267,6 +267,12 @@ enum struct DRMOps {
    */
   CRTC_SET_IDLE_TIMEOUT,
   /*
+   * Op: enables Secure UI enhancement feature.
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - enable/disable secure UI enhancement feature.
+   */
+  CRTC_SET_SECURE_UI_ENHANCEMENT,
+  /*
    * Op: Returns retire fence for this commit. Should be called after Commit() on
    * DRMAtomicReqInterface.
    * Arg: uint32_t - Connector ID

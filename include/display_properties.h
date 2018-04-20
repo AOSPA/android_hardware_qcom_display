@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2018, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -27,38 +27,18 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __DEBUG_H__
-#define __DEBUG_H__
+#ifndef __DISPLAY_PROPERTIES_H__
+#define __DISPLAY_PROPERTIES_H__
 
-#include <stdint.h>
-#include <core/sdm_types.h>
-#include <core/debug_interface.h>
-#include <core/display_interface.h>
-#include <display_properties.h>
+#define DISP_PROP_PREFIX                     "vendor.display."
+#define GRALLOC_PROP_PREFIX                  "vendor.gralloc."
+#define RO_DISP_PROP_PREFIX                  "ro.vendor.display."
+#define PERSIST_DISP_PROP_PREFIX             "persist.vendor.display."
 
-#define DLOG(tag, method, format, ...) Debug::Get()->method(tag, __CLASS__ "::%s: " format, \
-                                                            __FUNCTION__, ##__VA_ARGS__)
-
-#define DLOGE_IF(tag, format, ...) DLOG(tag, Error, format, ##__VA_ARGS__)
-#define DLOGW_IF(tag, format, ...) DLOG(tag, Warning, format, ##__VA_ARGS__)
-#define DLOGI_IF(tag, format, ...) DLOG(tag, Info, format, ##__VA_ARGS__)
-#define DLOGD_IF(tag, format, ...) DLOG(tag, Debug, format, ##__VA_ARGS__)
-#define DLOGV_IF(tag, format, ...) DLOG(tag, Verbose, format, ##__VA_ARGS__)
-
-#define DLOGE(format, ...) DLOGE_IF(kTagNone, format, ##__VA_ARGS__)
-#define DLOGD(format, ...) DLOGD_IF(kTagNone, format, ##__VA_ARGS__)
-#define DLOGW(format, ...) DLOGW_IF(kTagNone, format, ##__VA_ARGS__)
-#define DLOGI(format, ...) DLOGI_IF(kTagNone, format, ##__VA_ARGS__)
-#define DLOGV(format, ...) DLOGV_IF(kTagNone, format, ##__VA_ARGS__)
-
-#define DTRACE_BEGIN(custom_string) Debug::Get()->BeginTrace(__CLASS__, __FUNCTION__, custom_string)
-#define DTRACE_END() Debug::Get()->EndTrace()
-#define DTRACE_SCOPED() ScopeTracer <Debug> scope_tracer(__CLASS__, __FUNCTION__)
-
-#define DISP_PROP_PREFIX        "vendor.display."
-#define GRALLOC_PROP_PREFIX     "vendor.gralloc."
-#define DISPLAY_PROP(prop_name) DISP_PROP_PREFIX prop_name
-#define GRALLOC_PROP(prop_name) GRALLOC_PROP_PREFIX prop_name
+#define DISPLAY_PROP(prop_name)              DISP_PROP_PREFIX prop_name
+#define GRALLOC_PROP(prop_name)              GRALLOC_PROP_PREFIX prop_name
+#define RO_DISPLAY_PROP(prop_name)           RO_DISP_PROP_PREFIX prop_name
+#define PERSIST_DISPLAY_PROP(prop_name)      PERSIST_DISP_PROP_PREFIX prop_name
 
 #define COMPOSITION_MASK_PROP                DISPLAY_PROP("comp_mask")
 #define HDMI_CONFIG_INDEX_PROP               DISPLAY_PROP("hdmi_cfg_idx")
@@ -93,6 +73,7 @@
 #define DISABLE_SKIP_VALIDATE_PROP           DISPLAY_PROP("disable_skip_validate")
 #define HDMI_S3D_MODE_PROP                   DISPLAY_PROP("hdmi_s3d_mode")
 #define DISABLE_DESTINATION_SCALER_PROP      DISPLAY_PROP("disable_dest_scaler")
+#define ENABLE_PARTIAL_UPDATE_PROP           DISPLAY_PROP("enable_partial_update")
 #define DISABLE_UBWC_PROP                    GRALLOC_PROP("disable_ubwc")
 #define ENABLE_FB_UBWC_PROP                  GRALLOC_PROP("enable_fb_ubwc")
 #define MAP_FB_MEMORY_PROP                   GRALLOC_PROP("map_fb_memory")
@@ -105,69 +86,14 @@
 #define DISABLE_FB_CROPPING_PROP             DISPLAY_PROP("disable_fb_cropping")
 #define PRIORITIZE_CACHE_COMPOSITION_PROP    DISPLAY_PROP("prioritize_cache_comp")
 
-namespace sdm {
+#define DISABLE_HDR_LUT_GEN                  DISPLAY_PROP("disable_hdr_lut_gen")
+#define ENABLE_DEFAULT_COLOR_MODE            DISPLAY_PROP("enable_default_color_mode")
+#define DISABLE_HDR                          DISPLAY_PROP("disable_hdr")
 
-class Debug {
- public:
-  static inline void SetDebugHandler(DebugHandler *debug_handler) {
-    debug_.debug_handler_ = debug_handler;
-  }
-  static inline DebugHandler* Get() { return debug_.debug_handler_; }
-  static int GetSimulationFlag();
-  static bool GetExternalResolution(char *val);
-  static void GetIdleTimeoutMs(uint32_t *active_ms, uint32_t *inactive_ms);
-  static int GetBootAnimLayerCount();
-  static bool IsRotatorDownScaleDisabled();
-  static bool IsDecimationDisabled();
-  static int GetMaxPipesPerMixer(DisplayType display_type);
-  static int GetMaxUpscale();
-  static bool IsVideoModeEnabled();
-  static bool IsRotatorUbwcDisabled();
-  static bool IsRotatorSplitDisabled();
-  static bool IsScalarDisabled();
-  static bool IsUbwcTiledFrameBuffer();
-  static bool IsAVRDisabled();
-  static bool IsExtAnimDisabled();
-  static bool IsPartialSplitDisabled();
-  static bool IsSrcSplitPreferred();
-  static DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
-  static DisplayError GetReducedConfig(uint32_t *num_vig_pipes, uint32_t *num_dma_pipes);
-  static int GetExtMaxlayers();
-  static bool GetProperty(const char *property_name, char *value);
-  static bool SetProperty(const char *property_name, const char *value);
+#define HDR_CONFIG_PROP                      RO_DISPLAY_PROP("hdr.config")
+#define QDCM_PCC_TRANS_PROP                  DISPLAY_PROP("qdcm.pcc_for_trans")
+#define QDCM_DIAGONAL_MATRIXMODE_PROP        DISPLAY_PROP("qdcm.diagonal_matrix_mode")
+#define QDCM_DISABLE_TIMEOUT_PROP            PERSIST_DISPLAY_PROP("qdcm.disable_timeout")
 
- private:
-  Debug();
 
-  // By default, drop any log messages/traces coming from Display manager. It will be overriden by
-  // Display manager client when core is successfully initialized.
-  class DefaultDebugHandler : public DebugHandler {
-   public:
-    virtual void Error(DebugTag /*tag*/, const char */*format*/, ...) { }
-    virtual void Warning(DebugTag /*tag*/, const char */*format*/, ...) { }
-    virtual void Info(DebugTag /*tag*/, const char */*format*/, ...) { }
-    virtual void Debug(DebugTag /*tag*/, const char */*format*/, ...) { }
-    virtual void Verbose(DebugTag /*tag*/, const char */*format*/, ...) { }
-    virtual void BeginTrace(const char */*class_name*/, const char */*function_name*/,
-                            const char */*custom_string*/) { }
-    virtual void EndTrace() { }
-    virtual DisplayError GetProperty(const char */*property_name*/, int */*value*/) {
-      return kErrorNotSupported;
-    }
-    virtual DisplayError GetProperty(const char */*property_name*/, char */*value*/) {
-      return kErrorNotSupported;
-    }
-    virtual DisplayError SetProperty(const char */*property_name*/, const char */*value*/) {
-      return kErrorNotSupported;
-    }
-  };
-
-  DefaultDebugHandler default_debug_handler_;
-  DebugHandler *debug_handler_;
-  static Debug debug_;
-};
-
-}  // namespace sdm
-
-#endif  // __DEBUG_H__
-
+#endif  // __DISPLAY_PROPERTIES_H__

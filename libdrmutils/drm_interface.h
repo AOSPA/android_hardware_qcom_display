@@ -448,6 +448,7 @@ struct DRMPlaneTypeInfo {
   uint32_t cache_size;  // cache size in bytes for inline rotation support.
   QSEEDStepVersion qseed3_version;
   bool multirect_prop_present = false;
+  bool block_sec_ui = false;
 };
 
 // All DRM Planes as map<Plane_id , plane_type_info> listed from highest to lowest priority

@@ -432,6 +432,7 @@ struct DRMCrtcInfo {
   uint32_t max_dest_scaler_output_width = 0;
   uint32_t max_dest_scale_up = 1;
   uint32_t min_prefill_lines = 0;
+  bool concurrent_writeback = false;
 };
 
 enum struct DRMPlaneType {
@@ -517,7 +518,6 @@ struct DRMConnectorInfo {
   drm_panel_hdr_properties panel_hdr_prop;
   uint32_t transfer_time_us;
   drm_msm_ext_hdr_properties ext_hdr_prop;
-  bool concurrent_writeback;
 };
 
 /* Identifier token for a display */

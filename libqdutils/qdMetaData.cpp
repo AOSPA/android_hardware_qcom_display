@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -135,6 +135,13 @@ int setMetaDataVa(MetaData_t *data, DispParamType paramType,
         case SET_VIDEO_PERF_MODE:
             data->isVideoPerfMode = *((uint32_t *)param);
             break;
+        case SET_GRAPHICS_METADATA: {
+             GraphicsMetadata payload = *((GraphicsMetadata*)(param));
+             data->graphics_metadata.size = payload.size;
+             memcpy(data->graphics_metadata.data, payload.data,
+                    sizeof(data->graphics_metadata.data));
+             break;
+        }
         default:
             ALOGE("Unknown paramType %d", paramType);
             break;
@@ -272,6 +279,12 @@ int getMetaDataVa(MetaData_t *data, DispFetchParamType paramType,
         case GET_VIDEO_PERF_MODE:
             if (data->operation & SET_VIDEO_PERF_MODE) {
                 *((uint32_t *)param) = data->isVideoPerfMode;
+                ret = 0;
+            }
+            break;
+        case GET_GRAPHICS_METADATA:
+            if (data->operation & SET_GRAPHICS_METADATA) {
+                memcpy(param, data->graphics_metadata.data, sizeof(data->graphics_metadata.data));
                 ret = 0;
             }
             break;

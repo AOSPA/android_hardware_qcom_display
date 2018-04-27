@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2017 The  Linux Foundation. All rights reserved.
+ * Copyright (C) 2014, 2017-2018 The  Linux Foundation. All rights reserved.
  * Not a contribution
  * Copyright (C) 2008 The Android Open Source Project
  *
@@ -55,6 +55,7 @@ static struct light_state_t g_battery;
 static int g_last_backlight_mode = BRIGHTNESS_MODE_USER;
 static int g_attention = 0;
 static int rgb_brightness_ratio = 255;
+static bool g_has_persistence_node = false;
 
 char const*const RED_LED_FILE
         = "/sys/class/leds/red/brightness";
@@ -68,9 +69,6 @@ char const*const BLUE_LED_FILE
 char const*const LCD_FILE
         = "/sys/class/backlight/panel0-backlight/brightness";
 
-char const*const PERSISTENCE_FILE
-        = "/sys/class/graphics/fb0/msm_fb_persist_mode";
-
 char const*const BUTTON_FILE
         = "/sys/class/leds/button-backlight/brightness";
 
@@ -83,6 +81,8 @@ char const*const GREEN_BLINK_FILE
 char const*const BLUE_BLINK_FILE
         = "/sys/class/leds/blue/blink";
 
+char const*const PERSISTENCE_FILE
+        = "/sys/class/graphics/fb0/msm_fb_persist_mode";
 char const*const RED_ON_OFF_MS_FILE
         = "/sys/class/leds/red/on_off_ms";
 
@@ -201,27 +201,29 @@ set_light_backlight(struct light_device_t* dev,
 {
     int err = 0;
     int brightness = rgb_to_brightness(state);
-    unsigned int lpEnabled = state->brightnessMode ==
-            BRIGHTNESS_MODE_LOW_PERSISTENCE;
+    unsigned int lpEnabled =
+        state->brightnessMode == BRIGHTNESS_MODE_LOW_PERSISTENCE;
     if(!dev) {
         return -1;
     }
 
     pthread_mutex_lock(&g_lock);
-
-    // If we're not in lp mode and it has been enabled or if we are in lp mode
-    // and it has been disabled send an ioctl to the display with the update
-    if ((g_last_backlight_mode != state->brightnessMode && lpEnabled) ||
-        (!lpEnabled &&
-         g_last_backlight_mode == BRIGHTNESS_MODE_LOW_PERSISTENCE)) {
-        if ((err = write_int(PERSISTENCE_FILE, lpEnabled)) != 0) {
-            ALOGE("%s: Failed to write to %s: %s\n", __FUNCTION__,
-                   PERSISTENCE_FILE, strerror(errno));
+    // Toggle low persistence mode state
+    bool persistence_mode = ((g_last_backlight_mode != state->brightnessMode && lpEnabled) ||
+                            (!lpEnabled &&
+                            g_last_backlight_mode == BRIGHTNESS_MODE_LOW_PERSISTENCE));
+    bool cannot_handle_persistence = !g_has_persistence_node && persistence_mode;
+    if (g_has_persistence_node) {
+        if (persistence_mode) {
+            if ((err = write_int(PERSISTENCE_FILE, lpEnabled)) != 0) {
+                ALOGE("%s: Failed to write to %s: %s\n", __FUNCTION__,
+                       PERSISTENCE_FILE, strerror(errno));
+            }
+            if (lpEnabled != 0) {
+                brightness = DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS;
+            }
         }
-        if (lpEnabled != 0) {
-            // This is defined in BoardConfig.mk.
-            brightness = DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS;
-        }
+        g_last_backlight_mode = state->brightnessMode;
     }
 
     g_last_backlight_mode = state->brightnessMode;
@@ -231,7 +233,7 @@ set_light_backlight(struct light_device_t* dev,
     }
 
     pthread_mutex_unlock(&g_lock);
-    return err;
+    return cannot_handle_persistence ? -ENOSYS : err;
 }
 
 static int
@@ -370,9 +372,10 @@ static int open_lights(const struct hw_module_t* module, char const* name,
     int (*set_light)(struct light_device_t* dev,
             struct light_state_t const* state);
 
-    if (0 == strcmp(LIGHT_ID_BACKLIGHT, name))
+    if (0 == strcmp(LIGHT_ID_BACKLIGHT, name)) {
+        g_has_persistence_node = !access(PERSISTENCE_FILE, F_OK);
         set_light = set_light_backlight;
-    else if (0 == strcmp(LIGHT_ID_BATTERY, name))
+    } else if (0 == strcmp(LIGHT_ID_BATTERY, name))
         set_light = set_light_battery;
     else if (0 == strcmp(LIGHT_ID_NOTIFICATIONS, name))
         set_light = set_light_notifications;

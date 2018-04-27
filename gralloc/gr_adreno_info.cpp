@@ -81,11 +81,6 @@ AdrenoMemInfo::AdrenoMemInfo() {
     gfx_ubwc_disable_ = true;
   }
 
-  if ((property_get(MAP_FB_MEMORY_PROP, property, NULL) > 0) &&
-      (!strncmp(property, "1", PROPERTY_VALUE_MAX) ||
-       (!strncasecmp(property, "true", PROPERTY_VALUE_MAX)))) {
-    map_fb_ = true;
-  }
 }
 
 AdrenoMemInfo::~AdrenoMemInfo() {
@@ -98,12 +93,6 @@ void AdrenoMemInfo::AlignUnCompressedRGB(int width, int height, int format, int 
                                          unsigned int *aligned_w, unsigned int *aligned_h) {
   *aligned_w = (unsigned int)ALIGN(width, 32);
   *aligned_h = (unsigned int)ALIGN(height, 32);
-
-  // Don't add any additional padding if debug.gralloc.map_fb_memory
-  // is enabled
-  if (map_fb_) {
-    return;
-  }
 
   int bpp = 4;
   switch (format) {
@@ -192,10 +181,27 @@ ADRENOPIXELFORMAT AdrenoMemInfo::GetGpuPixelFormat(int hal_format) {
       return ADRENO_PIXELFORMAT_R8G8B8A8;
     case HAL_PIXEL_FORMAT_RGBX_8888:
       return ADRENO_PIXELFORMAT_R8G8B8X8;
+    case HAL_PIXEL_FORMAT_BGRA_8888:
+      return ADRENO_PIXELFORMAT_B8G8R8A8;
+    case HAL_PIXEL_FORMAT_RGB_888:
+      return ADRENO_PIXELFORMAT_R8G8B8;
     case HAL_PIXEL_FORMAT_RGB_565:
       return ADRENO_PIXELFORMAT_B5G6R5;
     case HAL_PIXEL_FORMAT_BGR_565:
       return ADRENO_PIXELFORMAT_R5G6B5;
+    case HAL_PIXEL_FORMAT_RGBA_5551:
+      return ADRENO_PIXELFORMAT_R5G5B5A1;
+    case HAL_PIXEL_FORMAT_RGBA_4444:
+      return ADRENO_PIXELFORMAT_R4G4B4A4;
+    case HAL_PIXEL_FORMAT_RGBA_1010102:
+       return ADRENO_PIXELFORMAT_R10G10B10A2_UNORM;
+    case HAL_PIXEL_FORMAT_RGBX_1010102:
+       return ADRENO_PIXELFORMAT_R10G10B10X2_UNORM;
+    case HAL_PIXEL_FORMAT_ABGR_2101010:
+       return ADRENO_PIXELFORMAT_A2B10G10R10_UNORM;
+    case HAL_PIXEL_FORMAT_RGBA_FP16:
+       return ADRENO_PIXELFORMAT_R16G16B16A16_FLOAT;
+
     case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:
       return ADRENO_PIXELFORMAT_NV12;
     case HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS:
@@ -207,14 +213,6 @@ ADRENOPIXELFORMAT AdrenoMemInfo::GetGpuPixelFormat(int hal_format) {
     case HAL_PIXEL_FORMAT_YCbCr_420_P010_UBWC:
     case HAL_PIXEL_FORMAT_YCbCr_420_P010_VENUS:
       return ADRENO_PIXELFORMAT_P010;
-    case HAL_PIXEL_FORMAT_RGBA_1010102:
-      return ADRENO_PIXELFORMAT_R10G10B10A2_UNORM;
-    case HAL_PIXEL_FORMAT_RGBX_1010102:
-      return ADRENO_PIXELFORMAT_R10G10B10X2_UNORM;
-    case HAL_PIXEL_FORMAT_ABGR_2101010:
-      return ADRENO_PIXELFORMAT_A2B10G10R10_UNORM;
-    case HAL_PIXEL_FORMAT_RGBA_FP16:
-      return ADRENO_PIXELFORMAT_R16G16B16A16_FLOAT;
     default:
       ALOGE("%s: No map for format: 0x%x", __FUNCTION__, hal_format);
       break;

@@ -1,8 +1,5 @@
 #Common headers
 display_top := $(call my-dir)
-display_config_version := $(shell \
-    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/config/1.1" ];\
-    then echo DISPLAY_CONFIG_1_1; fi)
 
 #Common C flags
 common_flags := -Wno-missing-field-initializers

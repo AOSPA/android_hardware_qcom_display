@@ -72,6 +72,10 @@ class HWCUEvent {
   bool init_done_ = false;
 };
 
+constexpr int32_t kDataspaceSaturationMatrixCount = 16;
+constexpr int32_t kDataspaceSaturationPropertyElements = 9;
+constexpr int32_t kPropertyMax = 256;
+
 class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qClient::BnQClient {
  public:
   struct HWCModuleMethods : public hw_module_methods_t {
@@ -153,7 +157,10 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static int32_t ValidateDisplay(hwc2_device_t *device, hwc2_display_t display,
                                  uint32_t *out_num_types, uint32_t *out_num_requests);
   static int32_t SetColorMode(hwc2_device_t *device, hwc2_display_t display,
-                              int32_t /*android_color_mode_t*/ int_mode);
+                              int32_t /*ColorMode*/ int_mode);
+  static int32_t SetColorModeWithRenderIntent(hwc2_device_t *device, hwc2_display_t display,
+                                              int32_t /*ColorMode*/ int_mode,
+                                              int32_t /*RenderIntent*/ int_render_intent);
   static int32_t SetColorTransform(hwc2_device_t *device, hwc2_display_t display,
                                    const float *matrix, int32_t /*android_color_transform_t*/ hint);
   static int32_t GetReadbackBufferAttributes(hwc2_device_t *device, hwc2_display_t display,
@@ -247,6 +254,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                           android::Parcel *output_parcel);
   android::status_t SetMixerResolution(const android::Parcel *input_parcel);
   android::status_t SetColorModeOverride(const android::Parcel *input_parcel);
+  android::status_t SetColorModeWithRenderIntentOverride(const android::Parcel *input_parcel);
 
   android::status_t SetColorModeById(const android::Parcel *input_parcel);
   android::status_t getComposerStatus();

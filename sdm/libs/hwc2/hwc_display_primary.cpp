@@ -328,7 +328,7 @@ HWC2::Error HWCDisplayPrimary::SetColorTransform(const float *matrix,
 HWC2::Error HWCDisplayPrimary::SetReadbackBuffer(const native_handle_t *buffer,
                                                  int32_t acquire_fence,
                                                  bool post_processed_output) {
-  const private_handle_t *handle = (private_handle_t *)buffer;
+  const private_handle_t *handle = reinterpret_cast<const private_handle_t *>(buffer);
   if (!handle || (handle->fd < 0)) {
     return HWC2::Error::BadParameter;
   }

@@ -28,6 +28,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <utils/debug.h>
+#include <vector>
 
 #include "hw_peripheral_drm.h"
 
@@ -77,7 +78,7 @@ DisplayError HWPeripheralDRM::Commit(HWLayers *hw_layers) {
   DisplayError error = HWDeviceDRM::Commit(hw_layers);
 
   if (cwb_config_.enabled && (error == kErrorNone)) {
-    PostCommitConcurrentWriteback(hw_layer_info);
+    PostCommitConcurrentWriteback(hw_layer_info.stack->output_buffer);
   }
 
   return error;
@@ -141,7 +142,7 @@ DisplayError HWPeripheralDRM::Flush() {
   return kErrorNone;
 }
 
-void HWPeripheralDRM::SetupConcurrentWriteback(HWLayersInfo &hw_layer_info, bool validate) {
+void HWPeripheralDRM::SetupConcurrentWriteback(const HWLayersInfo &hw_layer_info, bool validate) {
   bool enable = hw_resource_.has_concurrent_writeback && hw_layer_info.stack->output_buffer;
   if (!(enable || cwb_config_.enabled)) {
     return;
@@ -227,12 +228,12 @@ void HWPeripheralDRM::ConfigureConcurrentWriteback(LayerStack *layer_stack) {
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_OUTPUT_RECT, cwb_config_.token.conn_id, dst);
 }
 
-void HWPeripheralDRM::PostCommitConcurrentWriteback(HWLayersInfo &hw_layer_info) {
-  bool enabled = hw_resource_.has_concurrent_writeback && hw_layer_info.stack->output_buffer;
+void HWPeripheralDRM::PostCommitConcurrentWriteback(LayerBuffer *output_buffer) {
+  bool enabled = hw_resource_.has_concurrent_writeback && output_buffer;
 
   if (enabled) {
     // Get Concurrent Writeback fence
-    int *fence = &hw_layer_info.stack->output_buffer->release_fence_fd;
+    int *fence = &output_buffer->release_fence_fd;
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE, cwb_config_.token.conn_id, fence);
   } else {
     drm_mgr_intf_->UnregisterDisplay(cwb_config_.token);

@@ -358,8 +358,6 @@ int HWCDisplay::Init() {
     return -EINVAL;
   }
 
-  tone_mapper_ = new HWCToneMapper(buffer_allocator_);
-
   display_intf_->GetRefreshRateRange(&min_refresh_rate_, &max_refresh_rate_);
   current_refresh_rate_ = max_refresh_rate_;
 
@@ -385,9 +383,6 @@ int HWCDisplay::Deinit() {
     color_mode_->DeInit();
     delete color_mode_;
   }
-
-  delete tone_mapper_;
-  tone_mapper_ = nullptr;
 
   return 0;
 }
@@ -534,7 +529,7 @@ void HWCDisplay::BuildLayerStack() {
       layer_stack_.flags.hdr_present = true;
     }
 
-    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !hdr_layer) {
+    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure) {
       layer->flags.skip = true;
     }
 

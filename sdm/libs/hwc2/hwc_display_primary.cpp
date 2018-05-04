@@ -288,6 +288,10 @@ HWC2::Error HWCDisplayPrimary::SetColorModeWithRenderIntent(ColorMode mode, Rend
   }
   callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
   validated_ = false;
+  auto working_color_space = color_mode_->GetWorkingColorSpace();
+  working_primaries_ = working_color_space.first;
+  working_transfer_ = working_color_space.second;
+  current_color_mode_ = color_mode_->GetCurrentColorMode();
   return status;
 }
 

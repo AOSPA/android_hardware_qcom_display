@@ -50,24 +50,6 @@
 
 namespace sdm {
 
-// This weight function is needed because the color primaries are not sorted by gamut size
-static ColorPrimaries WidestPrimaries(ColorPrimaries p1, ColorPrimaries p2) {
-  int weight = 10;
-  int lp1 = p1, lp2 = p2;
-  // TODO(user) add weight to other wide gamut primaries
-  if (lp1 == ColorPrimaries_BT2020) {
-    lp1 *= weight;
-  }
-  if (lp1 == ColorPrimaries_BT2020) {
-    lp2 *= weight;
-  }
-  if (lp1 >= lp2) {
-    return p1;
-  } else {
-    return p2;
-  }
-}
-
 HWCColorMode::HWCColorMode(DisplayInterface *display_intf) : display_intf_(display_intf) {}
 
 HWC2::Error HWCColorMode::Init() {
@@ -289,6 +271,32 @@ HWC2::Error HWCColorMode::ApplyDefaultColorMode() {
   return SetColorModeWithRenderIntent(color_mode, RenderIntent::COLORIMETRIC);
 }
 
+PrimariesTransfer HWCColorMode::GetWorkingColorSpace() {
+  ColorPrimaries primaries = ColorPrimaries_BT709_5;
+  GammaTransfer transfer = Transfer_sRGB;
+  switch (current_color_mode_) {
+    case ColorMode::BT2100_PQ:
+      primaries = ColorPrimaries_BT2020;
+      transfer = Transfer_SMPTE_ST2084;
+      break;
+    case ColorMode::BT2100_HLG:
+      primaries = ColorPrimaries_BT2020;
+      transfer = Transfer_HLG;
+      break;
+    case ColorMode::DISPLAY_P3:
+      primaries = ColorPrimaries_DCIP3;
+      transfer = Transfer_sRGB;
+      break;
+    case ColorMode::NATIVE:
+    case ColorMode::SRGB:
+      break;
+    default:
+      DLOGW("Invalid color mode: %d", current_color_mode_);
+      break;
+  }
+  return std::make_pair(primaries, transfer);
+}
+
 void HWCColorMode::Dump(std::ostringstream* os) {
   *os << "color modes supported: \n";
   for (auto it : color_mode_map_) {
@@ -438,7 +446,6 @@ void HWCDisplay::BuildLayerStack() {
   layer_stack_ = LayerStack();
   display_rect_ = LayerRect();
   metadata_refresh_rate_ = 0;
-  auto working_primaries = ColorPrimaries_BT709_5;
   bool secure_display_active = false;
   layer_stack_.flags.animating = animating_;
 
@@ -461,19 +468,16 @@ void HWCDisplay::BuildLayerStack() {
       layer->flags.solid_fill = true;
     }
 
-    if (!hwc_layer->ValidateAndSetCSC()) {
-#ifdef FEATURE_WIDE_COLOR
+    // When the color mode is native, blend space is assumed to be sRGB and all layers
+    // are assumed to be handled regardless of color space
+    if (!hwc_layer->ValidateAndSetCSC() && current_color_mode_ != ColorMode::NATIVE) {
       layer->flags.skip = true;
-#endif
     }
 
     auto range = hwc_layer->GetLayerDataspace() & HAL_DATASPACE_RANGE_MASK;
     if (range == HAL_DATASPACE_RANGE_EXTENDED) {
       extended_range = true;
     }
-
-    working_primaries = WidestPrimaries(working_primaries,
-                                        layer->input_buffer.color_metadata.colorPrimaries);
 
     // set default composition as GPU for SDM
     layer->composition = kCompositionGPU;
@@ -523,8 +527,12 @@ void HWCDisplay::BuildLayerStack() {
     bool hdr_layer = layer->input_buffer.color_metadata.colorPrimaries == ColorPrimaries_BT2020 &&
                      (layer->input_buffer.color_metadata.transfer == Transfer_SMPTE_ST2084 ||
                      layer->input_buffer.color_metadata.transfer == Transfer_HLG);
-    if (hdr_layer && !disable_hdr_handling_ && color_mode_count) {
-      // dont honor HDR when its handling is disabled
+    if (hdr_layer && !disable_hdr_handling_  &&
+        current_color_mode_ != ColorMode::NATIVE) {
+      // Dont honor HDR when its handling is disabled
+      // Also, when the color mode is native, it implies that
+      // SF has not correctly set the mode to BT2100_PQ in the presence of an HDR layer
+      // In such cases, we should not handle HDR as the HDR mode isn't applied
       layer->input_buffer.flags.hdr = true;
       layer_stack_.flags.hdr_present = true;
     }
@@ -575,19 +583,20 @@ void HWCDisplay::BuildLayerStack() {
     layer_stack_.layers.push_back(layer);
   }
 
-
-#ifdef FEATURE_WIDE_COLOR
-  for (auto hwc_layer : layer_set_) {
-    auto layer = hwc_layer->GetSDMLayer();
-    if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries &&
-        !hwc_layer->SupportLocalConversion(working_primaries)) {
-      layer->flags.skip = true;
-    }
-    if (layer->flags.skip) {
-      layer_stack_.flags.skip_present = true;
+  // When the color mode is native, blend space is assumed to be sRGB and all layers
+  // are assumed to be handled regardless of color space
+  if (current_color_mode_ != ColorMode::NATIVE) {
+    for (auto hwc_layer : layer_set_) {
+      auto layer = hwc_layer->GetSDMLayer();
+      if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries_ &&
+          !hwc_layer->SupportLocalConversion(working_primaries_)) {
+        layer->flags.skip = true;
+      }
+      if (layer->flags.skip) {
+        layer_stack_.flags.skip_present = true;
+      }
     }
   }
-#endif
 
   // TODO(user): Set correctly when SDM supports geometry_changes as bitmask
   layer_stack_.flags.geometry_changed = UINT32(geometry_changes_ > 0);

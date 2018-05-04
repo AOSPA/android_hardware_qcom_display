@@ -71,6 +71,8 @@ class HWCColorMode {
   HWC2::Error SetColorModeById(int32_t color_mode_id);
   HWC2::Error SetColorTransform(const float *matrix, android_color_transform_t hint);
   HWC2::Error RestoreColorTransform();
+  PrimariesTransfer  GetWorkingColorSpace();
+  ColorMode GetCurrentColorMode() { return current_color_mode_; }
 
  private:
   static const uint32_t kColorTransformMatrixCount = 16;
@@ -333,6 +335,9 @@ class HWCDisplay : public DisplayEventHandler {
   uint32_t display_config_ = 0;
   bool config_pending_ = false;
   bool pending_commit_ = false;
+  ColorMode current_color_mode_ = ColorMode::NATIVE;
+  ColorPrimaries working_primaries_ = ColorPrimaries_BT709_5;
+  GammaTransfer working_transfer_ = Transfer_sRGB;
 
  private:
   void DumpInputBuffers(void);

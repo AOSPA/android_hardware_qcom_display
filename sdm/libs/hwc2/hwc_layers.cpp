@@ -822,7 +822,6 @@ bool HWCLayer::ValidateAndSetCSC() {
 
   LayerBuffer *layer_buffer = &layer_->input_buffer;
   bool use_color_metadata = true;
-#ifdef FEATURE_WIDE_COLOR
   ColorMetaData csc = {};
   if (dataspace_ != HAL_DATASPACE_UNKNOWN) {
     use_color_metadata = false;
@@ -835,7 +834,6 @@ bool HWCLayer::ValidateAndSetCSC() {
     layer_buffer->color_metadata.colorPrimaries = csc.colorPrimaries;
     layer_buffer->color_metadata.range = csc.range;
   }
-#endif
 
   if (IsBT2020(layer_buffer->color_metadata.colorPrimaries)) {
      // android_dataspace_t doesnt support mastering display and light levels

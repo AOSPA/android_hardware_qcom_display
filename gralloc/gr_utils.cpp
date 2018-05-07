@@ -63,6 +63,9 @@ bool IsYuvFormat(int format) {
     case HAL_PIXEL_FORMAT_YCbCr_420_TP10_UBWC:
     case HAL_PIXEL_FORMAT_YCbCr_420_P010_UBWC:
     case HAL_PIXEL_FORMAT_YCbCr_420_P010_VENUS:
+    // Below formats used by camera and VR
+    case HAL_PIXEL_FORMAT_BLOB:
+    case HAL_PIXEL_FORMAT_RAW_OPAQUE:
       return true;
     default:
       return false;

@@ -20,7 +20,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := lights.c
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_HEADER_LIBRARIES := libhardware_headers
-LOCAL_SHARED_LIBRARIES := liblog
+LOCAL_SHARED_LIBRARIES := liblog libcutils
 LOCAL_CFLAGS := -DLOG_TAG=\"qdlights\"
 ifeq ($(LLVM_SA), true)
     LOCAL_CFLAGS += --compile-and-analyze --analyzer-perf --analyzer-Werror

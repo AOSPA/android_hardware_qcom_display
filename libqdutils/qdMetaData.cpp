@@ -120,9 +120,7 @@ int setMetaDataVa(MetaData_t *data, DispParamType paramType,
             data->vtTimeStamp = *((uint64_t *)param);
             break;
         case COLOR_METADATA:
-#ifdef USE_COLOR_METADATA
             data->color = *((ColorMetaData *)param);
-#endif
             break;
         case SET_UBWC_CR_STATS_INFO: {
              struct UBWCStats* stats = (struct UBWCStats*)param;
@@ -259,12 +257,10 @@ int getMetaDataVa(MetaData_t *data, DispFetchParamType paramType,
             }
             break;
         case GET_COLOR_METADATA:
-#ifdef USE_COLOR_METADATA
             if (data->operation & COLOR_METADATA) {
                 *((ColorMetaData *)param) = data->color;
                 ret = 0;
             }
-#endif
             break;
         case GET_UBWC_CR_STATS_INFO:
             if (data->operation & SET_UBWC_CR_STATS_INFO) {

@@ -289,8 +289,8 @@ enum BufferLayout {
 };
 
 class LayerBufferObject {
-public:
-  virtual ~LayerBufferObject() {};
+ public:
+  virtual ~LayerBufferObject() {}
 };
 
 }  // namespace sdm

@@ -224,7 +224,7 @@ static void GetDRMFormat(LayerBufferFormat format, uint32_t *drm_format,
 
 class FrameBufferObject : public LayerBufferObject {
  public:
-  FrameBufferObject(uint32_t fb_id) : fb_id_(fb_id) {
+  explicit FrameBufferObject(uint32_t fb_id) : fb_id_(fb_id) {
   }
 
   ~FrameBufferObject() {
@@ -234,7 +234,7 @@ class FrameBufferObject : public LayerBufferObject {
     if (ret < 0) {
       DLOGE("Removing fb_id %d failed with error %d", fb_id_, errno);
     }
-  };
+  }
   uint32_t GetFbId() { return fb_id_; }
 
  private:

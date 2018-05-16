@@ -50,24 +50,6 @@
 
 namespace sdm {
 
-// This weight function is needed because the color primaries are not sorted by gamut size
-static ColorPrimaries WidestPrimaries(ColorPrimaries p1, ColorPrimaries p2) {
-  int weight = 10;
-  int lp1 = p1, lp2 = p2;
-  // TODO(user) add weight to other wide gamut primaries
-  if (lp1 == ColorPrimaries_BT2020) {
-    lp1 *= weight;
-  }
-  if (lp1 == ColorPrimaries_BT2020) {
-    lp2 *= weight;
-  }
-  if (lp1 >= lp2) {
-    return p1;
-  } else {
-    return p2;
-  }
-}
-
 HWCColorMode::HWCColorMode(DisplayInterface *display_intf) : display_intf_(display_intf) {}
 
 HWC2::Error HWCColorMode::Init() {
@@ -76,47 +58,73 @@ HWC2::Error HWCColorMode::Init() {
 }
 
 HWC2::Error HWCColorMode::DeInit() {
-  color_mode_transform_map_.clear();
+  color_mode_map_.clear();
   return HWC2::Error::None;
 }
 
 uint32_t HWCColorMode::GetColorModeCount() {
-  uint32_t count = UINT32(color_mode_transform_map_.size());
+  uint32_t count = UINT32(color_mode_map_.size());
   DLOGI("Supported color mode count = %d", count);
-
   return std::max(1U, count);
 }
 
-HWC2::Error HWCColorMode::GetColorModes(uint32_t *out_num_modes,
-                                        android_color_mode_t *out_modes) {
-  auto it = color_mode_transform_map_.begin();
-  *out_num_modes = std::min(*out_num_modes, UINT32(color_mode_transform_map_.size()));
+uint32_t HWCColorMode::GetRenderIntentCount(ColorMode mode) {
+  uint32_t count = UINT32(color_mode_map_[mode].size());
+  DLOGI("mode: %d supported rendering intent count = %d", mode, count);
+  return std::max(1U, count);
+}
+
+HWC2::Error HWCColorMode::GetColorModes(uint32_t *out_num_modes, ColorMode *out_modes) {
+  auto it = color_mode_map_.begin();
+  *out_num_modes = std::min(*out_num_modes, UINT32(color_mode_map_.size()));
   for (uint32_t i = 0; i < *out_num_modes; it++, i++) {
     out_modes[i] = it->first;
-    DLOGI("Supports color mode[%d] = %d", i, it->first);
+    DLOGI("Color mode = %d is supported", out_modes[i]);
   }
-
   return HWC2::Error::None;
 }
 
-HWC2::Error HWCColorMode::SetColorMode(android_color_mode_t mode) {
+HWC2::Error HWCColorMode::GetRenderIntents(ColorMode mode, uint32_t *out_num_intents,
+                                           RenderIntent *out_intents) {
+  if (color_mode_map_.find(mode) == color_mode_map_.end()) {
+    return HWC2::Error::BadParameter;
+  }
+  auto it = color_mode_map_[mode].begin();
+  *out_num_intents = std::min(*out_num_intents, UINT32(color_mode_map_[mode].size()));
+  for (uint32_t i = 0; i < *out_num_intents; it++, i++) {
+    out_intents[i] = it->first;
+    DLOGI("Color mode = %d is supported with render intent = %d", mode, out_intents[i]);
+  }
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCColorMode::SetColorModeWithRenderIntent(ColorMode mode, RenderIntent intent) {
   DTRACE_SCOPED();
-  // first mode in 2D matrix is the mode (identity)
-  if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_P3) {
+  if (mode < ColorMode::NATIVE || mode > ColorMode::BT2100_HLG) {
     DLOGE("Could not find mode: %d", mode);
     return HWC2::Error::BadParameter;
   }
-  if (color_mode_transform_map_.find(mode) == color_mode_transform_map_.end()) {
+  if (color_mode_map_.find(mode) == color_mode_map_.end()) {
+    return HWC2::Error::Unsupported;
+  }
+  if (color_mode_map_[mode].find(intent) == color_mode_map_[mode].end()) {
     return HWC2::Error::Unsupported;
   }
 
-  auto status = HandleColorModeTransform(mode, current_color_transform_, color_matrix_);
-  if (status != HWC2::Error::None) {
-    DLOGE("failed for mode = %d", mode);
+  auto mode_string = color_mode_map_[mode][intent];
+  DisplayError error = display_intf_->SetColorMode(mode_string);
+  if (error != kErrorNone) {
+    DLOGE("failed for mode = %d intent = %d name = %s", mode, intent, mode_string.c_str());
+    return HWC2::Error::Unsupported;
   }
+  // The mode does not have the PCC configured, restore the transform
+  RestoreColorTransform();
 
-  DLOGV_IF(kTagClient, "Color mode %d successfully set.", mode);
-  return status;
+  current_color_mode_ = mode;
+  current_render_intent_ = intent;
+  DLOGV_IF(kTagClient, "Successfully applied mode = %d intent = %d name = %s", mode, intent,
+           mode_string.c_str());
+  return HWC2::Error::None;
 }
 
 HWC2::Error HWCColorMode::SetColorModeById(int32_t color_mode_id) {
@@ -139,80 +147,42 @@ HWC2::Error HWCColorMode::RestoreColorTransform() {
   return HWC2::Error::None;
 }
 
-HWC2::Error HWCColorMode::SetColorTransform(const float *matrix, android_color_transform_t hint) {
+HWC2::Error HWCColorMode::SetColorTransform(const float *matrix,
+                                            android_color_transform_t /*hint*/) {
   DTRACE_SCOPED();
+  auto status = HWC2::Error::None;
   double color_matrix[kColorTransformMatrixCount] = {0};
   CopyColorTransformMatrix(matrix, color_matrix);
 
-  auto status = HandleColorModeTransform(current_color_mode_, hint, color_matrix);
-  if (status != HWC2::Error::None) {
-    DLOGE("failed for hint = %d", hint);
+  DisplayError error = display_intf_->SetColorTransform(kColorTransformMatrixCount, color_matrix);
+  if (error != kErrorNone) {
+    DLOGE("Failed to set Color Transform Matrix");
+    status = HWC2::Error::Unsupported;
   }
-
+  CopyColorTransformMatrix(matrix, color_matrix_);
   return status;
 }
 
-HWC2::Error HWCColorMode::HandleColorModeTransform(android_color_mode_t mode,
-                                                   android_color_transform_t hint,
-                                                   const double *matrix) {
-  android_color_transform_t transform_hint = hint;
-  std::string color_mode_transform;
-  bool use_matrix = false;
-  if (hint != HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX) {
-    // if the mode + transfrom request from HWC matches one mode in SDM, set that
-    if (color_mode_transform.empty()) {
-      transform_hint = HAL_COLOR_TRANSFORM_IDENTITY;
-      use_matrix = true;
-    } else {
-      color_mode_transform = color_mode_transform_map_[mode][hint];
-    }
-  } else {
-    use_matrix = true;
-    transform_hint = HAL_COLOR_TRANSFORM_IDENTITY;
+void HWCColorMode::FindRenderIntent(const ColorMode &mode, const std::string &mode_string) {
+  auto intent = RenderIntent::COLORIMETRIC;
+  if (mode_string.find("enhanced") != std::string::npos) {
+    intent = RenderIntent::ENHANCE;
   }
-
-  // if the mode count is 1, then only native mode is supported, so just apply matrix w/o
-  // setting mode
-  if (color_mode_transform_map_.size() > 1U && current_color_mode_ != mode) {
-    color_mode_transform = color_mode_transform_map_[mode][transform_hint];
-    DisplayError error = display_intf_->SetColorMode(color_mode_transform);
-    if (error != kErrorNone) {
-      DLOGE("Failed to set color_mode  = %d transform_hint = %d", mode, hint);
-      // failure to force client composition
-      return HWC2::Error::Unsupported;
-    }
-    DLOGI("Setting Color Mode = %d Transform Hint = %d Success", mode, hint);
-  }
-
-  if (use_matrix) {
-    DisplayError error = display_intf_->SetColorTransform(kColorTransformMatrixCount, matrix);
-    if (error != kErrorNone) {
-      DLOGE("Failed to set Color Transform Matrix");
-      // failure to force client composition
-      return HWC2::Error::Unsupported;
-    }
-  }
-
-  current_color_mode_ = mode;
-  current_color_transform_ = hint;
-  CopyColorTransformMatrix(matrix, color_matrix_);
-
-  return HWC2::Error::None;
+  color_mode_map_[mode][intent] = mode_string;
 }
 
 void HWCColorMode::PopulateColorModes() {
   uint32_t color_mode_count = 0;
-  // SDM returns modes which is string combination of mode + transform.
+  // SDM returns modes which have attributes defining mode and rendering intent
   DisplayError error = display_intf_->GetColorModeCount(&color_mode_count);
   if (error != kErrorNone || (color_mode_count == 0)) {
     DLOGW("GetColorModeCount failed, use native color mode");
-    PopulateTransform(HAL_COLOR_MODE_NATIVE, "native", "identity");
+    color_mode_map_[ColorMode::NATIVE][RenderIntent::COLORIMETRIC] = "hal_native_identity";
     return;
   }
 
   DLOGV_IF(kTagClient, "Color Modes supported count = %d", color_mode_count);
 
-  const std::string color_transform = "identity";
   std::vector<std::string> color_modes(color_mode_count);
   error = display_intf_->GetColorModes(&color_mode_count, &color_modes);
   for (uint32_t i = 0; i < color_mode_count; i++) {
@@ -220,7 +190,7 @@ void HWCColorMode::PopulateColorModes() {
     DLOGV_IF(kTagClient, "Color Mode[%d] = %s", i, mode_string.c_str());
     AttrVal attr;
     error = display_intf_->GetColorModeAttr(mode_string, &attr);
-    std::string color_gamut, dynamic_range, pic_quality;
+    std::string color_gamut = kNative, dynamic_range = kSdr, pic_quality = kStandard;
     if (!attr.empty()) {
       for (auto &it : attr) {
         if (it.first.find(kColorGamutAttribute) != std::string::npos) {
@@ -234,76 +204,52 @@ void HWCColorMode::PopulateColorModes() {
 
       DLOGV_IF(kTagClient, "color_gamut : %s, dynamic_range : %s, pic_quality : %s",
                color_gamut.c_str(), dynamic_range.c_str(), pic_quality.c_str());
-
-      if (dynamic_range == kHdr) {
-        continue;
+      if (color_gamut == kNative) {
+        color_mode_map_[ColorMode::NATIVE][RenderIntent::COLORIMETRIC] = mode_string;
       }
-      if ((color_gamut == kNative) &&
-          (pic_quality.empty() || pic_quality == kStandard)) {
-        PopulateTransform(HAL_COLOR_MODE_NATIVE, mode_string, color_transform);
-      } else if ((color_gamut == kSrgb) &&
-                 (pic_quality.empty() || pic_quality == kStandard)) {
-        PopulateTransform(HAL_COLOR_MODE_SRGB, mode_string, color_transform);
-      } else if ((color_gamut == kDcip3) &&
-                 (pic_quality.empty() || pic_quality == kStandard)) {
-        PopulateTransform(HAL_COLOR_MODE_DISPLAY_P3, mode_string, color_transform);
-      } else if ((color_gamut == kDisplayP3) &&
-                 (pic_quality.empty() || pic_quality == kStandard)) {
-        PopulateTransform(HAL_COLOR_MODE_DISPLAY_P3, mode_string, color_transform);
-      }
-    }
 
-    // Look at the mode name, if no color gamut is found
-    if (color_gamut.empty()) {
+      if (color_gamut == kSrgb && dynamic_range == kSdr) {
+        if (pic_quality == kStandard) {
+          color_mode_map_[ColorMode::SRGB][RenderIntent::COLORIMETRIC] = mode_string;
+        }
+        if (pic_quality == kEnhanced) {
+          color_mode_map_[ColorMode::SRGB][RenderIntent::ENHANCE] = mode_string;
+        }
+      }
+
+      if (color_gamut == kDcip3 && dynamic_range == kSdr) {
+        if (pic_quality == kStandard) {
+          color_mode_map_[ColorMode::DISPLAY_P3][RenderIntent::COLORIMETRIC] = mode_string;
+        }
+        if (pic_quality == kEnhanced) {
+          color_mode_map_[ColorMode::DISPLAY_P3][RenderIntent::ENHANCE] = mode_string;
+        }
+      }
+
+      if (pic_quality == kStandard && dynamic_range == kHdr) {
+        color_mode_map_[ColorMode::BT2100_PQ][RenderIntent::TONE_MAP_COLORIMETRIC] = mode_string;
+        color_mode_map_[ColorMode::BT2100_HLG][RenderIntent::TONE_MAP_COLORIMETRIC] = mode_string;
+      }
+    } else {
+      // Look at the mode names, if no attributes are found
       if (mode_string.find("hal_native") != std::string::npos) {
-        PopulateTransform(HAL_COLOR_MODE_NATIVE, mode_string, mode_string);
-      } else if (mode_string.find("hal_srgb") != std::string::npos) {
-        PopulateTransform(HAL_COLOR_MODE_SRGB, mode_string, mode_string);
-      } else if (mode_string.find("hal_adobe") != std::string::npos) {
-        PopulateTransform(HAL_COLOR_MODE_ADOBE_RGB, mode_string, mode_string);
-      } else if (mode_string.find("hal_dci_p3") != std::string::npos) {
-        PopulateTransform(HAL_COLOR_MODE_DCI_P3, mode_string, mode_string);
-      } else if (mode_string.find("hal_display_p3") != std::string::npos) {
-        PopulateTransform(HAL_COLOR_MODE_DISPLAY_P3, mode_string, mode_string);
+        color_mode_map_[ColorMode::NATIVE][RenderIntent::COLORIMETRIC] = mode_string;
       }
     }
-  }
-}
-
-void HWCColorMode::PopulateTransform(const android_color_mode_t &mode,
-                                     const std::string &color_mode,
-                                     const std::string &color_transform) {
-  // TODO(user): Check the substring from QDCM
-  if (color_transform.find("identity") != std::string::npos) {
-    color_mode_transform_map_[mode][HAL_COLOR_TRANSFORM_IDENTITY] = color_mode;
-  } else if (color_transform.find("arbitrary") != std::string::npos) {
-    // no color mode for arbitrary
-  } else if (color_transform.find("inverse") != std::string::npos) {
-    color_mode_transform_map_[mode][HAL_COLOR_TRANSFORM_VALUE_INVERSE] = color_mode;
-  } else if (color_transform.find("grayscale") != std::string::npos) {
-    color_mode_transform_map_[mode][HAL_COLOR_TRANSFORM_GRAYSCALE] = color_mode;
-  } else if (color_transform.find("correct_protonopia") != std::string::npos) {
-    color_mode_transform_map_[mode][HAL_COLOR_TRANSFORM_CORRECT_PROTANOPIA] = color_mode;
-  } else if (color_transform.find("correct_deuteranopia") != std::string::npos) {
-    color_mode_transform_map_[mode][HAL_COLOR_TRANSFORM_CORRECT_DEUTERANOPIA] = color_mode;
-  } else if (color_transform.find("correct_tritanopia") != std::string::npos) {
-    color_mode_transform_map_[mode][HAL_COLOR_TRANSFORM_CORRECT_TRITANOPIA] = color_mode;
-  } else {
-    color_mode_transform_map_[mode][HAL_COLOR_TRANSFORM_IDENTITY] = color_mode;
   }
 }
 
 HWC2::Error HWCColorMode::ApplyDefaultColorMode() {
-  android_color_mode_t color_mode = HAL_COLOR_MODE_NATIVE;
-  if (color_mode_transform_map_.size() == 1U) {
-    color_mode = color_mode_transform_map_.begin()->first;
-  } else if (color_mode_transform_map_.size() > 1U) {
+  auto color_mode = ColorMode::NATIVE;
+  if (color_mode_map_.size() == 1U) {
+    color_mode = color_mode_map_.begin()->first;
+  } else if (color_mode_map_.size() > 1U) {
     std::string default_color_mode;
     bool found = false;
     DisplayError error = display_intf_->GetDefaultColorMode(&default_color_mode);
     if (error == kErrorNone) {
       // get the default mode corresponding android_color_mode_t
-      for (auto &it_mode : color_mode_transform_map_) {
+      for (auto &it_mode : color_mode_map_) {
         for (auto &it : it_mode.second) {
           if (it.second == default_color_mode) {
             found = true;
@@ -317,20 +263,51 @@ HWC2::Error HWCColorMode::ApplyDefaultColorMode() {
       }
     }
 
-    // return the first andrid_color_mode_t when we encouter if not found
+    // return the first color mode we encounter if not found
     if (!found) {
-      color_mode = color_mode_transform_map_.begin()->first;
+      color_mode = color_mode_map_.begin()->first;
     }
   }
-  return SetColorMode(color_mode);
+  return SetColorModeWithRenderIntent(color_mode, RenderIntent::COLORIMETRIC);
+}
+
+PrimariesTransfer HWCColorMode::GetWorkingColorSpace() {
+  ColorPrimaries primaries = ColorPrimaries_BT709_5;
+  GammaTransfer transfer = Transfer_sRGB;
+  switch (current_color_mode_) {
+    case ColorMode::BT2100_PQ:
+      primaries = ColorPrimaries_BT2020;
+      transfer = Transfer_SMPTE_ST2084;
+      break;
+    case ColorMode::BT2100_HLG:
+      primaries = ColorPrimaries_BT2020;
+      transfer = Transfer_HLG;
+      break;
+    case ColorMode::DISPLAY_P3:
+      primaries = ColorPrimaries_DCIP3;
+      transfer = Transfer_sRGB;
+      break;
+    case ColorMode::NATIVE:
+    case ColorMode::SRGB:
+      break;
+    default:
+      DLOGW("Invalid color mode: %d", current_color_mode_);
+      break;
+  }
+  return std::make_pair(primaries, transfer);
 }
 
 void HWCColorMode::Dump(std::ostringstream* os) {
-  *os << "color modes supported: ";
-  for (auto it : color_mode_transform_map_) {
-    *os << it.first <<" ";
+  *os << "color modes supported: \n";
+  for (auto it : color_mode_map_) {
+    *os << "mode: " << static_cast<int32_t>(it.first) << " RIs { ";
+    for (auto rit : color_mode_map_[it.first]) {
+      *os << static_cast<int32_t>(rit.first) << " ";
+    }
+    *os << "} \n";
   }
-  *os << "current mode: " << current_color_mode_ << std::endl;
+  *os << "current mode: " << static_cast<uint32_t>(current_color_mode_) << std::endl;
+  *os << "current render_intent: " << static_cast<uint32_t>(current_render_intent_) << std::endl;
   *os << "current transform: ";
   for (uint32_t i = 0; i < kColorTransformMatrixCount; i++) {
     if (i % 4 == 0) {
@@ -389,8 +366,6 @@ int HWCDisplay::Init() {
     return -EINVAL;
   }
 
-  tone_mapper_ = new HWCToneMapper(buffer_allocator_);
-
   display_intf_->GetRefreshRateRange(&min_refresh_rate_, &max_refresh_rate_);
   current_refresh_rate_ = max_refresh_rate_;
 
@@ -416,9 +391,6 @@ int HWCDisplay::Deinit() {
     color_mode_->DeInit();
     delete color_mode_;
   }
-
-  delete tone_mapper_;
-  tone_mapper_ = nullptr;
 
   return 0;
 }
@@ -474,7 +446,6 @@ void HWCDisplay::BuildLayerStack() {
   layer_stack_ = LayerStack();
   display_rect_ = LayerRect();
   metadata_refresh_rate_ = 0;
-  auto working_primaries = ColorPrimaries_BT709_5;
   bool secure_display_active = false;
   layer_stack_.flags.animating = animating_;
 
@@ -497,19 +468,16 @@ void HWCDisplay::BuildLayerStack() {
       layer->flags.solid_fill = true;
     }
 
-    if (!hwc_layer->ValidateAndSetCSC()) {
-#ifdef FEATURE_WIDE_COLOR
+    // When the color mode is native, blend space is assumed to be sRGB and all layers
+    // are assumed to be handled regardless of color space
+    if (!hwc_layer->ValidateAndSetCSC() && current_color_mode_ != ColorMode::NATIVE) {
       layer->flags.skip = true;
-#endif
     }
 
     auto range = hwc_layer->GetLayerDataspace() & HAL_DATASPACE_RANGE_MASK;
     if (range == HAL_DATASPACE_RANGE_EXTENDED) {
       extended_range = true;
     }
-
-    working_primaries = WidestPrimaries(working_primaries,
-                                        layer->input_buffer.color_metadata.colorPrimaries);
 
     // set default composition as GPU for SDM
     layer->composition = kCompositionGPU;
@@ -559,13 +527,17 @@ void HWCDisplay::BuildLayerStack() {
     bool hdr_layer = layer->input_buffer.color_metadata.colorPrimaries == ColorPrimaries_BT2020 &&
                      (layer->input_buffer.color_metadata.transfer == Transfer_SMPTE_ST2084 ||
                      layer->input_buffer.color_metadata.transfer == Transfer_HLG);
-    if (hdr_layer && !disable_hdr_handling_ && color_mode_count) {
-      // dont honor HDR when its handling is disabled
+    if (hdr_layer && !disable_hdr_handling_  &&
+        current_color_mode_ != ColorMode::NATIVE) {
+      // Dont honor HDR when its handling is disabled
+      // Also, when the color mode is native, it implies that
+      // SF has not correctly set the mode to BT2100_PQ in the presence of an HDR layer
+      // In such cases, we should not handle HDR as the HDR mode isn't applied
       layer->input_buffer.flags.hdr = true;
       layer_stack_.flags.hdr_present = true;
     }
 
-    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !hdr_layer) {
+    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure) {
       layer->flags.skip = true;
     }
 
@@ -596,11 +568,10 @@ void HWCDisplay::BuildLayerStack() {
       layer->src_rect.bottom = layer_buffer->height;
     }
 
-    if (layer->frame_rate > metadata_refresh_rate_) {
+    if (hwc_layer->HasMetaDataRefreshRate() && layer->frame_rate > metadata_refresh_rate_) {
       metadata_refresh_rate_ = SanitizeRefreshRate(layer->frame_rate);
-    } else {
-      layer->frame_rate = current_refresh_rate_;
     }
+
     display_rect_ = Union(display_rect_, layer->dst_rect);
     geometry_changes_ |= hwc_layer->GetGeometryChanges();
 
@@ -612,19 +583,20 @@ void HWCDisplay::BuildLayerStack() {
     layer_stack_.layers.push_back(layer);
   }
 
-
-#ifdef FEATURE_WIDE_COLOR
-  for (auto hwc_layer : layer_set_) {
-    auto layer = hwc_layer->GetSDMLayer();
-    if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries &&
-        !hwc_layer->SupportLocalConversion(working_primaries)) {
-      layer->flags.skip = true;
-    }
-    if (layer->flags.skip) {
-      layer_stack_.flags.skip_present = true;
+  // When the color mode is native, blend space is assumed to be sRGB and all layers
+  // are assumed to be handled regardless of color space
+  if (current_color_mode_ != ColorMode::NATIVE) {
+    for (auto hwc_layer : layer_set_) {
+      auto layer = hwc_layer->GetSDMLayer();
+      if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries_ &&
+          !hwc_layer->SupportLocalConversion(working_primaries_)) {
+        layer->flags.skip = true;
+      }
+      if (layer->flags.skip) {
+        layer_stack_.flags.skip_present = true;
+      }
     }
   }
-#endif
 
   // TODO(user): Set correctly when SDM supports geometry_changes as bitmask
   layer_stack_.flags.geometry_changed = UINT32(geometry_changes_ > 0);
@@ -802,14 +774,27 @@ HWC2::Error HWCDisplay::GetClientTargetSupport(uint32_t width, uint32_t height, 
   return HWC2::Error::None;
 }
 
-HWC2::Error HWCDisplay::GetColorModes(uint32_t *out_num_modes, android_color_mode_t *out_modes) {
+HWC2::Error HWCDisplay::GetColorModes(uint32_t *out_num_modes, ColorMode *out_modes) {
   if (out_modes == nullptr) {
     *out_num_modes = 1;
   } else if (out_modes && *out_num_modes > 0) {
     *out_num_modes = 1;
-    out_modes[0] = HAL_COLOR_MODE_NATIVE;
+    out_modes[0] = ColorMode::NATIVE;
   }
+  return HWC2::Error::None;
+}
 
+HWC2::Error HWCDisplay::GetRenderIntents(ColorMode mode, uint32_t *out_num_intents,
+                                         RenderIntent *out_intents) {
+  if (mode != ColorMode::NATIVE) {
+    return HWC2::Error::Unsupported;
+  }
+  if (out_intents == nullptr) {
+    *out_num_intents = 1;
+  } else if (out_intents && *out_num_intents > 0) {
+    *out_num_intents = 1;
+    out_intents[0] = RenderIntent::COLORIMETRIC;
+  }
   return HWC2::Error::None;
 }
 
@@ -921,6 +906,29 @@ HWC2::Error HWCDisplay::GetDisplayType(int32_t *out_type) {
   } else {
     return HWC2::Error::BadParameter;
   }
+}
+
+HWC2::Error HWCDisplay::GetPerFrameMetadataKeys(uint32_t *out_num_keys,
+                                                PerFrameMetadataKey *out_keys) {
+  if (out_num_keys == nullptr) {
+    return HWC2::Error::BadParameter;
+  }
+  *out_num_keys = UINT32(PerFrameMetadataKey::MAX_FRAME_AVERAGE_LIGHT_LEVEL) + 1;
+  if (out_keys != nullptr) {
+    out_keys[0] = PerFrameMetadataKey::DISPLAY_RED_PRIMARY_X;
+    out_keys[1] = PerFrameMetadataKey::DISPLAY_RED_PRIMARY_Y;
+    out_keys[2] = PerFrameMetadataKey::DISPLAY_GREEN_PRIMARY_X;
+    out_keys[3] = PerFrameMetadataKey::DISPLAY_GREEN_PRIMARY_Y;
+    out_keys[4] = PerFrameMetadataKey::DISPLAY_BLUE_PRIMARY_X;
+    out_keys[5] = PerFrameMetadataKey::DISPLAY_BLUE_PRIMARY_Y;
+    out_keys[6] = PerFrameMetadataKey::WHITE_POINT_X;
+    out_keys[7] = PerFrameMetadataKey::WHITE_POINT_Y;
+    out_keys[8] = PerFrameMetadataKey::MAX_LUMINANCE;
+    out_keys[9] = PerFrameMetadataKey::MIN_LUMINANCE;
+    out_keys[10] = PerFrameMetadataKey::MAX_CONTENT_LIGHT_LEVEL;
+    out_keys[11] = PerFrameMetadataKey::MAX_FRAME_AVERAGE_LIGHT_LEVEL;
+  }
+  return HWC2::Error::None;
 }
 
 HWC2::Error HWCDisplay::GetActiveConfig(hwc2_config_t *out_config) {
@@ -1054,6 +1062,7 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
     return HWC2::Error::BadDisplay;
   }
 
+  UpdateRefreshRate();
   if (!skip_prepare_) {
     DisplayError error = display_intf_->Prepare(&layer_stack_);
     if (error != kErrorNone) {
@@ -1234,11 +1243,12 @@ HWC2::Error HWCDisplay::GetHdrCapabilities(uint32_t *out_num_types, int32_t *out
   }
 
   if (out_types == nullptr) {
-    // 1(now) - because we support only HDR10, change when HLG & DOLBY vision are supported
-    *out_num_types  = 1;
+    // We support HDR10 and HLG
+    *out_num_types = 2;
   } else {
-    // Only HDR10 supported
-    *out_types = HAL_HDR_HDR10;
+    // HDR10 and HLG are supported
+    out_types[0] = HAL_HDR_HDR10;
+    out_types[1] = HAL_HDR_HLG;
     static const float kLuminanceFactor = 10000.0;
     // luminance is expressed in the unit of 0.0001 cd/m2, convert it to 1cd/m2.
     *out_max_luminance = FLOAT(fixed_info.max_luminance)/kLuminanceFactor;
@@ -2142,6 +2152,16 @@ HWC2::Error HWCDisplay::GetValidateDisplayOutput(uint32_t *out_num_types,
   *out_num_requests = UINT32(layer_requests_.size());
 
   return ((*out_num_types > 0) ? HWC2::Error::HasChanges : HWC2::Error::None);
+}
+
+void HWCDisplay::UpdateRefreshRate() {
+  for (auto hwc_layer : layer_set_) {
+    if (hwc_layer->HasMetaDataRefreshRate()) {
+      continue;
+    }
+    auto layer = hwc_layer->GetSDMLayer();
+    layer->frame_rate = current_refresh_rate_;
+  }
 }
 
 }  // namespace sdm

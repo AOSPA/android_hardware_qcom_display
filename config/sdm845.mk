@@ -31,18 +31,13 @@ TARGET_USES_COLOR_METADATA := true
 TARGET_USES_DRM_PP := true
 
 PRODUCT_PROPERTY_OVERRIDES += \
-    debug.mdpcomp.logs=0 \
     debug.sf.enable_hwc_vds=0 \
     persist.demo.hdmirotationlock=false \
     ro.vendor.display.cabl=2 \
-    vendor.gralloc.disable_ubwc=0 \
-    vendor.display.disable_scaler=0 \
-    vendor.display.disable_secure_inline_rotator=1 \
-    vendor.display.prefer_source_split=1 \
-    debug.sf.hw=0 \
-    debug.egl.hw=0 \
-    debug.sf.latch_unsignaled=1
-
-
-
+    debug.sf.latch_unsignaled=1 \
+    # This matrix should be in column major order, per SurfaceFlinger requirement
+    #  1.16868   -0.16868    0.00000
+    # -0.03155    1.03155    0.00000
+    # -0.01473   -0.05899    1.07372
+    vendor.display.dataspace_saturation_matrix=1.16868,-0.03155,-0.01473,-0.16868,1.03155,-0.05899,0.00000,0.00000,1.07372
 

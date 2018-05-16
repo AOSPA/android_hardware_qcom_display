@@ -144,6 +144,7 @@ DisplayError HWCBufferAllocator::AllocateBuffer(BufferInfo *buffer_info) {
   alloc_buffer_info->aligned_width = UINT32(hnd->width);
   alloc_buffer_info->aligned_height = UINT32(hnd->height);
   alloc_buffer_info->size = hnd->size;
+  alloc_buffer_info->id = hnd->id;
 
   buffer_info->private_data = reinterpret_cast<void *>(hnd);
   return kErrorNone;
@@ -397,6 +398,10 @@ DisplayError HWCBufferAllocator::GetBufferLayout(const AllocatedBufferInfo &buf_
 }
 
 DisplayError HWCBufferAllocator::MapBuffer(const private_handle_t *handle, int acquire_fence) {
+  auto err = GetGrallocInstance();
+  if (err != kErrorNone) {
+    return err;
+  }
   void *buffer_ptr = NULL;
   const IMapper::Rect access_region = {.left = 0, .top = 0, .width = 0, .height = 0};
 

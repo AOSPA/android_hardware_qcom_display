@@ -31,6 +31,7 @@
 #include <sync/sync.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
+#include <utils/utils.h>
 #include <stdarg.h>
 #include <sys/mman.h>
 
@@ -191,11 +192,15 @@ HWC2::Error HWCDisplayPrimary::Validate(uint32_t *out_num_types, uint32_t *out_n
 
   bool pending_output_dump = dump_frame_count_ && dump_output_to_file_;
 
-  if (frame_capture_buffer_queued_ || pending_output_dump) {
+  if (readback_buffer_queued_ || pending_output_dump) {
+    CloseFd(&output_buffer_.release_fence_fd);
     // RHS values were set in FrameCaptureAsync() called from a binder thread. They are picked up
-    // here in a subsequent draw round.
-    layer_stack_.output_buffer = &output_buffer_;
-    layer_stack_.flags.post_processed_output = post_processed_output_;
+    // here in a subsequent draw round. Readback is not allowed for any secure use case.
+    readback_configured_ = !layer_stack_.flags.secure_present;
+    if (readback_configured_) {
+      layer_stack_.output_buffer = &output_buffer_;
+      layer_stack_.flags.post_processed_output = post_processed_output_;
+    }
   }
 
   uint32_t num_updating_layers = GetUpdatingLayersCount();
@@ -245,12 +250,13 @@ HWC2::Error HWCDisplayPrimary::Present(int32_t *out_retire_fence) {
       status = HWCDisplay::PostCommitLayerStack(out_retire_fence);
     }
   }
+
+  CloseFd(&output_buffer_.acquire_fence_fd);
   pending_commit_ = false;
   return status;
 }
 
-HWC2::Error HWCDisplayPrimary::GetColorModes(uint32_t *out_num_modes,
-                                             android_color_mode_t *out_modes) {
+HWC2::Error HWCDisplayPrimary::GetColorModes(uint32_t *out_num_modes, ColorMode *out_modes) {
   if (out_modes == nullptr) {
     *out_num_modes = color_mode_->GetColorModeCount();
   } else {
@@ -260,16 +266,32 @@ HWC2::Error HWCDisplayPrimary::GetColorModes(uint32_t *out_num_modes,
   return HWC2::Error::None;
 }
 
-HWC2::Error HWCDisplayPrimary::SetColorMode(android_color_mode_t mode) {
-  auto status = color_mode_->SetColorMode(mode);
+HWC2::Error HWCDisplayPrimary::GetRenderIntents(ColorMode mode, uint32_t *out_num_intents,
+                                                RenderIntent *out_intents) {
+  if (out_intents == nullptr) {
+    *out_num_intents = color_mode_->GetRenderIntentCount(mode);
+  } else {
+    color_mode_->GetRenderIntents(mode, out_num_intents, out_intents);
+  }
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplayPrimary::SetColorMode(ColorMode mode) {
+  return SetColorModeWithRenderIntent(mode, RenderIntent::COLORIMETRIC);
+}
+
+HWC2::Error HWCDisplayPrimary::SetColorModeWithRenderIntent(ColorMode mode, RenderIntent intent) {
+  auto status = color_mode_->SetColorModeWithRenderIntent(mode, intent);
   if (status != HWC2::Error::None) {
-    DLOGE("failed for mode = %d", mode);
+    DLOGE("failed for mode = %d intent = %d", mode, intent);
     return status;
   }
-
   callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
   validated_ = false;
-
+  auto working_color_space = color_mode_->GetWorkingColorSpace();
+  working_primaries_ = working_color_space.first;
+  working_transfer_ = working_color_space.second;
+  current_color_mode_ = color_mode_->GetCurrentColorMode();
   return status;
 }
 
@@ -314,6 +336,52 @@ HWC2::Error HWCDisplayPrimary::SetColorTransform(const float *matrix,
   callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
   color_tranform_failed_ = false;
   validated_ = false;
+
+  return status;
+}
+
+HWC2::Error HWCDisplayPrimary::SetReadbackBuffer(const native_handle_t *buffer,
+                                                 int32_t acquire_fence,
+                                                 bool post_processed_output) {
+  const private_handle_t *handle = reinterpret_cast<const private_handle_t *>(buffer);
+  if (!handle || (handle->fd < 0)) {
+    return HWC2::Error::BadParameter;
+  }
+
+  // Configure the output buffer as Readback buffer
+  output_buffer_.width = UINT32(handle->width);
+  output_buffer_.height = UINT32(handle->height);
+  output_buffer_.unaligned_width = UINT32(handle->unaligned_width);
+  output_buffer_.unaligned_height = UINT32(handle->unaligned_height);
+  output_buffer_.format = GetSDMFormat(handle->format, handle->flags);
+  output_buffer_.planes[0].fd = handle->fd;
+  output_buffer_.planes[0].stride = UINT32(handle->width);
+  output_buffer_.acquire_fence_fd = dup(acquire_fence);
+  output_buffer_.release_fence_fd = -1;
+
+  post_processed_output_ = post_processed_output;
+  readback_buffer_queued_ = true;
+  readback_configured_ = false;
+  validated_ = false;
+
+  DisablePartialUpdateOneFrame();
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplayPrimary::GetReadbackBufferFence(int32_t *release_fence) {
+  auto status = HWC2::Error::None;
+
+  if (readback_configured_ && (output_buffer_.release_fence_fd >= 0)) {
+    *release_fence = output_buffer_.release_fence_fd;
+  } else {
+    status = HWC2::Error::Unsupported;
+    *release_fence = -1;
+  }
+
+  post_processed_output_ = false;
+  readback_buffer_queued_ = false;
+  readback_configured_ = false;
+  output_buffer_ = {};
 
   return status;
 }
@@ -449,40 +517,21 @@ void HWCDisplayPrimary::SetIdleTimeoutMs(uint32_t timeout_ms) {
   validated_ = false;
 }
 
-static void SetLayerBuffer(const BufferInfo &output_buffer_info, LayerBuffer *output_buffer) {
-  const BufferConfig& buffer_config = output_buffer_info.buffer_config;
-  const AllocatedBufferInfo &alloc_buffer_info = output_buffer_info.alloc_buffer_info;
-
-  output_buffer->width = alloc_buffer_info.aligned_width;
-  output_buffer->height = alloc_buffer_info.aligned_height;
-  output_buffer->unaligned_width = buffer_config.width;
-  output_buffer->unaligned_height = buffer_config.height;
-  output_buffer->format = buffer_config.format;
-  output_buffer->planes[0].fd = alloc_buffer_info.fd;
-  output_buffer->planes[0].stride = alloc_buffer_info.stride;
-}
-
 void HWCDisplayPrimary::HandleFrameOutput() {
-  if (frame_capture_buffer_queued_) {
-    HandleFrameCapture();
-  } else if (dump_output_to_file_) {
+  if (readback_buffer_queued_) {
+    validated_ = false;
+  }
+
+  if (dump_output_to_file_) {
     HandleFrameDump();
   }
 }
 
-void HWCDisplayPrimary::HandleFrameCapture() {
-  if (output_buffer_.release_fence_fd >= 0) {
-    frame_capture_status_ = sync_wait(output_buffer_.release_fence_fd, 1000);
-    ::close(output_buffer_.release_fence_fd);
-    output_buffer_.release_fence_fd = -1;
+void HWCDisplayPrimary::HandleFrameDump() {
+  if (!readback_configured_) {
+    dump_frame_count_ = 0;
   }
 
-  frame_capture_buffer_queued_ = false;
-  post_processed_output_ = false;
-  output_buffer_ = {};
-}
-
-void HWCDisplayPrimary::HandleFrameDump() {
   if (dump_frame_count_ && output_buffer_.release_fence_fd >= 0) {
     int ret = sync_wait(output_buffer_.release_fence_fd, 1000);
     ::close(output_buffer_.release_fence_fd);
@@ -491,6 +540,8 @@ void HWCDisplayPrimary::HandleFrameDump() {
       DLOGE("sync_wait error errno = %d, desc = %s", errno, strerror(errno));
     } else {
       DumpOutputBuffer(output_buffer_info_, output_buffer_base_, layer_stack_.retire_fence_fd);
+      readback_buffer_queued_ = false;
+      validated_ = false;
     }
   }
 
@@ -504,7 +555,10 @@ void HWCDisplayPrimary::HandleFrameDump() {
       DLOGE("FreeBuffer failed");
     }
 
+    readback_buffer_queued_ = false;
     post_processed_output_ = false;
+    readback_configured_ = false;
+
     output_buffer_ = {};
     output_buffer_info_ = {};
     output_buffer_base_ = nullptr;
@@ -544,9 +598,9 @@ HWC2::Error HWCDisplayPrimary::SetFrameDumpConfig(uint32_t count, uint32_t bit_m
   }
 
   output_buffer_base_ = buffer;
-  post_processed_output_ = true;
-  DisablePartialUpdateOneFrame();
-  validated_ = false;
+  const native_handle_t *handle = static_cast<native_handle_t *>(output_buffer_info_.private_data);
+  SetReadbackBuffer(handle, -1, true);
+
   return HWC2::Error::None;
 }
 
@@ -576,14 +630,14 @@ int HWCDisplayPrimary::FrameCaptureAsync(const BufferInfo &output_buffer_info,
     return -1;
   }
 
-  SetLayerBuffer(output_buffer_info, &output_buffer_);
-  post_processed_output_ = post_processed_output;
-  frame_capture_buffer_queued_ = true;
-  // Status is only cleared on a new call to dump and remains valid otherwise
-  frame_capture_status_ = -EAGAIN;
-  DisablePartialUpdateOneFrame();
+  const native_handle_t *buffer = static_cast<native_handle_t *>(output_buffer_info.private_data);
+  SetReadbackBuffer(buffer, -1, post_processed_output);
 
   return 0;
+}
+
+bool HWCDisplayPrimary::GetFrameCaptureFence(int32_t *release_fence) {
+  return (GetReadbackBufferFence(release_fence) == HWC2::Error::None);
 }
 
 DisplayError HWCDisplayPrimary::SetDetailEnhancerConfig

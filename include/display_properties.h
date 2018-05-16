@@ -46,6 +46,8 @@
 #define IDLE_TIME_INACTIVE_PROP              DISPLAY_PROP("idle_time_inactive")
 #define BOOT_ANIMATION_LAYER_COUNT_PROP      DISPLAY_PROP("boot_anim_layer_count")
 #define DISABLE_ROTATOR_DOWNSCALE_PROP       DISPLAY_PROP("disable_rotator_downscale")
+// Disables rotator downscale for UI on primary
+#define DISABLE_ROT_DS_UI_PRIMARY_PROP       DISPLAY_PROP("disable_rot_ds_ui_primary")
 #define DISABLE_DECIMATION_PROP              DISPLAY_PROP("disable_decimation")
 #define PRIMARY_MIXER_STAGES_PROP            DISPLAY_PROP("primary_mixer_stages")
 #define EXTERNAL_MIXER_STAGES_PROP           DISPLAY_PROP("external_mixer_stages")
@@ -85,10 +87,12 @@
 #define DISABLE_INLINE_ROTATOR_PROP          DISPLAY_PROP("disable_inline_rotator")
 #define DISABLE_FB_CROPPING_PROP             DISPLAY_PROP("disable_fb_cropping")
 #define PRIORITIZE_CACHE_COMPOSITION_PROP    DISPLAY_PROP("prioritize_cache_comp")
+#define DISABLE_FBID_CACHE                   DISPLAY_PROP("disable_fbid_cache")
 
 #define DISABLE_HDR_LUT_GEN                  DISPLAY_PROP("disable_hdr_lut_gen")
 #define ENABLE_DEFAULT_COLOR_MODE            DISPLAY_PROP("enable_default_color_mode")
 #define DISABLE_HDR                          DISPLAY_PROP("disable_hdr")
+#define DATASPACE_SATURATION_MATRIX_PROP     DISPLAY_PROP("dataspace_saturation_matrix")
 
 #define HDR_CONFIG_PROP                      RO_DISPLAY_PROP("hdr.config")
 #define QDCM_PCC_TRANS_PROP                  DISPLAY_PROP("qdcm.pcc_for_trans")

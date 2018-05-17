@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -71,6 +71,10 @@ class HWCUEvent {
   HWCUEventListener *uevent_listener_ = nullptr;
   bool init_done_ = false;
 };
+
+constexpr int32_t kDataspaceSaturationMatrixCount = 16;
+constexpr int32_t kDataspaceSaturationPropertyElements = 9;
+constexpr int32_t kPropertyMax = 256;
 
 class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qClient::BnQClient {
  public:
@@ -153,9 +157,18 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static int32_t ValidateDisplay(hwc2_device_t *device, hwc2_display_t display,
                                  uint32_t *out_num_types, uint32_t *out_num_requests);
   static int32_t SetColorMode(hwc2_device_t *device, hwc2_display_t display,
-                              int32_t /*android_color_mode_t*/ int_mode);
+                              int32_t /*ColorMode*/ int_mode);
+  static int32_t SetColorModeWithRenderIntent(hwc2_device_t *device, hwc2_display_t display,
+                                              int32_t /*ColorMode*/ int_mode,
+                                              int32_t /*RenderIntent*/ int_render_intent);
   static int32_t SetColorTransform(hwc2_device_t *device, hwc2_display_t display,
                                    const float *matrix, int32_t /*android_color_transform_t*/ hint);
+  static int32_t GetReadbackBufferAttributes(hwc2_device_t *device, hwc2_display_t display,
+                                             int32_t *format, int32_t *dataspace);
+  static int32_t SetReadbackBuffer(hwc2_device_t *device, hwc2_display_t display,
+                                   const native_handle_t *buffer, int32_t acquire_fence);
+  static int32_t GetReadbackBufferFence(hwc2_device_t *device, hwc2_display_t display,
+                                        int32_t *release_fence);
 
   static Locker locker_[HWC_NUM_DISPLAY_TYPES];
 
@@ -241,6 +254,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                           android::Parcel *output_parcel);
   android::status_t SetMixerResolution(const android::Parcel *input_parcel);
   android::status_t SetColorModeOverride(const android::Parcel *input_parcel);
+  android::status_t SetColorModeWithRenderIntentOverride(const android::Parcel *input_parcel);
 
   android::status_t SetColorModeById(const android::Parcel *input_parcel);
   android::status_t getComposerStatus();

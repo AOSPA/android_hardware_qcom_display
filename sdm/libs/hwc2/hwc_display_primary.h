@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -55,8 +55,11 @@ class HWCDisplayPrimary : public HWCDisplay {
   virtual int Init();
   virtual HWC2::Error Validate(uint32_t *out_num_types, uint32_t *out_num_requests);
   virtual HWC2::Error Present(int32_t *out_retire_fence);
-  virtual HWC2::Error GetColorModes(uint32_t *out_num_modes, android_color_mode_t *out_modes);
-  virtual HWC2::Error SetColorMode(android_color_mode_t mode);
+  virtual HWC2::Error GetColorModes(uint32_t *out_num_modes, ColorMode *out_modes);
+  virtual HWC2::Error SetColorMode(ColorMode mode);
+  virtual HWC2::Error GetRenderIntents(ColorMode mode, uint32_t *out_num_intents,
+                                       RenderIntent *out_intents);
+  virtual HWC2::Error SetColorModeWithRenderIntent(ColorMode mode, RenderIntent intent);
   virtual HWC2::Error SetColorModeById(int32_t color_mode_id);
   virtual HWC2::Error SetColorTransform(const float *matrix, android_color_transform_t hint);
   virtual HWC2::Error RestoreColorTransform();
@@ -66,9 +69,12 @@ class HWCDisplayPrimary : public HWCDisplay {
   virtual void SetIdleTimeoutMs(uint32_t timeout_ms);
   virtual HWC2::Error SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type);
   virtual int FrameCaptureAsync(const BufferInfo &output_buffer_info, bool post_processed);
-  virtual int GetFrameCaptureStatus() { return frame_capture_status_; }
+  virtual bool GetFrameCaptureFence(int32_t *release_fence);
   virtual DisplayError SetDetailEnhancerConfig(const DisplayDetailEnhancerData &de_data);
   virtual DisplayError ControlPartialUpdate(bool enable, uint32_t *pending);
+  virtual HWC2::Error SetReadbackBuffer(const native_handle_t *buffer, int32_t acquire_fence,
+                                        bool post_processed_output);
+  virtual HWC2::Error GetReadbackBufferFence(int32_t *release_fence);
 
  private:
   HWCDisplayPrimary(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
@@ -82,7 +88,6 @@ class HWCDisplayPrimary : public HWCDisplay {
   void ForceRefreshRate(uint32_t refresh_rate);
   uint32_t GetOptimalRefreshRate(bool one_updating_layer);
   void HandleFrameOutput();
-  void HandleFrameCapture();
   void HandleFrameDump();
   DisplayError SetMixerResolution(uint32_t width, uint32_t height);
   DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
@@ -90,13 +95,11 @@ class HWCDisplayPrimary : public HWCDisplay {
   BufferAllocator *buffer_allocator_ = nullptr;
   CPUHint *cpu_hint_ = nullptr;
 
-  // Primary output buffer configuration
+  // Primary readback buffer configuration
   LayerBuffer output_buffer_ = {};
   bool post_processed_output_ = false;
-
-  // Members for 1 frame capture in a client provided buffer
-  bool frame_capture_buffer_queued_ = false;
-  int frame_capture_status_ = -EAGAIN;
+  bool readback_buffer_queued_ = false;
+  bool readback_configured_ = false;
 
   // Members for N frame output dump to file
   bool dump_output_to_file_ = false;

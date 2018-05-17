@@ -122,9 +122,6 @@ class DisplayBase : public DisplayInterface {
   virtual DisplayError ValidateGPUTargetParams();
   void CommitLayerParams(LayerStack *layer_stack);
   void PostCommitLayerParams(LayerStack *layer_stack);
-  DisplayError HandleHDR(LayerStack *layer_stack);
-  DisplayError ValidateHDR(LayerStack *layer_stack);
-  DisplayError SetHDRMode(bool set);
   DisplayError ValidateScaling(uint32_t width, uint32_t height);
   DisplayError ValidateDataspace(const ColorMetaData &color_metadata);
 
@@ -139,7 +136,6 @@ class DisplayBase : public DisplayInterface {
   DisplayError SetColorModeInternal(const std::string &color_mode);
   DisplayError GetValueOfModeAttribute(const AttrVal &attr, const std::string &type,
                                        std::string *value);
-  DisplayError GetHdrColorMode(std::string *color_mode, bool *found_hdr);
   bool IsSupportColorModeAttribute(const std::string &color_mode);
   DisplayState GetLastPowerMode();
   void SetPUonDestScaler();
@@ -182,8 +178,6 @@ class DisplayBase : public DisplayInterface {
   uint32_t req_mixer_width_ = 0;
   uint32_t req_mixer_height_ = 0;
   std::string current_color_mode_ = "hal_native";
-  bool hdr_playback_ = false;
-  bool hdr_mode_ = false;
   int disable_hdr_lut_gen_ = 0;
   DisplayState last_power_mode_ = kStateOff;
   bool drop_hw_vsync_ = false;

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, The Linux Foundation. All rights reserved.
+Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -121,25 +121,13 @@ DisplayError HWVirtualDRM::SetWbConfigs(const HWDisplayAttributes &display_attri
   return kErrorNone;
 }
 
-void HWVirtualDRM::DumpConnectorModeInfo() {
-  for (uint32_t i = 0; i < (uint32_t)connector_info_.modes.size(); i++) {
-    DLOGI("Mode[%d] Name:%s vref:%d hdisp:%d hsync_s:%d hsync_e:%d htotal:%d " \
-          "vdisp:%d vsync_s:%d vsync_e:%d vtotal:%d\n", i, connector_info_.modes[i].mode.name,
-          connector_info_.modes[i].mode.vrefresh, connector_info_.modes[i].mode.hdisplay,
-          connector_info_.modes[i].mode.hsync_start, connector_info_.modes[i].mode.hsync_end,
-          connector_info_.modes[i].mode.htotal, connector_info_.modes[i].mode.vdisplay,
-          connector_info_.modes[i].mode.vsync_start, connector_info_.modes[i].mode.vsync_end,
-          connector_info_.modes[i].mode.vtotal);
-  }
-}
-
 DisplayError HWVirtualDRM::Commit(HWLayers *hw_layers) {
   LayerBuffer *output_buffer = hw_layers->info.stack->output_buffer;
   DisplayError err = kErrorNone;
 
   registry_.Register(hw_layers);
-  registry_.MapBufferToFbId(output_buffer);
-  uint32_t fb_id = registry_.GetFbId(output_buffer->planes[0].fd);
+  registry_.MapOutputBufferToFbId(output_buffer);
+  uint32_t fb_id = registry_.GetOutputFbId(output_buffer->handle_id);
 
   ConfigureWbConnectorFbId(fb_id);
   ConfigureWbConnectorDestRect();
@@ -150,17 +138,14 @@ DisplayError HWVirtualDRM::Commit(HWLayers *hw_layers) {
     DLOGE("Atomic commit failed for crtc_id %d conn_id %d", token_.crtc_id, token_.conn_id);
   }
 
-  registry_.Next();
-  registry_.Unregister();
-
   return(err);
 }
 
 DisplayError HWVirtualDRM::Validate(HWLayers *hw_layers) {
   LayerBuffer *output_buffer = hw_layers->info.stack->output_buffer;
 
-  registry_.MapBufferToFbId(output_buffer);
-  uint32_t fb_id = registry_.GetFbId(output_buffer->planes[0].fd);
+  registry_.MapOutputBufferToFbId(output_buffer);
+  uint32_t fb_id = registry_.GetOutputFbId(output_buffer->handle_id);
 
   ConfigureWbConnectorFbId(fb_id);
   ConfigureWbConnectorDestRect();

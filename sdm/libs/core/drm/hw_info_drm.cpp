@@ -303,6 +303,7 @@ void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   hw_resource->hw_dest_scalar_info.max_input_width = info.max_dest_scaler_input_width;
   hw_resource->hw_dest_scalar_info.max_output_width = info.max_dest_scaler_output_width;
   hw_resource->min_prefill_lines = info.min_prefill_lines;
+  hw_resource->has_concurrent_writeback = info.concurrent_writeback;
 }
 
 void HWInfoDRM::GetHWPlanesInfo(HWResourceInfo *hw_resource) {

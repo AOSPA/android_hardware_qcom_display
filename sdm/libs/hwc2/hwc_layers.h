@@ -31,11 +31,15 @@
 #include <hardware/hwcomposer2.h>
 #undef HWC2_INCLUDE_STRINGIFICATION
 #undef HWC2_USE_CPP11
-#include <map>
+#include <android/hardware/graphics/composer/2.2/IComposerClient.h>
 #include <deque>
+#include <map>
 #include <set>
 #include "core/buffer_allocator.h"
 #include "hwc_buffer_allocator.h"
+
+using PerFrameMetadataKey =
+    android::hardware::graphics::composer::V2_2::IComposerClient::PerFrameMetadataKey;
 
 namespace sdm {
 
@@ -80,6 +84,8 @@ class HWCLayer {
   HWC2::Error SetLayerSurfaceDamage(hwc_region_t damage);
   HWC2::Error SetLayerTransform(HWC2::Transform transform);
   HWC2::Error SetLayerVisibleRegion(hwc_region_t visible);
+  HWC2::Error SetLayerPerFrameMetadata(uint32_t num_elements, const PerFrameMetadataKey *keys,
+                                       const float *metadata);
   HWC2::Error SetLayerZOrder(uint32_t z);
   void SetComposition(const LayerComposition &sdm_composition);
   HWC2::Composition GetClientRequestedCompositionType() { return client_requested_; }
@@ -99,6 +105,7 @@ class HWCLayer {
   bool IsScalingPresent();
   bool IsRotationPresent();
   bool IsNonIntegralSourceCrop() { return non_integral_source_crop_; }
+  bool HasMetaDataRefreshRate() { return has_metadata_refresh_rate_; }
 
  private:
   Layer *layer_ = nullptr;
@@ -115,6 +122,7 @@ class HWCLayer {
   bool single_buffer_ = false;
   int buffer_fd_ = -1;
   bool non_integral_source_crop_ = false;
+  bool has_metadata_refresh_rate_ = false;
 
   // Composition requested by client(SF)
   HWC2::Composition client_requested_ = HWC2::Composition::Device;

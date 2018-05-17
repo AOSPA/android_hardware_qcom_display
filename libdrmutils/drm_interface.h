@@ -267,6 +267,18 @@ enum struct DRMOps {
    */
   CRTC_SET_IDLE_TIMEOUT,
   /*
+   * Op: enables Secure UI enhancement feature.
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - enable/disable secure UI enhancement feature.
+   */
+  CRTC_SET_SECURE_UI_ENHANCEMENT,
+  /*
+   * Op: Sets Capture mode for Concurrent Writeback feature.
+   * Arg: uint32_t - CRTC ID
+   *      uint32_t - Capture mode
+   */
+  CRTC_SET_CAPTURE_MODE,
+  /*
    * Op: Returns retire fence for this commit. Should be called after Commit() on
    * DRMAtomicReqInterface.
    * Arg: uint32_t - Connector ID
@@ -420,6 +432,7 @@ struct DRMCrtcInfo {
   uint32_t max_dest_scaler_output_width = 0;
   uint32_t max_dest_scale_up = 1;
   uint32_t min_prefill_lines = 0;
+  bool concurrent_writeback = false;
 };
 
 enum struct DRMPlaneType {
@@ -582,6 +595,11 @@ enum struct DRMMultiRectMode {
   NONE = 0,
   PARALLEL = 1,
   SERIAL = 2,
+};
+
+enum struct DRMCWbCaptureMode {
+  MIXER_OUT = 0,
+  DSPP_OUT = 1,
 };
 
 struct DRMSolidfillStage {

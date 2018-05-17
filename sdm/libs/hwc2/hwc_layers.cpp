@@ -264,6 +264,7 @@ HWC2::Error HWCLayer::SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fen
   layer_buffer->planes[0].stride = UINT32(handle->width);
   layer_buffer->size = handle->size;
   layer_buffer->buffer_id = reinterpret_cast<uint64_t>(handle);
+  layer_buffer->handle_id = handle->id;
 
   return HWC2::Error::None;
 }
@@ -510,6 +511,56 @@ HWC2::Error HWCLayer::SetLayerZOrder(uint32_t z) {
   return HWC2::Error::None;
 }
 
+HWC2::Error HWCLayer::SetLayerPerFrameMetadata(uint32_t num_elements,
+                                               const PerFrameMetadataKey *keys,
+                                               const float *metadata) {
+  auto &mastering_display = layer_->input_buffer.color_metadata.masteringDisplayInfo;
+  auto &content_light = layer_->input_buffer.color_metadata.contentLightLevel;
+  for (uint32_t i = 0; i < num_elements; i++) {
+    switch (keys[i]) {
+      case PerFrameMetadataKey::DISPLAY_RED_PRIMARY_X:
+        mastering_display.colorVolumeSEIEnabled = true;
+        mastering_display.primaries.rgbPrimaries[0][0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_RED_PRIMARY_Y:
+        mastering_display.primaries.rgbPrimaries[0][1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_GREEN_PRIMARY_X:
+        mastering_display.primaries.rgbPrimaries[1][0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_GREEN_PRIMARY_Y:
+        mastering_display.primaries.rgbPrimaries[1][1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_BLUE_PRIMARY_X:
+        mastering_display.primaries.rgbPrimaries[2][0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_BLUE_PRIMARY_Y:
+        mastering_display.primaries.rgbPrimaries[2][1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::WHITE_POINT_X:
+        mastering_display.primaries.whitePoint[0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::WHITE_POINT_Y:
+        mastering_display.primaries.whitePoint[1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::MAX_LUMINANCE:
+        mastering_display.maxDisplayLuminance = UINT32(metadata[i]);
+        break;
+      case PerFrameMetadataKey::MIN_LUMINANCE:
+        mastering_display.minDisplayLuminance = UINT32(metadata[i] * 10000);
+        break;
+      case PerFrameMetadataKey::MAX_CONTENT_LIGHT_LEVEL:
+        content_light.lightLevelSEIEnabled = true;
+        content_light.maxContentLightLevel = UINT32(metadata[i]);
+        break;
+      case PerFrameMetadataKey::MAX_FRAME_AVERAGE_LIGHT_LEVEL:
+        content_light.minPicAverageLightLevel = UINT32(metadata[i] * 10000);
+        break;
+    }
+  }
+  return HWC2::Error::None;
+}
+
 void HWCLayer::SetRect(const hwc_rect_t &source, LayerRect *target) {
   target->left = FLOAT(source.left);
   target->top = FLOAT(source.top);
@@ -735,6 +786,7 @@ DisplayError HWCLayer::SetMetaData(const private_handle_t *pvt_handle, Layer *la
   uint32_t frame_rate = layer->frame_rate;
   if (getMetaData(handle, GET_REFRESH_RATE, &fps) == 0) {
     frame_rate = (fps != 0) ? RoundToStandardFPS(fps) : layer->frame_rate;
+    has_metadata_refresh_rate_ = true;
   }
 
   int32_t interlaced = 0;
@@ -820,7 +872,6 @@ bool HWCLayer::ValidateAndSetCSC() {
 
   LayerBuffer *layer_buffer = &layer_->input_buffer;
   bool use_color_metadata = true;
-#ifdef FEATURE_WIDE_COLOR
   ColorMetaData csc = {};
   if (dataspace_ != HAL_DATASPACE_UNKNOWN) {
     use_color_metadata = false;
@@ -833,7 +884,6 @@ bool HWCLayer::ValidateAndSetCSC() {
     layer_buffer->color_metadata.colorPrimaries = csc.colorPrimaries;
     layer_buffer->color_metadata.range = csc.range;
   }
-#endif
 
   if (IsBT2020(layer_buffer->color_metadata.colorPrimaries)) {
      // android_dataspace_t doesnt support mastering display and light levels

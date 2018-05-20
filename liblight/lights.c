@@ -69,6 +69,9 @@ char const*const BLUE_LED_FILE
 char const*const LCD_FILE
         = "/sys/class/backlight/panel0-backlight/brightness";
 
+char const*const PERSISTENCE_FILE
+        = "/sys/class/backlight/panel0-backlight/vr_mode";
+
 char const*const BUTTON_FILE
         = "/sys/class/leds/button-backlight/brightness";
 
@@ -81,8 +84,6 @@ char const*const GREEN_BLINK_FILE
 char const*const BLUE_BLINK_FILE
         = "/sys/class/leds/blue/blink";
 
-char const*const PERSISTENCE_FILE
-        = "/sys/class/graphics/fb0/msm_fb_persist_mode";
 char const*const RED_ON_OFF_MS_FILE
         = "/sys/class/leds/red/on_off_ms";
 

@@ -208,6 +208,12 @@ set_light_backlight(struct light_device_t* dev,
         return -1;
     }
 
+    // The HAL requires that when low-persistence is requested, errors occur in only
+    // one case: if VR mode is unsupported.  So if the display just doesn't happen to
+    // be in the right state for VR mode (an error case in the SDM845 kernel driver),
+    // suppress the error.
+    bool suppress_persistence_error = false;
+
     pthread_mutex_lock(&g_lock);
     // Toggle low persistence mode state
     bool persistence_mode = ((g_last_backlight_mode != state->brightnessMode && lpEnabled) ||
@@ -219,6 +225,7 @@ set_light_backlight(struct light_device_t* dev,
             if ((err = write_int(PERSISTENCE_FILE, lpEnabled)) != 0) {
                 ALOGE("%s: Failed to write to %s: %s\n", __FUNCTION__,
                        PERSISTENCE_FILE, strerror(errno));
+                suppress_persistence_error = true;
             }
             if (lpEnabled != 0) {
                 brightness = DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS;
@@ -234,7 +241,11 @@ set_light_backlight(struct light_device_t* dev,
     }
 
     pthread_mutex_unlock(&g_lock);
-    return cannot_handle_persistence ? -ENOSYS : err;
+    if (suppress_persistence_error) {
+        return 0;
+    } else {
+        return cannot_handle_persistence ? -ENOSYS : err;
+    }
 }
 
 static int

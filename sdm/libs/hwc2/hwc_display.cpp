@@ -466,9 +466,7 @@ void HWCDisplay::BuildLayerStack() {
       layer->flags.solid_fill = true;
     }
 
-    // When the color mode is native, blend space is assumed to be sRGB and all layers
-    // are assumed to be handled regardless of color space
-    if (!hwc_layer->ValidateAndSetCSC() && current_color_mode_ != ColorMode::NATIVE) {
+    if (!hwc_layer->ValidateAndSetCSC()) {
       layer->flags.skip = true;
     }
 
@@ -581,18 +579,14 @@ void HWCDisplay::BuildLayerStack() {
     layer_stack_.layers.push_back(layer);
   }
 
-  // When the color mode is native, blend space is assumed to be sRGB and all layers
-  // are assumed to be handled regardless of color space
-  if (current_color_mode_ != ColorMode::NATIVE) {
-    for (auto hwc_layer : layer_set_) {
-      auto layer = hwc_layer->GetSDMLayer();
-      if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries_ &&
-          !hwc_layer->SupportLocalConversion(working_primaries_)) {
-        layer->flags.skip = true;
-      }
-      if (layer->flags.skip) {
-        layer_stack_.flags.skip_present = true;
-      }
+  for (auto hwc_layer : layer_set_) {
+    auto layer = hwc_layer->GetSDMLayer();
+    if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries_ &&
+        !hwc_layer->SupportLocalConversion(working_primaries_)) {
+      layer->flags.skip = true;
+    }
+    if (layer->flags.skip) {
+      layer_stack_.flags.skip_present = true;
     }
   }
 

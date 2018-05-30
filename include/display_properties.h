@@ -46,8 +46,6 @@
 #define IDLE_TIME_INACTIVE_PROP              DISPLAY_PROP("idle_time_inactive")
 #define BOOT_ANIMATION_LAYER_COUNT_PROP      DISPLAY_PROP("boot_anim_layer_count")
 #define DISABLE_ROTATOR_DOWNSCALE_PROP       DISPLAY_PROP("disable_rotator_downscale")
-// Disables rotator downscale for UI on primary
-#define DISABLE_ROT_DS_UI_PRIMARY_PROP       DISPLAY_PROP("disable_rot_ds_ui_primary")
 #define DISABLE_DECIMATION_PROP              DISPLAY_PROP("disable_decimation")
 #define PRIMARY_MIXER_STAGES_PROP            DISPLAY_PROP("primary_mixer_stages")
 #define EXTERNAL_MIXER_STAGES_PROP           DISPLAY_PROP("external_mixer_stages")

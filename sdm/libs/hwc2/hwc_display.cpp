@@ -111,6 +111,10 @@ HWC2::Error HWCColorMode::SetColorModeWithRenderIntent(ColorMode mode, RenderInt
     return HWC2::Error::Unsupported;
   }
 
+  if (current_color_mode_ == mode && current_render_intent_ == intent) {
+    return HWC2::Error::None;
+  }
+
   auto mode_string = color_mode_map_[mode][intent];
   DisplayError error = display_intf_->SetColorMode(mode_string);
   if (error != kErrorNone) {
@@ -452,8 +456,6 @@ void HWCDisplay::BuildLayerStack() {
   uint32_t color_mode_count = 0;
   display_intf_->GetColorModeCount(&color_mode_count);
 
-  bool extended_range = false;
-
   // Add one layer for fb target
   // TODO(user): Add blit target layers
   for (auto hwc_layer : layer_set_) {
@@ -468,15 +470,13 @@ void HWCDisplay::BuildLayerStack() {
       layer->flags.solid_fill = true;
     }
 
-    // When the color mode is native, blend space is assumed to be sRGB and all layers
-    // are assumed to be handled regardless of color space
-    if (!hwc_layer->ValidateAndSetCSC() && current_color_mode_ != ColorMode::NATIVE) {
+    if (!hwc_layer->ValidateAndSetCSC()) {
       layer->flags.skip = true;
     }
 
     auto range = hwc_layer->GetLayerDataspace() & HAL_DATASPACE_RANGE_MASK;
     if (range == HAL_DATASPACE_RANGE_EXTENDED) {
-      extended_range = true;
+      layer->flags.skip = true;
     }
 
     // set default composition as GPU for SDM
@@ -583,18 +583,14 @@ void HWCDisplay::BuildLayerStack() {
     layer_stack_.layers.push_back(layer);
   }
 
-  // When the color mode is native, blend space is assumed to be sRGB and all layers
-  // are assumed to be handled regardless of color space
-  if (current_color_mode_ != ColorMode::NATIVE) {
-    for (auto hwc_layer : layer_set_) {
-      auto layer = hwc_layer->GetSDMLayer();
-      if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries_ &&
-          !hwc_layer->SupportLocalConversion(working_primaries_)) {
-        layer->flags.skip = true;
-      }
-      if (layer->flags.skip) {
-        layer_stack_.flags.skip_present = true;
-      }
+  for (auto hwc_layer : layer_set_) {
+    auto layer = hwc_layer->GetSDMLayer();
+    if (layer->input_buffer.color_metadata.colorPrimaries != working_primaries_ &&
+        !hwc_layer->SupportLocalConversion(working_primaries_)) {
+      layer->flags.skip = true;
+    }
+    if (layer->flags.skip) {
+      layer_stack_.flags.skip_present = true;
     }
   }
 
@@ -607,7 +603,7 @@ void HWCDisplay::BuildLayerStack() {
   // fall back frame composition to GPU when client target is 10bit
   // TODO(user): clarify the behaviour from Client(SF) and SDM Extn -
   // when handling 10bit FBT, as it would affect blending
-  if (Is10BitFormat(sdm_client_target->input_buffer.format) || extended_range) {
+  if (Is10BitFormat(sdm_client_target->input_buffer.format)) {
     // Must fall back to client composition
     MarkLayersForClientComposition();
   }

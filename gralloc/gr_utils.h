@@ -78,6 +78,8 @@ bool CpuCanWrite(uint64_t usage);
 unsigned int GetSize(const BufferInfo &d, unsigned int alignedw, unsigned int alignedh);
 void GetBufferSizeAndDimensions(const BufferInfo &d, unsigned int *size, unsigned int *alignedw,
                                 unsigned int *alignedh);
+void GetBufferSizeAndDimensions(const BufferInfo &d, unsigned int *size, unsigned int *alignedw,
+                                unsigned int *alignedh, GraphicsMetadata *graphics_metadata);
 void GetCustomDimensions(private_handle_t *hnd, int *stride, int *height);
 void GetColorSpaceFromMetadata(private_handle_t *hnd, int *color_space);
 void GetAlignedWidthAndHeight(const BufferInfo &d, unsigned int *aligned_w,
@@ -108,6 +110,7 @@ void GetGpuResourceSizeAndDimensions(const BufferInfo &info, unsigned int *size,
                                      GraphicsMetadata *graphics_metadata);
 bool CanUseAdrenoForSize(int buffer_type, uint64_t usage);
 bool GetAdrenoSizeAPIStatus();
+int GetBufferType(int inputFormat);
 }  // namespace gralloc
 
 #endif  // __GR_UTILS_H__

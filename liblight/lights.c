@@ -44,10 +44,6 @@
 #define CG_COLOR_ID_PROPERTY "ro.boot.hardware.color"
 
 /******************************************************************************/
-#ifndef DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS
-#define DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS 0x80
-#endif
-
 static pthread_once_t g_init = PTHREAD_ONCE_INIT;
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct light_state_t g_notification;
@@ -226,9 +222,6 @@ set_light_backlight(struct light_device_t* dev,
                 ALOGE("%s: Failed to write to %s: %s\n", __FUNCTION__,
                        PERSISTENCE_FILE, strerror(errno));
                 suppress_persistence_error = true;
-            }
-            if (lpEnabled != 0) {
-                brightness = DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS;
             }
         }
         g_last_backlight_mode = state->brightnessMode;

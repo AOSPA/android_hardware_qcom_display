@@ -111,6 +111,7 @@ void GetGpuResourceSizeAndDimensions(const BufferInfo &info, unsigned int *size,
 bool CanUseAdrenoForSize(int buffer_type, uint64_t usage);
 bool GetAdrenoSizeAPIStatus();
 int GetBufferType(int inputFormat);
+bool IsGPUFlagSupported(uint64_t usage);
 }  // namespace gralloc
 
 #endif  // __GR_UTILS_H__

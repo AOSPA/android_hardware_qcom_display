@@ -495,6 +495,8 @@ void HWCDisplay::BuildLayerStack() {
     if (handle) {
       if (handle->buffer_type == BUFFER_TYPE_VIDEO) {
         layer_stack_.flags.video_present = true;
+      } else if (layer->transform.rotation != 0.0f) {
+        layer->flags.skip = true;
       }
       // TZ Protected Buffer - L1
       // Gralloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback

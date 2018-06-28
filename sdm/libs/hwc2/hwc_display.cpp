@@ -1062,6 +1062,11 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
   }
 
   UpdateRefreshRate();
+
+  if (CanSkipSdmPrepare(out_num_types, out_num_requests)) {
+    return ((*out_num_types > 0) ? HWC2::Error::HasChanges : HWC2::Error::None);
+  }
+
   if (!skip_prepare_) {
     DisplayError error = display_intf_->Prepare(&layer_stack_);
     if (error != kErrorNone) {
@@ -2166,6 +2171,39 @@ void HWCDisplay::UpdateRefreshRate() {
     auto layer = hwc_layer->GetSDMLayer();
     layer->frame_rate = current_refresh_rate_;
   }
+}
+
+// Skip SDM prepare if all the layers in the current draw cycle are marked as Skip and
+// previous draw cycle had GPU Composition, as the resources for GPU Target layer have
+// already been validated and configured to the driver.
+bool HWCDisplay::CanSkipSdmPrepare(uint32_t *num_types, uint32_t *num_requests) {
+  if (!validated_ || layer_set_.empty()) {
+    return false;
+  }
+
+  bool skip_prepare = true;
+  for (auto hwc_layer : layer_set_) {
+    if (!hwc_layer->GetSDMLayer()->flags.skip ||
+        (hwc_layer->GetDeviceSelectedCompositionType() != HWC2::Composition::Client)) {
+      skip_prepare = false;
+      layer_changes_.clear();
+      break;
+    }
+    if (hwc_layer->GetClientRequestedCompositionType() != HWC2::Composition::Client) {
+      layer_changes_[hwc_layer->GetId()] = HWC2::Composition::Client;
+    }
+  }
+
+  if (skip_prepare) {
+    *num_types = UINT32(layer_changes_.size());
+    *num_requests = 0;
+    layer_stack_invalid_ = false;
+    has_client_composition_ = true;
+    client_target_->ResetValidation();
+    validate_state_ = kNormalValidate;
+  }
+
+  return skip_prepare;
 }
 
 }  // namespace sdm

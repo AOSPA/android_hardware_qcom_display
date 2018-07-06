@@ -2169,6 +2169,9 @@ void HWCDisplay::UpdateRefreshRate() {
     auto layer = hwc_layer->GetSDMLayer();
     layer->frame_rate = current_refresh_rate_;
   }
+
+  Layer *sdm_client_target = client_target_->GetSDMLayer();
+  sdm_client_target->frame_rate = current_refresh_rate_;
 }
 
 // Skip SDM prepare if all the layers in the current draw cycle are marked as Skip and

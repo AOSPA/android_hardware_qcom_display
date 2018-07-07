@@ -376,10 +376,10 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   hnd->layer_count = layer_count;
 
   ColorSpace_t colorSpace = ITU_R_601;
-  setMetaData(hnd, UPDATE_COLOR_SPACE, reinterpret_cast<void *>(&colorSpace));
+  setMetaDataAndUnmap(hnd, UPDATE_COLOR_SPACE, reinterpret_cast<void *>(&colorSpace));
 
   if (use_adreno_for_size) {
-    setMetaData(hnd, SET_GRAPHICS_METADATA, reinterpret_cast<void *>(&graphics_metadata));
+    setMetaDataAndUnmap(hnd, SET_GRAPHICS_METADATA, reinterpret_cast<void *>(&graphics_metadata));
   }
 
   *handle = hnd;

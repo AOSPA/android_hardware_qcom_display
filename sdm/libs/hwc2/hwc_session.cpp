@@ -1416,6 +1416,19 @@ android::status_t HWCSession::SetFrameDumpConfig(const android::Parcel *input_pa
   uint32_t frame_dump_count = UINT32(input_parcel->readInt32());
   std::bitset<32> bit_mask_display_type = UINT32(input_parcel->readInt32());
   uint32_t bit_mask_layer_type = UINT32(input_parcel->readInt32());
+  int32_t output_format = HAL_PIXEL_FORMAT_RGB_888;
+  bool post_processed = true;
+
+  // Read optional user preferences: output_format and post_processed.
+  if (input_parcel->dataPosition() != input_parcel->dataSize()) {
+    // HAL Pixel Format for output buffer
+    output_format = input_parcel->readInt32();
+  }
+  if (input_parcel->dataPosition() != input_parcel->dataSize()) {
+    // Option to dump Layer Mixer output (0) or DSPP output (1)
+    post_processed = (input_parcel->readInt32() != 0);
+  }
+
   android::status_t status = 0;
 
   for (uint32_t disp_id = HWC_DISPLAY_PRIMARY; disp_id < HWC_NUM_DISPLAY_TYPES; disp_id++) {
@@ -1423,7 +1436,8 @@ android::status_t HWCSession::SetFrameDumpConfig(const android::Parcel *input_pa
       SEQUENCE_WAIT_SCOPE_LOCK(locker_[disp_id]);
       if (hwc_display_[disp_id]) {
         HWC2::Error error;
-        error = hwc_display_[disp_id]->SetFrameDumpConfig(frame_dump_count, bit_mask_layer_type);
+        error = hwc_display_[disp_id]->SetFrameDumpConfig(frame_dump_count, bit_mask_layer_type,
+                                                          output_format, post_processed);
         if (HWC2::Error::None != error) {
           if (HWC2::Error::NoResources == error)
             status = -ENOMEM;

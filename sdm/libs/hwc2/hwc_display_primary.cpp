@@ -251,33 +251,6 @@ HWC2::Error HWCDisplayPrimary::Present(int32_t *out_retire_fence) {
     }
   }
 
-  if (CC_UNLIKELY(!has_init_light_server_)) {
-    using ILight = ::vendor::google::light::V1_0::ILight;
-    vendor_ILight_ = ILight::getService();
-    if (vendor_ILight_ != nullptr) {
-      vendor_ILight_->setHbm(false);
-    } else {
-      DLOGE("failed to get vendor light service");
-    }
-
-    uint32_t panel_x, panel_y;
-    GetPanelResolution(&panel_x, &panel_y);
-    hbm_threshold_px_ = float(panel_x * panel_y) * hbm_threshold_pct_;
-    DLOGI("Configure hbm_threshold_px_ to %f", hbm_threshold_px_);
-
-    has_init_light_server_ = true;
-  }
-
-  const bool enable_hbm(hdr_largest_layer_px_ > hbm_threshold_px_);
-  if (high_brightness_mode_ != enable_hbm && vendor_ILight_ != nullptr) {
-    using ::android::hardware::light::V2_0::Status;
-    if (Status::SUCCESS == vendor_ILight_->setHbm(enable_hbm)) {
-      high_brightness_mode_ = enable_hbm;
-    } else {
-      DLOGE("failed to setHbm to %d", enable_hbm);
-    }
-  }
-
   CloseFd(&output_buffer_.acquire_fence_fd);
   pending_commit_ = false;
   return status;

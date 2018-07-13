@@ -341,7 +341,6 @@ class HWCDisplay : public DisplayEventHandler {
   ColorMode current_color_mode_ = ColorMode::NATIVE;
   ColorPrimaries working_primaries_ = ColorPrimaries_BT709_5;
   GammaTransfer working_transfer_ = Transfer_sRGB;
-  float hdr_largest_layer_px_ = 0.0f;
 
  private:
   void DumpInputBuffers(void);

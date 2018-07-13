@@ -455,7 +455,6 @@ void HWCDisplay::BuildLayerStack() {
 
   uint32_t color_mode_count = 0;
   display_intf_->GetColorModeCount(&color_mode_count);
-  hdr_largest_layer_px_ = 0.0f;
 
   // Add one layer for fb target
   // TODO(user): Add blit target layers
@@ -538,11 +537,6 @@ void HWCDisplay::BuildLayerStack() {
       // In such cases, we should not handle HDR as the HDR mode isn't applied
       layer->input_buffer.flags.hdr = true;
       layer_stack_.flags.hdr_present = true;
-
-      // HDR area
-      auto hdr_layer_area = (layer->dst_rect.right - layer->dst_rect.left) *
-                            (layer->dst_rect.bottom - layer->dst_rect.top);
-      hdr_largest_layer_px_ = std::max(hdr_largest_layer_px_, hdr_layer_area);
     }
 
     if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !layer->flags.solid_fill) {

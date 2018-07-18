@@ -498,11 +498,13 @@ void HWCDisplay::BuildLayerStack() {
     }
 
     bool is_secure = false;
+    bool is_video = false;
     const private_handle_t *handle =
         reinterpret_cast<const private_handle_t *>(layer->input_buffer.buffer_id);
     if (handle) {
       if (handle->buffer_type == BUFFER_TYPE_VIDEO) {
         layer_stack_.flags.video_present = true;
+        is_video = true;
       } else if (layer->transform.rotation != 0.0f) {
         layer->flags.skip = true;
       }
@@ -552,7 +554,8 @@ void HWCDisplay::BuildLayerStack() {
       hdr_largest_layer_px_ = std::max(hdr_largest_layer_px_, hdr_layer_area);
     }
 
-    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !layer->flags.solid_fill) {
+    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !layer->flags.solid_fill &&
+        !is_video) {
       layer->flags.skip = true;
     }
 

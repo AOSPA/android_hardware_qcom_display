@@ -104,8 +104,10 @@ class HWCLayer {
   bool IsSingleBuffered() { return single_buffer_; }
   bool IsScalingPresent();
   bool IsRotationPresent();
+  bool IsSurfaceUpdated() { return surface_updated_; }
   bool IsNonIntegralSourceCrop() { return non_integral_source_crop_; }
   bool HasMetaDataRefreshRate() { return has_metadata_refresh_rate_; }
+  void SetPartialUpdate(bool enabled) { partial_update_enabled_ = enabled; }
 
  private:
   Layer *layer_ = nullptr;
@@ -123,6 +125,8 @@ class HWCLayer {
   int buffer_fd_ = -1;
   bool non_integral_source_crop_ = false;
   bool has_metadata_refresh_rate_ = false;
+  bool partial_update_enabled_ = false;
+  bool surface_updated_ = true;
 
   // Composition requested by client(SF)
   HWC2::Composition client_requested_ = HWC2::Composition::Device;
@@ -139,6 +143,7 @@ class HWCLayer {
   DisplayError SetMetaData(const private_handle_t *pvt_handle, Layer *layer);
   DisplayError SetIGC(IGC_t source, LayerIGC *target);
   uint32_t RoundToStandardFPS(float fps);
+  void SetDirtyRegions(hwc_region_t surface_damage);
 };
 
 struct SortLayersByZ {

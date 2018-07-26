@@ -46,6 +46,50 @@
 
 namespace sdm {
 
+DisplayError HWCDisplayPrimary::PMICInterface::Init() {
+  std::string str_lcd_bias("/sys/class/lcd_bias/secure_mode");
+  fd_lcd_bias_ = ::open(str_lcd_bias.c_str(), O_WRONLY);
+  if (fd_lcd_bias_ < 0) {
+    DLOGE("File '%s' could not be opened. errno = %d, desc = %s", str_lcd_bias.c_str(), errno,
+          strerror(errno));
+    return kErrorHardware;
+  }
+
+  std::string str_leds_wled("/sys/class/leds/wled/secure_mode");
+  fd_wled_ = ::open(str_leds_wled.c_str(), O_WRONLY);
+  if (fd_wled_ < 0) {
+    DLOGE("File '%s' could not be opened. errno = %d, desc = %s", str_leds_wled.c_str(), errno,
+          strerror(errno));
+    return kErrorHardware;
+  }
+
+  return kErrorNone;
+}
+
+void HWCDisplayPrimary::PMICInterface::Deinit() {
+  ::close(fd_lcd_bias_);
+  ::close(fd_wled_);
+}
+
+DisplayError HWCDisplayPrimary::PMICInterface::Notify(bool secure_display_start) {
+  std::string str_sd_start = secure_display_start ? std::to_string(1) : std::to_string(0);
+  ssize_t err = ::pwrite(fd_lcd_bias_, str_sd_start.c_str(), str_sd_start.length(), 0);
+  if (err <= 0) {
+    DLOGE("Write failed for lcd_bias, Error = %s", strerror(errno));
+    return kErrorHardware;
+  }
+
+  err = ::pwrite(fd_wled_, str_sd_start.c_str(), str_sd_start.length(), 0);
+  if (err <= 0) {
+    DLOGE("Write failed for wled, Error = %s", strerror(errno));
+    return kErrorHardware;
+  }
+
+  DLOGI("Successfully notifed about secure display %s to PMIC driver",
+        secure_display_start ? "start": "end");
+  return kErrorNone;
+}
+
 int HWCDisplayPrimary::Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
                               HWCCallbacks *callbacks, qService::QService *qservice,
                               HWCDisplay **hwc_display) {
@@ -116,7 +160,21 @@ int HWCDisplayPrimary::Init() {
   color_mode_->Init();
   HWCDebugHandler::Get()->GetProperty(ENABLE_DEFAULT_COLOR_MODE, &default_mode_status_);
 
+  pmic_intf_ = new PMICInterface();
+  pmic_intf_->Init();
+
   return status;
+}
+
+int HWCDisplayPrimary::Deinit() {
+  int status = HWCDisplay::Deinit();
+  if (status) {
+    return status;
+  }
+  pmic_intf_->Deinit();
+  delete pmic_intf_;
+
+  return 0;
 }
 
 void HWCDisplayPrimary::ProcessBootAnimCompleted() {
@@ -247,7 +305,7 @@ HWC2::Error HWCDisplayPrimary::Present(int32_t *out_retire_fence) {
     if (status == HWC2::Error::None) {
       HandleFrameOutput();
       SolidFillCommit();
-      status = HWCDisplay::PostCommitLayerStack(out_retire_fence);
+      status = PostCommitLayerStack(out_retire_fence);
     }
   }
 
@@ -386,6 +444,21 @@ HWC2::Error HWCDisplayPrimary::GetReadbackBufferFence(int32_t *release_fence) {
   return status;
 }
 
+HWC2::Error HWCDisplayPrimary::PostCommitLayerStack(int32_t *out_retire_fence) {
+  if (pmic_notification_pending_) {
+    // Wait for current commit to complete
+    if (*out_retire_fence >= 0) {
+      int ret = sync_wait(*out_retire_fence, 1000);
+      if (ret < 0) {
+        DLOGE("sync_wait error errno = %d, desc = %s", errno, strerror(errno));
+      }
+    }
+    pmic_intf_->Notify(false /* secure_display_start */);
+    pmic_notification_pending_ = false;
+  }
+  return HWCDisplay::PostCommitLayerStack(out_retire_fence);
+}
+
 int HWCDisplayPrimary::Perform(uint32_t operation, ...) {
   va_list args;
   va_start(args, operation);
@@ -472,6 +545,11 @@ void HWCDisplayPrimary::SetSecureDisplay(bool secure_display_active) {
     DLOGI("SecureDisplay state changed from %d to %d Needs Flush!!", secure_display_active_,
           secure_display_active);
     secure_display_active_ = secure_display_active;
+    if (secure_display_active_) {
+      pmic_intf_->Notify(true /* secure_display_start */);
+    } else {
+      pmic_notification_pending_ = true;
+    }
 
     // Avoid flush for Command mode panel.
     DisplayConfigFixedInfo display_config;

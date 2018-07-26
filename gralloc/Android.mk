@@ -55,16 +55,6 @@ LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps) $(kernel_deps)
 LOCAL_SRC_FILES               := gr_allocator.cpp gr_buf_mgr.cpp gr_ion_alloc.cpp
 include $(BUILD_SHARED_LIBRARY)
 
-
-qti_mapper_version := $(shell \
-    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/mapper/1.0" ];\
-    then echo QTI_MAPPER_1_0; fi)
-
-qti_allocator_version := $(shell \
-    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/allocator/1.0" ];\
-    then echo QTI_ALLOCATOR_1_0; fi)
-
-
 #mapper
 include $(CLEAR_VARS)
 LOCAL_MODULE                  := android.hardware.graphics.mapper@2.0-impl-qti-display

@@ -9,10 +9,10 @@ PRODUCT_PACKAGES += \
     android.hardware.memtrack@1.0-service \
     android.hardware.light@2.0-impl \
     android.hardware.light@2.0-service \
-    gralloc.msmnile \
-    lights.msmnile \
-    hwcomposer.msmnile \
-    memtrack.msmnile \
+    gralloc.sm8150 \
+    lights.sm8150 \
+    hwcomposer.sm8150 \
+    memtrack.sm8150 \
     libqdutils \
     libqdMetaData \
     libqdMetaData.system

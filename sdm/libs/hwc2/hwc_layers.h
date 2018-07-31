@@ -31,6 +31,7 @@
 #include <hardware/hwcomposer2.h>
 #undef HWC2_INCLUDE_STRINGIFICATION
 #undef HWC2_USE_CPP11
+#include <android/hardware/graphics/common/1.1/types.h>
 #include <android/hardware/graphics/composer/2.2/IComposerClient.h>
 #include <deque>
 #include <map>
@@ -38,6 +39,7 @@
 #include "core/buffer_allocator.h"
 #include "hwc_buffer_allocator.h"
 
+using android::hardware::graphics::common::V1_1::ColorMode;
 using PerFrameMetadataKey =
     android::hardware::graphics::composer::V2_2::IComposerClient::PerFrameMetadataKey;
 
@@ -49,6 +51,8 @@ bool GetTransfer(const int32_t &dataspace, GammaTransfer *gamma_transfer);
 void GetRange(const int32_t &dataspace, ColorRange *color_range);
 bool GetSDMColorSpace(const int32_t &dataspace, ColorMetaData *color_metadata);
 bool IsBT2020(const ColorPrimaries &color_primary);
+int32_t GetDataspace(ColorMode mode);
+
 enum GeometryChanges {
   kNone         = 0x000,
   kBlendMode    = 0x001,

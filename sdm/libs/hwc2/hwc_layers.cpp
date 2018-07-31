@@ -148,6 +148,25 @@ bool IsBT2020(const ColorPrimaries &color_primary) {
   }
 }
 
+// Map the known color modes to dataspace.
+int32_t GetDataspace(ColorMode mode) {
+  switch (mode) {
+    case ColorMode::SRGB:
+    case ColorMode::NATIVE:
+      return HAL_DATASPACE_V0_SRGB;
+    case ColorMode::DCI_P3:
+      return HAL_DATASPACE_DCI_P3;
+    case ColorMode::DISPLAY_P3:
+      return HAL_DATASPACE_DISPLAY_P3;
+    case ColorMode::BT2100_PQ:
+      return HAL_DATASPACE_BT2020_PQ;
+    case ColorMode::BT2100_HLG:
+      return HAL_DATASPACE_BT2020_HLG;
+    default:
+      return HAL_DATASPACE_UNKNOWN;
+  }
+}
+
 // Retrieve ColorMetaData from android_data_space_t (STANDARD|TRANSFER|RANGE)
 bool GetSDMColorSpace(const int32_t &dataspace, ColorMetaData *color_metadata) {
   bool valid = false;

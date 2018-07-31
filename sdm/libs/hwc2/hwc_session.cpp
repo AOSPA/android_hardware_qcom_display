@@ -2055,10 +2055,16 @@ int32_t HWCSession::GetReadbackBufferAttributes(hwc2_device_t *device, hwc2_disp
     return HWC2_ERROR_BAD_DISPLAY;
   }
 
-  *format = HAL_PIXEL_FORMAT_RGB_888;
-  *dataspace = HAL_DATASPACE_V0_SRGB;  // ((STANDARD_BT709 | TRANSFER_SRGB) | RANGE_FULL)
+  HWCSession *hwc_session = static_cast<HWCSession *>(device);
+  HWCDisplay *hwc_display = hwc_session->hwc_display_[display];
 
-  return HWC2_ERROR_NONE;
+  if (hwc_display) {
+    *format = HAL_PIXEL_FORMAT_RGB_888;
+    *dataspace = GetDataspace(hwc_display->GetCurrentColorMode());
+    return HWC2_ERROR_NONE;
+  }
+
+  return HWC2_ERROR_BAD_DISPLAY;
 }
 
 int32_t HWCSession::SetReadbackBuffer(hwc2_device_t *device, hwc2_display_t display,

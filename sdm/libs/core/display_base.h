@@ -116,6 +116,9 @@ class DisplayBase : public DisplayInterface {
                                               LayerBufferFormat format,
                                               const ColorMetaData &color_metadata);
   virtual std::string Dump();
+  virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) {
+    return kErrorNotSupported;
+  }
 
  protected:
   DisplayError BuildLayerStackStats(LayerStack *layer_stack);

@@ -317,5 +317,19 @@ DisplayError HWTVDRM::OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) {
   return error;
 }
 
+DisplayError HWTVDRM::PowerOn(int *release_fence) {
+  DTRACE_SCOPED();
+  if (!drm_atomic_intf_) {
+    DLOGE("DRM Atomic Interface is null!");
+    return kErrorUndefined;
+  }
+
+  if (first_cycle_) {
+    return kErrorNone;
+  }
+
+  return HWDeviceDRM::PowerOn(release_fence);
+}
+
 }  // namespace sdm
 

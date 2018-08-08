@@ -755,16 +755,6 @@ DisplayError HWDeviceDRM::GetConfigIndex(char *mode, uint32_t *index) {
 }
 
 DisplayError HWDeviceDRM::PowerOn(int *release_fence) {
-  DTRACE_SCOPED();
-  if (!drm_atomic_intf_) {
-    DLOGE("DRM Atomic Interface is null!");
-    return kErrorUndefined;
-  }
-
-  if (first_cycle_) {
-    return kErrorNone;
-  }
-
   update_mode_ = true;
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::ON);
@@ -1143,7 +1133,7 @@ DisplayError HWDeviceDRM::AtomicCommit(HWLayers *hw_layers) {
   DTRACE_SCOPED();
   SetupAtomic(hw_layers, false /* validate */);
 
-  int ret = drm_atomic_intf_->Commit(false /* synchronous */, false /* retain_planes*/);
+  int ret = drm_atomic_intf_->Commit(synchronous_commit_, false /* retain_planes*/);
   if (ret) {
     DLOGE("%s failed with error %d crtc %d", __FUNCTION__, ret, token_.crtc_id);
     vrefresh_ = 0;

@@ -1,5 +1,14 @@
 #Common headers
 display_top := $(call my-dir)
+display_config_version := $(shell \
+    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/config/1.1" ];\
+    then echo DISPLAY_CONFIG_1_1; fi)
+display_config_version := $(shell \
+    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/config/1.2" ];\
+    then echo DISPLAY_CONFIG_1_2; fi)
+display_config_version := $(shell \
+    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/config/1.3" ];\
+    then echo DISPLAY_CONFIG_1_3; fi)
 
 #Common C flags
 common_flags := -Wno-missing-field-initializers
@@ -12,6 +21,12 @@ endif
 
 ifeq ($(display_config_version), DISPLAY_CONFIG_1_1)
     common_flags += -DDISPLAY_CONFIG_1_1
+endif
+ifeq ($(display_config_version), DISPLAY_CONFIG_1_2)
+    common_flags += -DDISPLAY_CONFIG_1_2 -DDISPLAY_CONFIG_1_1
+endif
+ifeq ($(display_config_version), DISPLAY_CONFIG_1_3)
+    common_flags += -DDISPLAY_CONFIG_1_1 -DDISPLAY_CONFIG_1_2 -DDISPLAY_CONFIG_1_3
 endif
 
 ifeq ($(TARGET_USES_COLOR_METADATA), true)

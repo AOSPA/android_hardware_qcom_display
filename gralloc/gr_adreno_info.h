@@ -187,7 +187,6 @@ class AdrenoMemInfo {
   uint32_t (*LINK_adreno_get_aligned_gpu_buffer_size)(void* metadata_blob) = NULL;
 
   bool gfx_ubwc_disable_ = false;
-  bool gfx_ahardware_buffer_enable_ = false;
   void *libadreno_utils_ = NULL;
 
   static AdrenoMemInfo *s_instance;

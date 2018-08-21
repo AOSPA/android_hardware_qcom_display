@@ -870,10 +870,9 @@ bool HWCLayer::SupportLocalConversion(ColorPrimaries working_primaries) {
     return true;
   }
 
-  if (working_primaries == ColorPrimaries_BT709_5 &&
-      layer_->input_buffer.flags.video &&
-      layer_->input_buffer.flags.secure &&
-      layer_->input_buffer.color_metadata.transfer == Transfer_SMPTE_170M ) {
+  if (working_primaries == ColorPrimaries_BT709_5 && layer_->input_buffer.flags.video &&
+      IsBT2020(layer_->input_buffer.color_metadata.colorPrimaries) &&
+      layer_->input_buffer.color_metadata.transfer == Transfer_SMPTE_170M) {
     return true;
   }
 

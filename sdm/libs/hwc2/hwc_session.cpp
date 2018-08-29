@@ -436,6 +436,11 @@ static int32_t GetRenderIntents(hwc2_device_t *device, hwc2_display_t display,
   if (out_num_intents == nullptr) {
     return HWC2_ERROR_BAD_PARAMETER;
   }
+
+  if (mode < ColorMode::NATIVE || mode > ColorMode::BT2100_HLG) {
+    DLOGE("Invalid ColorMode: %d", mode);
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetRenderIntents, mode,
                                          out_num_intents, out_intents);
 }
@@ -681,6 +686,11 @@ int32_t HWCSession::SetColorModeWithRenderIntent(hwc2_device_t *device, hwc2_dis
     return HWC2_ERROR_BAD_PARAMETER;
   }
   auto render_intent = static_cast<RenderIntent>(int_render_intent);
+  if ((render_intent < RenderIntent::COLORIMETRIC) ||
+      (render_intent > RenderIntent::TONE_MAP_ENHANCE)) {
+    DLOGE("Invalid RenderIntent: %d", render_intent);
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::SetColorModeWithRenderIntent,
                                          mode, render_intent);
 }
@@ -1492,6 +1502,11 @@ android::status_t HWCSession::SetColorModeOverride(const android::Parcel *input_
   auto mode = static_cast<ColorMode>(input_parcel->readInt32());
   auto device = static_cast<hwc2_device_t *>(this);
 
+  if (mode < ColorMode::NATIVE || mode > ColorMode::BT2100_HLG) {
+    DLOGE("Invalid ColorMode: %d", mode);
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
+
   auto err = CallDisplayFunction(device, display, &HWCDisplay::SetColorMode, mode);
   if (err != HWC2_ERROR_NONE)
     return -EINVAL;
@@ -1505,6 +1520,16 @@ android::status_t HWCSession::SetColorModeWithRenderIntentOverride(
   auto mode = static_cast<ColorMode>(input_parcel->readInt32());
   auto intent = static_cast<RenderIntent>(input_parcel->readInt32());
   auto device = static_cast<hwc2_device_t *>(this);
+
+  if (mode < ColorMode::NATIVE || mode > ColorMode::BT2100_HLG) {
+    DLOGE("Invalid ColorMode: %d", mode);
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
+
+  if (intent < RenderIntent::COLORIMETRIC || intent > RenderIntent::TONE_MAP_ENHANCE) {
+    DLOGE("Invalid RenderIntent: %d", intent);
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
 
   auto err =
       CallDisplayFunction(device, display, &HWCDisplay::SetColorModeWithRenderIntent, mode, intent);

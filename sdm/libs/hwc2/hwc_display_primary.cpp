@@ -445,6 +445,11 @@ HWC2::Error HWCDisplayPrimary::GetReadbackBufferFence(int32_t *release_fence) {
 }
 
 HWC2::Error HWCDisplayPrimary::PostCommitLayerStack(int32_t *out_retire_fence) {
+  auto status = HWCDisplay::PostCommitLayerStack(out_retire_fence);
+  if (status != HWC2::Error::None) {
+    return status;
+  }
+
   if (pmic_notification_pending_) {
     // Wait for current commit to complete
     if (*out_retire_fence >= 0) {
@@ -456,7 +461,7 @@ HWC2::Error HWCDisplayPrimary::PostCommitLayerStack(int32_t *out_retire_fence) {
     pmic_intf_->Notify(false /* secure_display_start */);
     pmic_notification_pending_ = false;
   }
-  return HWCDisplay::PostCommitLayerStack(out_retire_fence);
+  return HWC2::Error::None;
 }
 
 int HWCDisplayPrimary::Perform(uint32_t operation, ...) {

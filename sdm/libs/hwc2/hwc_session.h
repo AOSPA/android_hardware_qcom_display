@@ -177,6 +177,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                    const native_handle_t *buffer, int32_t acquire_fence);
   static int32_t GetReadbackBufferFence(hwc2_device_t *device, hwc2_display_t display,
                                         int32_t *release_fence);
+  static int32_t GetDozeSupport(hwc2_device_t *device, hwc2_display_t display,
+                                int32_t *out_support);
 
   static Locker locker_[HWC_NUM_DISPLAY_TYPES];
 

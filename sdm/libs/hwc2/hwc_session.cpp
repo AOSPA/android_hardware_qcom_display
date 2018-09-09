@@ -562,12 +562,14 @@ static int32_t GetDisplayType(hwc2_device_t *device, hwc2_display_t display, int
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayType, out_type);
 }
 
-static int32_t GetDozeSupport(hwc2_device_t *device, hwc2_display_t display, int32_t *out_support) {
+int32_t HWCSession::GetDozeSupport(hwc2_device_t *device, hwc2_display_t display,
+                                  int32_t *out_support) {
   if (!device || !out_support) {
     return HWC2_ERROR_BAD_PARAMETER;
   }
 
-  if (display >= HWC_NUM_DISPLAY_TYPES) {
+  HWCSession *hwc_session = static_cast<HWCSession *>(device);
+  if (display >= HWC_NUM_DISPLAY_TYPES || (hwc_session->hwc_display_[display] == nullptr) ) {
     return HWC2_ERROR_BAD_DISPLAY;
   }
 
@@ -611,7 +613,7 @@ int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display
   auto status = HWC2::Error::BadDisplay;
   DTRACE_SCOPED();
 
-  if (display >= HWC_NUM_DISPLAY_TYPES) {
+  if (display >= HWC_NUM_DISPLAY_TYPES || (hwc_session->hwc_display_[display] == nullptr)) {
     return HWC2_ERROR_BAD_DISPLAY;
   }
 
@@ -626,9 +628,7 @@ int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display
     }
 
     // TODO(user): Handle virtual display/HDMI concurrency
-    if (hwc_session->hwc_display_[display]) {
-      status = hwc_session->PresentDisplayInternal(display, out_retire_fence);
-    }
+    status = hwc_session->PresentDisplayInternal(display, out_retire_fence);
   }
 
   if (status != HWC2::Error::None && status != HWC2::Error::NotValidated) {
@@ -847,7 +847,12 @@ int32_t HWCSession::SetPowerMode(hwc2_device_t *device, hwc2_display_t display, 
 
   //  all displays support on/off. Check for doze modes
   int support = 0;
-  GetDozeSupport(device, display, &support);
+
+  auto status = GetDozeSupport(device, display, &support);
+  if (status != HWC2_ERROR_NONE) {
+    return INT32(status);
+  }
+
   if (!support && (mode == HWC2::PowerMode::Doze || mode == HWC2::PowerMode::DozeSuspend)) {
     return HWC2_ERROR_UNSUPPORTED;
   }

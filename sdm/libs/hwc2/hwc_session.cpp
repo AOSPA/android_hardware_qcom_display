@@ -1317,7 +1317,13 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
       status = 0;
       output_parcel->writeInt32(getComposerStatus());
       break;
-
+    case qService::IQService::SET_COLOR_SAMPLING_ENABLED:
+      if (!input_parcel) {
+        DLOGE("QService command = %d: input_parcel needed.", command);
+        break;
+      }
+      status = setColorSamplingEnabled(input_parcel);
+      break;
     default:
       DLOGW("QService command = %d is not supported.", command);
       break;
@@ -1328,6 +1334,24 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
 
 android::status_t HWCSession::getComposerStatus() {
   return is_composer_up_;
+}
+
+android::status_t HWCSession::setColorSamplingEnabled(const android::Parcel* input_parcel)
+{
+    int dpy = input_parcel->readInt32();
+    int enabled_cmd = input_parcel->readInt32();
+    if (dpy < HWC_DISPLAY_PRIMARY || dpy >= HWC_NUM_DISPLAY_TYPES ||
+        enabled_cmd < 0 || enabled_cmd > 1) {
+        return android::BAD_VALUE;
+    }
+    bool enabled = (enabled_cmd == 1);
+    SEQUENCE_WAIT_SCOPE_LOCK(locker_[dpy]);
+    if (hwc_display_[dpy]) {
+        hwc_display_[dpy]->setColorSamplingEnabled(enabled);
+    } else {
+        DLOGW("No display id %i active to enable histogram event", dpy);
+    }
+    return 0;
 }
 
 android::status_t HWCSession::HandleGetDisplayAttributesForConfig(const android::Parcel

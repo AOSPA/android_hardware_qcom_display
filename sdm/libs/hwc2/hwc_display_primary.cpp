@@ -119,6 +119,15 @@ int HWCDisplayPrimary::Init() {
   return status;
 }
 
+int HWCDisplayPrimary::Deinit() {
+    histogram.stop();
+    return HWCDisplay::Deinit();
+}
+
+std::string HWCDisplayPrimary::Dump() {
+    return HWCDisplay::Dump() + histogram.Dump();
+}
+
 void HWCDisplayPrimary::ProcessBootAnimCompleted() {
   uint32_t numBootUpLayers = 0;
   // TODO(user): Remove this hack
@@ -709,6 +718,15 @@ DisplayError HWCDisplayPrimary::DisablePartialUpdateOneFrame() {
   return error;
 }
 
+void HWCDisplayPrimary::setColorSamplingEnabled(bool enabled)
+{
+    DLOGI("%s histogram thread by request\n", enabled ? "Starting" : "Stopping");
+    if (enabled) {
+      histogram.start();
+    } else {
+      histogram.stop();
+    }
+}
 
 DisplayError HWCDisplayPrimary::SetMixerResolution(uint32_t width, uint32_t height) {
   DisplayError error = display_intf_->SetMixerResolution(width, height);

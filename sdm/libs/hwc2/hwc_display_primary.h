@@ -36,6 +36,7 @@
 
 #include "cpuhint.h"
 #include "hwc_display.h"
+#include "histogram_collector.h"
 
 namespace sdm {
 
@@ -55,6 +56,7 @@ class HWCDisplayPrimary : public HWCDisplay {
                     HWCDisplay **hwc_display);
   static void Destroy(HWCDisplay *hwc_display);
   virtual int Init();
+  virtual int Deinit() override;
   virtual HWC2::Error Validate(uint32_t *out_num_types, uint32_t *out_num_requests);
   virtual HWC2::Error Present(int32_t *out_retire_fence);
   virtual HWC2::Error GetColorModes(uint32_t *out_num_modes, ColorMode *out_modes);
@@ -78,6 +80,9 @@ class HWCDisplayPrimary : public HWCDisplay {
   virtual HWC2::Error SetReadbackBuffer(const native_handle_t *buffer, int32_t acquire_fence,
                                         bool post_processed_output);
   virtual HWC2::Error GetReadbackBufferFence(int32_t *release_fence);
+
+  void setColorSamplingEnabled(bool enabled) override;
+  std::string Dump() override;
 
  private:
   HWCDisplayPrimary(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
@@ -116,6 +121,9 @@ class HWCDisplayPrimary : public HWCDisplay {
   android::sp<hardware::google::light::V1_0::ILight> vendor_ILight_ = nullptr;
   bool has_init_light_server_ = false;
   bool high_brightness_mode_ = false;
+
+  //Color sample
+  histogram::HistogramCollector histogram;
 };
 
 }  // namespace sdm

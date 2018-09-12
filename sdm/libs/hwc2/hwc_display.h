@@ -195,6 +195,8 @@ class HWCDisplay : public DisplayEventHandler {
   void SetValidationState(DisplayValidateState state) { validate_state_ = state; }
   ColorMode GetCurrentColorMode() { return current_color_mode_; }
 
+  virtual void setColorSamplingEnabled(bool enabled);
+
   // HWC2 APIs
   virtual HWC2::Error AcceptDisplayChanges(void);
   virtual HWC2::Error GetActiveConfig(hwc2_config_t *out_config);

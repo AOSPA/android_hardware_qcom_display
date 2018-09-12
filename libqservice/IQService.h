@@ -78,6 +78,7 @@ public:
         SET_COLOR_MODE_BY_ID = 36, // Overrides the QDCM mode using the given mode ID
         GET_COMPOSER_STATUS = 37, // Get composer init status-true if primary display init is done
         SET_COLOR_MODE_WITH_RENDER_INTENT = 38,
+        SET_COLOR_SAMPLING_ENABLED = 39, // Toggle the collection of display color stats
         COMMAND_LIST_END = 400,
     };
 

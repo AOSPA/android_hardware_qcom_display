@@ -2041,6 +2041,10 @@ int HWCDisplay::GetDisplayAttributesForConfig(int config,
   return display_intf_->GetConfig(UINT32(config), display_attributes) == kErrorNone ? 0 : -1;
 }
 
+void HWCDisplay::setColorSamplingEnabled(bool enabled) {
+    DLOGW("Request to start/stop histogram thread not supported on this display");
+}
+
 uint32_t HWCDisplay::GetUpdatingLayersCount(void) {
   uint32_t updating_count = 0;
 

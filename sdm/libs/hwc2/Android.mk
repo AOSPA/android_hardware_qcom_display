@@ -25,7 +25,10 @@ LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware li
                                  android.hardware.graphics.composer@2.2 \
                                  android.hardware.graphics.allocator@2.0 \
                                  libdisplaydebug \
-                                 hardware.google.light@1.0
+                                 hardware.google.light@1.0 \
+                                 libdrm.vendor \
+
+LOCAL_STATIC_LIBRARIES        := libhistogram
 
 ifeq ($(display_config_version), DISPLAY_CONFIG_1_1)
 LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1

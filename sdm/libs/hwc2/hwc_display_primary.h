@@ -33,10 +33,10 @@
 #include <hardware/google/light/1.0/ILight.h>
 #include <limits>
 #include <string>
+#include <mutex>
 
 #include "cpuhint.h"
 #include "hwc_display.h"
-#include "histogram_collector.h"
 
 namespace sdm {
 
@@ -81,7 +81,14 @@ class HWCDisplayPrimary : public HWCDisplay {
                                         bool post_processed_output);
   virtual HWC2::Error GetReadbackBufferFence(int32_t *release_fence);
 
-  void setColorSamplingEnabled(bool enabled) override;
+  virtual HWC2::Error SetDisplayedContentSamplingEnabledVndService(bool enabled);
+  virtual HWC2::Error SetDisplayedContentSamplingEnabled(int32_t enabled, uint8_t component_mask, uint64_t max_frames) override;
+  virtual HWC2::Error GetDisplayedContentSamplingAttributes(int32_t* format, int32_t* dataspace,
+                                                            uint8_t* supported_components) override;
+  virtual HWC2::Error GetDisplayedContentSample(uint64_t max_frames,
+                                                uint64_t timestamp, uint64_t* numFrames,
+                                                int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                                                uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) override;
   std::string Dump() override;
 
  private:
@@ -122,8 +129,12 @@ class HWCDisplayPrimary : public HWCDisplay {
   bool has_init_light_server_ = false;
   bool high_brightness_mode_ = false;
 
-  //Color sample
+  // Members for Color sampling feature
   histogram::HistogramCollector histogram;
+  std::mutex sampling_mutex;
+  bool api_sampling_vote = false;
+  bool vndservice_sampling_vote = false;
+
 };
 
 }  // namespace sdm

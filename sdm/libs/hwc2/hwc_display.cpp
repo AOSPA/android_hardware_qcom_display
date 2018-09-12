@@ -2041,10 +2041,6 @@ int HWCDisplay::GetDisplayAttributesForConfig(int config,
   return display_intf_->GetConfig(UINT32(config), display_attributes) == kErrorNone ? 0 : -1;
 }
 
-void HWCDisplay::setColorSamplingEnabled(bool enabled) {
-    DLOGW("Request to start/stop histogram thread not supported on this display");
-}
-
 uint32_t HWCDisplay::GetUpdatingLayersCount(void) {
   uint32_t updating_count = 0;
 
@@ -2174,6 +2170,31 @@ HWC2::Error HWCDisplay::GetValidateDisplayOutput(uint32_t *out_num_types,
   *out_num_requests = UINT32(layer_requests_.size());
 
   return ((*out_num_types > 0) ? HWC2::Error::HasChanges : HWC2::Error::None);
+}
+
+HWC2::Error HWCDisplay::SetDisplayedContentSamplingEnabledVndService(bool enabled) {
+  return HWC2::Error::Unsupported;
+}
+
+HWC2::Error HWCDisplay::SetDisplayedContentSamplingEnabled(int32_t enabled,
+    uint8_t component_mask, uint64_t max_frames) {
+
+  DLOGV("Request to start/stop histogram thread not supported on this display");
+  return HWC2::Error::Unsupported;
+}
+
+HWC2::Error HWCDisplay::GetDisplayedContentSamplingAttributes(int32_t* format,
+                                                              int32_t* dataspace,
+                                                              uint8_t* supported_components) {
+  return HWC2::Error::Unsupported;
+}
+
+HWC2::Error HWCDisplay::GetDisplayedContentSample(uint64_t max_frames,
+                                                  uint64_t timestamp,
+                                                  uint64_t* numFrames,
+                                                  int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                                                  uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) {
+  return HWC2::Error::Unsupported;
 }
 
 void HWCDisplay::UpdateRefreshRate() {

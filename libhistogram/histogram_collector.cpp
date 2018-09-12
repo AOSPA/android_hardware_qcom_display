@@ -313,6 +313,28 @@ struct VHistogram
         frame_count++;
     }
 
+    HWC2::Error collect(uint64_t /*max_frames*/,
+                        uint64_t /*timestamp*/,
+                        int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                        uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                        uint64_t* numFrames) const {
+        static constexpr int supportedComponentIdx = 2;
+        static_assert(supportedComponentIdx < NUM_HISTOGRAM_COLOR_COMPONENTS,
+                "supported component is out of range");
+
+        //TODO: add filtering by max_frames and timestamps.
+        if (!samples_size || !numFrames)
+            return HWC2::Error::BadParameter;
+
+        *numFrames = frame_count;
+        std::fill(samples_size, samples_size + NUM_HISTOGRAM_COLOR_COMPONENTS, 0);
+        samples_size[supportedComponentIdx] = static_cast<int32_t>(bins.size());
+
+        if (samples && samples[supportedComponentIdx])
+            std::copy(bins.begin(), bins.end(), samples[supportedComponentIdx]);
+        return HWC2::Error::None;
+    }
+
 private:
     VHistogram(VHistogram const&) = delete;
     VHistogram& operator=(VHistogram const&) = delete;
@@ -336,6 +358,27 @@ std::string histogram::HistogramCollector::Dump() const {
     return histogram->dump();
 }
 
+HWC2::Error histogram::HistogramCollector::collect(
+    uint64_t max_frames,
+    uint64_t timestamp,
+    int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+    uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS],
+    uint64_t* numFrames) const {
+    return histogram->collect(max_frames, timestamp, samples_size, samples, numFrames);
+}
+
+HWC2::Error histogram::HistogramCollector::getAttributes(int32_t* format,
+                                                         int32_t* dataspace,
+                                                         uint8_t* supported_components) const {
+    if (!format || !dataspace || !supported_components)
+        return HWC2::Error::BadParameter;
+
+    *format = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
+    *dataspace = HAL_DATASPACE_UNKNOWN;
+    *supported_components = HWC2_FORMAT_COMPONENT_2;
+    return HWC2::Error::None;
+}
+
 void histogram::HistogramCollector::start() {
     std::unique_lock<decltype(thread_control)> lk(thread_control);
 
@@ -347,6 +390,7 @@ void histogram::HistogramCollector::start() {
         ALOGE("histogram thread not started, could not create control pipe.");
         return;
     }
+    histogram = std::make_unique<histogram::VHistogram>();
     monitoring_thread = std::thread(&HistogramCollector::collecting_thread, this, selfpipe[0]);
     started = true;
 }

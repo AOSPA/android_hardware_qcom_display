@@ -507,6 +507,39 @@ static int32_t SetLayerPerFrameMetadata(hwc2_device_t *device, hwc2_display_t di
                                        num_elements, keys, metadata);
 }
 
+static int32_t SetDisplayedContentSamplingEnabled(hwc2_device_t* device,
+                                                  hwc2_display_t display,
+                                                  int32_t enabled, uint8_t component_mask,
+                                                  uint64_t max_frames) {
+    static constexpr int32_t validComponentMask =
+        HWC2_FORMAT_COMPONENT_0 | HWC2_FORMAT_COMPONENT_1 |
+        HWC2_FORMAT_COMPONENT_2 | HWC2_FORMAT_COMPONENT_3;
+    if (component_mask & ~validComponentMask) return HWC2_ERROR_BAD_PARAMETER;
+    return HWCSession::CallDisplayFunction(device, display,
+                                           &HWCDisplay::SetDisplayedContentSamplingEnabled,
+                                           enabled, component_mask, max_frames);
+}
+
+static int32_t GetDisplayedContentSamplingAttributes(hwc2_device_t* device,
+                                                     hwc2_display_t display,
+                                                     int32_t* format,
+                                                     int32_t* dataspace,
+                                                     uint8_t* supported_components) {
+    return HWCSession::CallDisplayFunction(device, display,
+                                           &HWCDisplay::GetDisplayedContentSamplingAttributes,
+                                           format, dataspace, supported_components);
+}
+
+static int32_t GetDisplayedContentSample(
+    hwc2_device_t* device, hwc2_display_t display, uint64_t max_frames, uint64_t timestamp,
+    uint64_t* numFrames,
+    int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+    uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) {
+
+    return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayedContentSample,
+                                    max_frames, timestamp, numFrames, samples_size, samples);
+}
+
 static int32_t GetDisplayAttribute(hwc2_device_t *device, hwc2_display_t display,
                                    hwc2_config_t config, int32_t int_attribute,
                                    int32_t *out_value) {
@@ -990,6 +1023,12 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_GET_PER_FRAME_METADATA_KEYS>(GetPerFrameMetadataKeys);
     case HWC2::FunctionDescriptor::SetLayerPerFrameMetadata:
       return AsFP<HWC2_PFN_SET_LAYER_PER_FRAME_METADATA>(SetLayerPerFrameMetadata);
+    case HWC2::FunctionDescriptor::SetDisplayedContentSamplingEnabled:
+      return AsFP<HWC2_PFN_SET_DISPLAYED_CONTENT_SAMPLING_ENABLED>(SetDisplayedContentSamplingEnabled);
+    case HWC2::FunctionDescriptor::GetDisplayedContentSamplingAttributes:
+      return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLING_ATTRIBUTES>(GetDisplayedContentSamplingAttributes);
+    case HWC2::FunctionDescriptor::GetDisplayedContentSample:
+      return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLE>(GetDisplayedContentSample);
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());
@@ -1344,14 +1383,15 @@ android::status_t HWCSession::setColorSamplingEnabled(const android::Parcel* inp
         enabled_cmd < 0 || enabled_cmd > 1) {
         return android::BAD_VALUE;
     }
-    bool enabled = (enabled_cmd == 1);
+
     SEQUENCE_WAIT_SCOPE_LOCK(locker_[dpy]);
-    if (hwc_display_[dpy]) {
-        hwc_display_[dpy]->setColorSamplingEnabled(enabled);
-    } else {
+    if (!hwc_display_[dpy]) {
         DLOGW("No display id %i active to enable histogram event", dpy);
+        return android::BAD_VALUE;
     }
-    return 0;
+
+    auto error = hwc_display_[dpy]->SetDisplayedContentSamplingEnabledVndService(enabled_cmd);
+    return (error == HWC2::Error::None) ? android::OK : android::BAD_VALUE;
 }
 
 android::status_t HWCSession::HandleGetDisplayAttributesForConfig(const android::Parcel

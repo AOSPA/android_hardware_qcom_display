@@ -18,6 +18,14 @@
 #define HISTOGRAM_HISTOGRAM_COLLECTOR_H_
 #include <string>
 #include <thread>
+#define HWC2_INCLUDE_STRINGIFICATION
+#define HWC2_USE_CPP11
+#include <hardware/hwcomposer2.h>
+#undef HWC2_INCLUDE_STRINGIFICATION
+#undef HWC2_USE_CPP11
+
+//number of enums in hwc2_format_color_component_t;
+#define NUM_HISTOGRAM_COLOR_COMPONENTS 4
 
 namespace histogram {
 
@@ -33,6 +41,15 @@ public:
 
     std::string Dump() const;
 
+    HWC2::Error collect(uint64_t max_frames,
+                        uint64_t timestamp,
+                        int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                        uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                        uint64_t* numFrames) const;
+    HWC2::Error getAttributes(int32_t* format,
+                              int32_t* dataspace,
+                              uint8_t* supported_components) const;
+
 private:
     HistogramCollector(HistogramCollector const&) = delete;
     HistogramCollector& operator=(HistogramCollector const&) = delete;
@@ -43,7 +60,7 @@ private:
     std::thread monitoring_thread;
     int selfpipe[2];
 
-    std::unique_ptr<VHistogram> const histogram;
+    std::unique_ptr<VHistogram> histogram;
 };
 
 }  // namespace histogram

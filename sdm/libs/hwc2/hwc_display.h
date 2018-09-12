@@ -37,6 +37,7 @@
 #include "hwc_buffer_allocator.h"
 #include "hwc_callbacks.h"
 #include "hwc_layers.h"
+#include "histogram_collector.h"
 
 using android::hardware::graphics::common::V1_1::ColorMode;
 using android::hardware::graphics::common::V1_1::Dataspace;
@@ -195,8 +196,6 @@ class HWCDisplay : public DisplayEventHandler {
   void SetValidationState(DisplayValidateState state) { validate_state_ = state; }
   ColorMode GetCurrentColorMode() { return current_color_mode_; }
 
-  virtual void setColorSamplingEnabled(bool enabled);
-
   // HWC2 APIs
   virtual HWC2::Error AcceptDisplayChanges(void);
   virtual HWC2::Error GetActiveConfig(hwc2_config_t *out_config);
@@ -258,10 +257,20 @@ class HWCDisplay : public DisplayEventHandler {
   }
   virtual HWC2::Error GetValidateDisplayOutput(uint32_t *out_num_types, uint32_t *out_num_requests);
 
+  virtual HWC2::Error SetDisplayedContentSamplingEnabledVndService(bool enabled);
+  virtual HWC2::Error SetDisplayedContentSamplingEnabled(int32_t enabled, uint8_t component_mask, uint64_t max_frames);
+  virtual HWC2::Error GetDisplayedContentSamplingAttributes(int32_t* format,
+                                                            int32_t* dataspace,
+                                                            uint8_t* supported_components);
+  virtual HWC2::Error GetDisplayedContentSample(uint64_t max_frames,
+                                                uint64_t timestamp,
+                                                uint64_t* numFrames,
+                                                int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                                                uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]);
+
  protected:
   // Maximum number of layers supported by display manager.
   static const uint32_t kMaxLayerCount = 32;
-
   HWCDisplay(CoreInterface *core_intf, HWCCallbacks *callbacks, DisplayType type, hwc2_display_t id,
              bool needs_blit, qService::QService *qservice, DisplayClass display_class,
              BufferAllocator *buffer_allocator);

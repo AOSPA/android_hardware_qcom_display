@@ -380,6 +380,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
 
   android::status_t SetDisplayDeviceStatus(const android::Parcel* input_parcel);
 
+  android::status_t setColorSamplingEnabled(const android::Parcel *input_parcel);
+
   void Refresh(hwc2_display_t display);
   void HotPlug(hwc2_display_t display, HWC2::Connection state);
 

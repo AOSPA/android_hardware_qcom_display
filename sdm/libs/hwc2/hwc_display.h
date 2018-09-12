@@ -40,6 +40,7 @@
 #include "hwc_layers.h"
 #include "display_null.h"
 #include "hwc_display_event_handler.h"
+#include "histogram_collector.h"
 
 using android::hardware::graphics::common::V1_1::ColorMode;
 using android::hardware::graphics::common::V1_1::Dataspace;
@@ -309,6 +310,17 @@ class HWCDisplay : public DisplayEventHandler {
   virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) {
     return kErrorNone;
   }
+
+  virtual HWC2::Error SetDisplayedContentSamplingEnabledVndService(bool enabled);
+  virtual HWC2::Error SetDisplayedContentSamplingEnabled(int32_t enabled, uint8_t component_mask, uint64_t max_frames);
+  virtual HWC2::Error GetDisplayedContentSamplingAttributes(int32_t* format,
+                                                            int32_t* dataspace,
+                                                            uint8_t* supported_components);
+  virtual HWC2::Error GetDisplayedContentSample(uint64_t max_frames,
+                                                uint64_t timestamp,
+                                                uint64_t* numFrames,
+                                                int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+                                                uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]);
 
  protected:
   static uint32_t throttling_refresh_rate_;

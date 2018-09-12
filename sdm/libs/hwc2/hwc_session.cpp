@@ -633,6 +633,39 @@ static int32_t SetLayerPerFrameMetadata(hwc2_device_t *device, hwc2_display_t di
                                        num_elements, keys, metadata);
 }
 
+static int32_t SetDisplayedContentSamplingEnabled(hwc2_device_t* device,
+                                                  hwc2_display_t display,
+                                                  int32_t enabled, uint8_t component_mask,
+                                                  uint64_t max_frames) {
+    static constexpr int32_t validComponentMask =
+        HWC2_FORMAT_COMPONENT_0 | HWC2_FORMAT_COMPONENT_1 |
+        HWC2_FORMAT_COMPONENT_2 | HWC2_FORMAT_COMPONENT_3;
+    if (component_mask & ~validComponentMask) return HWC2_ERROR_BAD_PARAMETER;
+    return HWCSession::CallDisplayFunction(device, display,
+                                           &HWCDisplay::SetDisplayedContentSamplingEnabled,
+                                           enabled, component_mask, max_frames);
+}
+
+static int32_t GetDisplayedContentSamplingAttributes(hwc2_device_t* device,
+                                                     hwc2_display_t display,
+                                                     int32_t* format,
+                                                     int32_t* dataspace,
+                                                     uint8_t* supported_components) {
+    return HWCSession::CallDisplayFunction(device, display,
+                                           &HWCDisplay::GetDisplayedContentSamplingAttributes,
+                                           format, dataspace, supported_components);
+}
+
+static int32_t GetDisplayedContentSample(
+    hwc2_device_t* device, hwc2_display_t display, uint64_t max_frames, uint64_t timestamp,
+    uint64_t* numFrames,
+    int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+    uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) {
+
+    return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayedContentSample,
+                                    max_frames, timestamp, numFrames, samples_size, samples);
+}
+
 static int32_t GetDisplayAttribute(hwc2_device_t *device, hwc2_display_t display,
                                    hwc2_config_t config, int32_t int_attribute,
                                    int32_t *out_value) {
@@ -1240,6 +1273,12 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(GetDisplayBrightnessSupport);
     case HWC2::FunctionDescriptor::SetDisplayBrightness:
       return AsFP<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(SetDisplayBrightness);
+    case HWC2::FunctionDescriptor::SetDisplayedContentSamplingEnabled:
+      return AsFP<HWC2_PFN_SET_DISPLAYED_CONTENT_SAMPLING_ENABLED>(SetDisplayedContentSamplingEnabled);
+    case HWC2::FunctionDescriptor::GetDisplayedContentSamplingAttributes:
+      return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLING_ATTRIBUTES>(GetDisplayedContentSamplingAttributes);
+    case HWC2::FunctionDescriptor::GetDisplayedContentSample:
+      return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLE>(GetDisplayedContentSample);
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());
@@ -1616,6 +1655,14 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
       status = SetQSyncMode(input_parcel);
       break;
 
+    case qService::IQService::SET_COLOR_SAMPLING_ENABLED:
+      if (!input_parcel) {
+        DLOGE("QService command = %d: input_parcel needed.", command);
+        break;
+      }
+      status = setColorSamplingEnabled(input_parcel);
+      break;
+
     case qService::IQService::SET_IDLE_PC:
       if (!input_parcel) {
         DLOGE("QService command = %d: input_parcel needed.", command);
@@ -1726,6 +1773,25 @@ android::status_t HWCSession::GetDisplayAttributesForConfig(const android::Parce
   }
 
   return error;
+}
+
+android::status_t HWCSession::setColorSamplingEnabled(const android::Parcel* input_parcel)
+{
+    int dpy = input_parcel->readInt32();
+    int enabled_cmd = input_parcel->readInt32();
+    if (dpy < HWC_DISPLAY_PRIMARY || dpy >= HWC_NUM_DISPLAY_TYPES ||
+        enabled_cmd < 0 || enabled_cmd > 1) {
+        return android::BAD_VALUE;
+    }
+
+    SEQUENCE_WAIT_SCOPE_LOCK(locker_[dpy]);
+    if (!hwc_display_[dpy]) {
+        DLOGW("No display id %i active to enable histogram event", dpy);
+        return android::BAD_VALUE;
+    }
+
+    auto error = hwc_display_[dpy]->SetDisplayedContentSamplingEnabledVndService(enabled_cmd);
+    return (error == HWC2::Error::None) ? android::OK : android::BAD_VALUE;
 }
 
 android::status_t HWCSession::ConfigureRefreshRate(const android::Parcel *input_parcel) {

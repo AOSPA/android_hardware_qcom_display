@@ -85,6 +85,7 @@ public:
         SET_DSI_CLK = 42, // Set DSI Clk.
         GET_DSI_CLK = 43, // Get DSI Clk.
         GET_SUPPORTED_DSI_CLK = 44, // Get supported DSI Clk.
+        SET_COLOR_SAMPLING_ENABLED = 45, // Toggle the collection of display color stats
         COMMAND_LIST_END = 400,
     };
 

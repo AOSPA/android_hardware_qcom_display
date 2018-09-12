@@ -299,12 +299,27 @@ HWC2::Error HWCLayer::SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fen
   layer_buffer->planes[0].stride = UINT32(handle->width);
   layer_buffer->size = handle->size;
   layer_buffer->buffer_id = reinterpret_cast<uint64_t>(handle);
+  layer_buffer->handle_id = handle->id;
 
   return HWC2::Error::None;
 }
 
 HWC2::Error HWCLayer::SetLayerSurfaceDamage(hwc_region_t damage) {
-  // Check if there is an update in SurfaceDamage rects
+  surface_updated_ = true;
+  if ((damage.numRects == 1) && (damage.rects[0].bottom == 0) && (damage.rects[0].right == 0)) {
+    surface_updated_ = false;
+  }
+
+  if (!layer_->flags.updating && surface_updated_) {
+    needs_validate_ = true;
+  }
+
+  if (!partial_update_enabled_) {
+    SetDirtyRegions(damage);
+    return HWC2::Error::None;
+  }
+
+  // Check if there is an update in SurfaceDamage rects.
   if (layer_->dirty_regions.size() != damage.numRects) {
     needs_validate_ = true;
   } else {
@@ -318,12 +333,7 @@ HWC2::Error HWCLayer::SetLayerSurfaceDamage(hwc_region_t damage) {
     }
   }
 
-  layer_->dirty_regions.clear();
-  for (uint32_t i = 0; i < damage.numRects; i++) {
-    LayerRect rect;
-    SetRect(damage.rects[i], &rect);
-    layer_->dirty_regions.push_back(rect);
-  }
+  SetDirtyRegions(damage);
   return HWC2::Error::None;
 }
 
@@ -512,6 +522,56 @@ HWC2::Error HWCLayer::SetLayerZOrder(uint32_t z) {
   if (z_ != z) {
     geometry_changes_ |= kZOrder;
     z_ = z;
+  }
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCLayer::SetLayerPerFrameMetadata(uint32_t num_elements,
+                                               const PerFrameMetadataKey *keys,
+                                               const float *metadata) {
+  auto &mastering_display = layer_->input_buffer.color_metadata.masteringDisplayInfo;
+  auto &content_light = layer_->input_buffer.color_metadata.contentLightLevel;
+  for (uint32_t i = 0; i < num_elements; i++) {
+    switch (keys[i]) {
+      case PerFrameMetadataKey::DISPLAY_RED_PRIMARY_X:
+        mastering_display.colorVolumeSEIEnabled = true;
+        mastering_display.primaries.rgbPrimaries[0][0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_RED_PRIMARY_Y:
+        mastering_display.primaries.rgbPrimaries[0][1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_GREEN_PRIMARY_X:
+        mastering_display.primaries.rgbPrimaries[1][0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_GREEN_PRIMARY_Y:
+        mastering_display.primaries.rgbPrimaries[1][1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_BLUE_PRIMARY_X:
+        mastering_display.primaries.rgbPrimaries[2][0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::DISPLAY_BLUE_PRIMARY_Y:
+        mastering_display.primaries.rgbPrimaries[2][1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::WHITE_POINT_X:
+        mastering_display.primaries.whitePoint[0] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::WHITE_POINT_Y:
+        mastering_display.primaries.whitePoint[1] = UINT32(metadata[i] * 50000);
+        break;
+      case PerFrameMetadataKey::MAX_LUMINANCE:
+        mastering_display.maxDisplayLuminance = UINT32(metadata[i]);
+        break;
+      case PerFrameMetadataKey::MIN_LUMINANCE:
+        mastering_display.minDisplayLuminance = UINT32(metadata[i] * 10000);
+        break;
+      case PerFrameMetadataKey::MAX_CONTENT_LIGHT_LEVEL:
+        content_light.lightLevelSEIEnabled = true;
+        content_light.maxContentLightLevel = UINT32(metadata[i]);
+        break;
+      case PerFrameMetadataKey::MAX_FRAME_AVERAGE_LIGHT_LEVEL:
+        content_light.minPicAverageLightLevel = UINT32(metadata[i] * 10000);
+        break;
+    }
   }
   return HWC2::Error::None;
 }
@@ -949,6 +1009,15 @@ bool HWCLayer::IsScalingPresent() {
   uint32_t dst_height = static_cast<uint32_t>(layer_->dst_rect.bottom - layer_->dst_rect.top);
 
   return ((src_width != dst_width) || (dst_height != src_height));
+}
+
+void HWCLayer::SetDirtyRegions(hwc_region_t surface_damage) {
+  layer_->dirty_regions.clear();
+  for (uint32_t i = 0; i < surface_damage.numRects; i++) {
+    LayerRect rect;
+    SetRect(surface_damage.rects[i], &rect);
+    layer_->dirty_regions.push_back(rect);
+  }
 }
 
 }  // namespace sdm

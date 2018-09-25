@@ -71,13 +71,14 @@ class HWEventHandler {
 
 class HWInterface {
  public:
-  static DisplayError Create(DisplayType type, HWInfoInterface *hw_info_intf,
+  static DisplayError Create(int32_t display_id, DisplayType type, HWInfoInterface *hw_info_intf,
                              BufferSyncHandler *buffer_sync_handler,
                              BufferAllocator *buffer_allocator, HWInterface **intf);
   static DisplayError Destroy(HWInterface *intf);
 
   virtual DisplayError Init() = 0;
   virtual DisplayError Deinit() = 0;
+  virtual DisplayError GetDisplayId(int32_t *display_id) = 0;
   virtual DisplayError GetActiveConfig(uint32_t *active_config) = 0;
   virtual DisplayError GetNumDisplayAttributes(uint32_t *count) = 0;
   virtual DisplayError GetDisplayAttributes(uint32_t index,
@@ -86,10 +87,10 @@ class HWInterface {
   virtual DisplayError SetDisplayAttributes(uint32_t index) = 0;
   virtual DisplayError SetDisplayAttributes(const HWDisplayAttributes &display_attributes) = 0;
   virtual DisplayError GetConfigIndex(char *mode, uint32_t *index) = 0;
-  virtual DisplayError PowerOn(int *release_fence) = 0;
+  virtual DisplayError PowerOn(const HWQosData &qos_data, int *release_fence) = 0;
   virtual DisplayError PowerOff() = 0;
-  virtual DisplayError Doze(int *release_fence) = 0;
-  virtual DisplayError DozeSuspend(int *release_fence) = 0;
+  virtual DisplayError Doze(const HWQosData &qos_data, int *release_fence) = 0;
+  virtual DisplayError DozeSuspend(const HWQosData &qos_data, int *release_fence) = 0;
   virtual DisplayError Standby() = 0;
   virtual DisplayError Validate(HWLayers *hw_layers) = 0;
   virtual DisplayError Commit(HWLayers *hw_layers) = 0;
@@ -116,6 +117,7 @@ class HWInterface {
   virtual DisplayError SetDppsFeature(void *payload, size_t size) = 0;
   virtual DisplayError GetDppsFeatureInfo(void *payload, size_t size) = 0;
   virtual DisplayError HandleSecureEvent(SecureEvent secure_event) = 0;
+  virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) = 0;
 
  protected:
   virtual ~HWInterface() { }

@@ -62,6 +62,7 @@ class HWDevice : public HWInterface {
   explicit HWDevice(BufferSyncHandler *buffer_sync_handler);
 
   // From HWInterface
+  virtual DisplayError GetDisplayId(int32_t *display_id);
   virtual DisplayError GetActiveConfig(uint32_t *active_config);
   virtual DisplayError GetNumDisplayAttributes(uint32_t *count);
   virtual DisplayError GetDisplayAttributes(uint32_t index,
@@ -70,10 +71,10 @@ class HWDevice : public HWInterface {
   virtual DisplayError SetDisplayAttributes(uint32_t index);
   virtual DisplayError SetDisplayAttributes(const HWDisplayAttributes &display_attributes);
   virtual DisplayError GetConfigIndex(char *mode, uint32_t *index);
-  virtual DisplayError PowerOn(int *release_fence);
+  virtual DisplayError PowerOn(const HWQosData &qos_data, int *release_fence);
   virtual DisplayError PowerOff();
-  virtual DisplayError Doze(int *release_fence);
-  virtual DisplayError DozeSuspend(int *release_fence);
+  virtual DisplayError Doze(const HWQosData &qos_data, int *release_fence);
+  virtual DisplayError DozeSuspend(const HWQosData &qos_data, int *release_fence);
   virtual DisplayError Standby();
   virtual DisplayError Validate(HWLayers *hw_layers);
   virtual DisplayError Commit(HWLayers *hw_layers);
@@ -101,6 +102,9 @@ class HWDevice : public HWInterface {
   virtual DisplayError GetDppsFeatureInfo(void *payload, size_t size) { return kErrorNotSupported; }
   virtual DisplayError DumpDebugData(DisplayType type) { return kErrorNone; }
   virtual DisplayError HandleSecureEvent(SecureEvent secure_event) { return kErrorNotSupported; }
+  virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) {
+    return kErrorNotSupported;
+  }
 
   enum {
     kHWEventVSync,

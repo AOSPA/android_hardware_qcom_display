@@ -88,11 +88,12 @@ static int32_t GetEOTF(const GammaTransfer &transfer) {
   return hdr_transfer;
 }
 
-HWTVDRM::HWTVDRM(BufferSyncHandler *buffer_sync_handler, BufferAllocator *buffer_allocator,
-                     HWInfoInterface *hw_info_intf)
+HWTVDRM::HWTVDRM(int32_t display_id, BufferSyncHandler *buffer_sync_handler,
+                 BufferAllocator *buffer_allocator, HWInfoInterface *hw_info_intf)
   : HWDeviceDRM(buffer_sync_handler, buffer_allocator, hw_info_intf) {
   disp_type_ = DRMDisplayType::TV;
   device_name_ = "TV";
+  display_id_ = display_id;
 }
 
 DisplayError HWTVDRM::SetDisplayAttributes(uint32_t index) {
@@ -164,11 +165,11 @@ DisplayError HWTVDRM::PowerOff() {
   return kErrorNone;
 }
 
-DisplayError HWTVDRM::Doze(int *release_fence) {
+DisplayError HWTVDRM::Doze(const HWQosData &qos_data, int *release_fence) {
   return kErrorNone;
 }
 
-DisplayError HWTVDRM::DozeSuspend(int *release_fence) {
+DisplayError HWTVDRM::DozeSuspend(const HWQosData &qos_data, int *release_fence) {
   return kErrorNone;
 }
 
@@ -288,6 +289,20 @@ void HWTVDRM::DumpHDRMetaData(HWHDRLayerInfo::HDROperation operation) {
         hdr_metadata_.display_primaries_x[1], hdr_metadata_.display_primaries_y[1],
         hdr_metadata_.display_primaries_x[2], hdr_metadata_.display_primaries_y[2],
         hdr_metadata_.white_point_x, hdr_metadata_.white_point_y, hdr_metadata_.eotf);
+}
+
+DisplayError HWTVDRM::PowerOn(const HWQosData &qos_data, int *release_fence) {
+  DTRACE_SCOPED();
+  if (!drm_atomic_intf_) {
+    DLOGE("DRM Atomic Interface is null!");
+    return kErrorUndefined;
+  }
+
+  if (first_cycle_) {
+    return kErrorNone;
+  }
+
+  return HWDeviceDRM::PowerOn(qos_data, release_fence);
 }
 
 }  // namespace sdm

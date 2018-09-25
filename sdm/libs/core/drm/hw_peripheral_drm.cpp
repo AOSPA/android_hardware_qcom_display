@@ -44,12 +44,12 @@ using sde_drm::DRMCWbCaptureMode;
 
 namespace sdm {
 
-HWPeripheralDRM::HWPeripheralDRM(BufferSyncHandler *buffer_sync_handler,
-                                 BufferAllocator *buffer_allocator,
-                                 HWInfoInterface *hw_info_intf)
+HWPeripheralDRM::HWPeripheralDRM(int32_t display_id, BufferSyncHandler *buffer_sync_handler,
+                                 BufferAllocator *buffer_allocator, HWInfoInterface *hw_info_intf)
   : HWDeviceDRM(buffer_sync_handler, buffer_allocator, hw_info_intf) {
   disp_type_ = DRMDisplayType::PERIPHERAL;
   device_name_ = "Peripheral";
+  display_id_ = display_id;
 }
 
 DisplayError HWPeripheralDRM::Init() {
@@ -68,6 +68,7 @@ DisplayError HWPeripheralDRM::Validate(HWLayers *hw_layers) {
   HWLayersInfo &hw_layer_info = hw_layers->info;
   SetDestScalarData(hw_layer_info);
   SetupConcurrentWriteback(hw_layer_info, true);
+  SetIdlePCState();
 
   return HWDeviceDRM::Validate(hw_layers);
 }
@@ -76,12 +77,19 @@ DisplayError HWPeripheralDRM::Commit(HWLayers *hw_layers) {
   HWLayersInfo &hw_layer_info = hw_layers->info;
   SetDestScalarData(hw_layer_info);
   SetupConcurrentWriteback(hw_layer_info, false);
+  SetIdlePCState();
 
   DisplayError error = HWDeviceDRM::Commit(hw_layers);
+  if (error != kErrorNone) {
+    return error;
+  }
 
   if (cwb_config_.enabled && (error == kErrorNone)) {
     PostCommitConcurrentWriteback(hw_layer_info.stack->output_buffer);
   }
+
+  // Initialize to default after successful commit
+  synchronous_commit_ = false;
 
   return error;
 }
@@ -227,6 +235,13 @@ void HWPeripheralDRM::SetupConcurrentWriteback(const HWLayersInfo &hw_layer_info
     if (enable) {
       // Set DRM properties for Concurrent Writeback.
       ConfigureConcurrentWriteback(hw_layer_info.stack);
+
+      if (!validate) {
+        // Set GET_RETIRE_FENCE property to get Concurrent Writeback fence.
+        int *fence = &hw_layer_info.stack->output_buffer->release_fence_fd;
+        drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE,
+                                  cwb_config_.token.conn_id, fence);
+      }
     } else {
       // Tear down the Concurrent Writeback topology.
       drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, cwb_config_.token.conn_id, 0);
@@ -270,7 +285,7 @@ DisplayError HWPeripheralDRM::SetupConcurrentWritebackModes() {
 
 void HWPeripheralDRM::ConfigureConcurrentWriteback(LayerStack *layer_stack) {
   LayerBuffer *output_buffer = layer_stack->output_buffer;
-  registry_.MapBufferToFbId(output_buffer);
+  registry_.MapOutputBufferToFbId(output_buffer);
 
   // Set the topology for Concurrent Writeback: [CRTC_PRIMARY_DISPLAY - CONNECTOR_VIRTUAL_DISPLAY].
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, cwb_config_.token.conn_id, token_.crtc_id);
@@ -281,7 +296,7 @@ void HWPeripheralDRM::ConfigureConcurrentWriteback(LayerStack *layer_stack) {
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CAPTURE_MODE, token_.crtc_id, capture_mode);
 
   // Set Connector Output FB
-  uint32_t fb_id = registry_.GetFbId(output_buffer->planes[0].fd);
+  uint32_t fb_id = registry_.GetOutputFbId(output_buffer->handle_id);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_OUTPUT_FB_ID, cwb_config_.token.conn_id, fb_id);
 
   // Set Connector Secure Mode
@@ -301,14 +316,44 @@ void HWPeripheralDRM::ConfigureConcurrentWriteback(LayerStack *layer_stack) {
 void HWPeripheralDRM::PostCommitConcurrentWriteback(LayerBuffer *output_buffer) {
   bool enabled = hw_resource_.has_concurrent_writeback && output_buffer;
 
-  if (enabled) {
-    // Get Concurrent Writeback fence
-    int *fence = &output_buffer->release_fence_fd;
-    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE, cwb_config_.token.conn_id, fence);
-  } else {
+  if (!enabled) {
     drm_mgr_intf_->UnregisterDisplay(cwb_config_.token);
     cwb_config_.enabled = false;
   }
+}
+
+DisplayError HWPeripheralDRM::ControlIdlePowerCollapse(bool enable, bool synchronous) {
+  sde_drm::DRMIdlePCState idle_pc_state =
+    enable ? sde_drm::DRMIdlePCState::ENABLE : sde_drm::DRMIdlePCState::DISABLE;
+  if (idle_pc_state == idle_pc_state_) {
+    return kErrorNone;
+  }
+  // As idle PC is disabled after subsequent commit, Make sure to have synchrounous commit and
+  // ensure TA accesses the display_cc registers after idle PC is disabled.
+  idle_pc_state_ = idle_pc_state;
+  synchronous_commit_ = !enable ? synchronous : false;
+  return kErrorNone;
+}
+
+DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, int *release_fence) {
+  DTRACE_SCOPED();
+  if (!drm_atomic_intf_) {
+    DLOGE("DRM Atomic Interface is null!");
+    return kErrorUndefined;
+  }
+
+  if (first_cycle_) {
+    return kErrorNone;
+  }
+  drm_atomic_intf_->Perform(sde_drm::DRMOps::CRTC_SET_IDLE_PC_STATE, token_.crtc_id,
+                            sde_drm::DRMIdlePCState::ENABLE);
+  DisplayError err = HWDeviceDRM::PowerOn(qos_data, release_fence);
+  if (err != kErrorNone) {
+    return err;
+  }
+  idle_pc_state_ = sde_drm::DRMIdlePCState::ENABLE;
+
+  return kErrorNone;
 }
 
 }  // namespace sdm

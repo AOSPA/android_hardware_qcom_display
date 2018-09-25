@@ -130,6 +130,11 @@ DisplayError HWDevice::Deinit() {
   return kErrorNone;
 }
 
+DisplayError HWDevice::GetDisplayId(int32_t *display_id) {
+  *display_id = fb_node_index_;
+  return kErrorNone;
+}
+
 DisplayError HWDevice::GetActiveConfig(uint32_t *active_config) {
   *active_config = 0;
   return kErrorNone;
@@ -162,7 +167,7 @@ DisplayError HWDevice::GetConfigIndex(char *mode, uint32_t *index) {
   return kErrorNone;
 }
 
-DisplayError HWDevice::PowerOn(int *release_fence) {
+DisplayError HWDevice::PowerOn(const HWQosData &qos_data, int *release_fence) {
   DTRACE_SCOPED();
 
   if (Sys::ioctl_(device_fd_, FBIOBLANK, FB_BLANK_UNBLANK) < 0) {
@@ -181,11 +186,11 @@ DisplayError HWDevice::PowerOff() {
   return kErrorNone;
 }
 
-DisplayError HWDevice::Doze(int *release_fence) {
+DisplayError HWDevice::Doze(const HWQosData &qos_data, int *release_fence) {
   return kErrorNone;
 }
 
-DisplayError HWDevice::DozeSuspend(int *release_fence) {
+DisplayError HWDevice::DozeSuspend(const HWQosData &qos_data, int *release_fence) {
   return kErrorNone;
 }
 
@@ -756,25 +761,25 @@ int HWDevice::GetFBNodeIndex(HWDeviceType device_type) {
     HWPanelInfo panel_info;
     GetHWPanelInfoByNode(i, &panel_info);
     switch (device_type) {
-    case kDevicePrimary:
-      if (panel_info.is_primary_panel) {
-        return i;
-      }
-      break;
-    case kDeviceHDMI:
-      if (panel_info.is_pluggable == true) {
-        if (IsFBNodeConnected(i)) {
+      case kDeviceBuiltIn:
+        if (panel_info.is_primary_panel) {
           return i;
         }
-      }
-      break;
-    case kDeviceVirtual:
-      if (panel_info.port == kPortWriteBack) {
-        return i;
-      }
-      break;
-    default:
-      break;
+        break;
+      case kDevicePluggable:
+        if (panel_info.is_pluggable == true) {
+          if (IsFBNodeConnected(i)) {
+            return i;
+          }
+        }
+        break;
+      case kDeviceVirtual:
+        if (panel_info.port == kPortWriteBack) {
+          return i;
+        }
+        break;
+      default:
+        break;
     }
   }
   return -1;

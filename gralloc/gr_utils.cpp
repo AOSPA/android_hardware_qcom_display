@@ -226,11 +226,6 @@ unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int
   int height = info.height;
   uint64_t usage = info.usage;
 
-  if ((usage & BufferUsage::GPU_MIPMAP_COMPLETE) || (usage & BufferUsage::GPU_CUBE_MAP)) {
-    ALOGE("Invalid GPU usage flags present 0x%" PRIx64, usage);
-    return 0;
-  }
-
   if (IsUBwcEnabled(format, usage)) {
     size = GetUBwcSize(width, height, format, alignedw, alignedh);
   } else if (IsUncompressedRGBFormat(format)) {
@@ -541,6 +536,11 @@ bool IsUBwcSupported(int format) {
     case HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS:
     case HAL_PIXEL_FORMAT_RGBA_1010102:
     case HAL_PIXEL_FORMAT_RGBX_1010102:
+    case HAL_PIXEL_FORMAT_DEPTH_16:
+    case HAL_PIXEL_FORMAT_DEPTH_24:
+    case HAL_PIXEL_FORMAT_DEPTH_24_STENCIL_8:
+    case HAL_PIXEL_FORMAT_DEPTH_32F:
+    case HAL_PIXEL_FORMAT_STENCIL_8:
       return true;
     default:
       break;

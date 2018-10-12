@@ -1394,12 +1394,43 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
       status = SetIdlePC(input_parcel);
       break;
 
+    case qService::IQService::SET_DISPLAY_DEVICE_STATUS:
+      if (!input_parcel) {
+        DLOGE("QService command = %d: input_parcel needed.", command);
+        break;
+      }
+      status = SetDisplayDeviceStatus(input_parcel);
+      break;
+
     default:
       DLOGW("QService command = %d is not supported.", command);
       break;
   }
 
   return status;
+}
+
+android::status_t HWCSession::SetDisplayDeviceStatus(const android::Parcel* input_parcel) {
+  int dpy = input_parcel->readInt32();
+  int error = android::BAD_VALUE;
+  auto disp_status = static_cast<HWCDisplay::DisplayStatus>(input_parcel->readInt32());
+
+  int disp_idx = GetDisplayIndex(dpy);
+  if (disp_idx == -1) {
+    DLOGE("Invalid display = %d");
+    return android::BAD_VALUE;
+  }
+
+  SEQUENCE_WAIT_SCOPE_LOCK(locker_[disp_idx]);
+  if (hwc_display_[disp_idx]) {
+    error = hwc_display_[disp_idx]->SetDisplayStatus(disp_status);
+    if (error != android::OK)
+      DLOGW("Set disply %d status to %d failed with error %d", dpy, disp_status, error);
+  } else {
+    DLOGW("No display %d active", dpy);
+  }
+
+  return error;
 }
 
 android::status_t HWCSession::getComposerStatus() {

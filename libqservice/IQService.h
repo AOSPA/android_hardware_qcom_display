@@ -80,6 +80,7 @@ public:
         SET_QSYNC_MODE = 38, // Set qsync mode. 0 - (none)disable qsync, 1 - continuous mode.
         SET_COLOR_MODE_WITH_RENDER_INTENT = 39,
         SET_IDLE_PC = 40, // Enable/disable Idle power collapse
+        SET_DISPLAY_DEVICE_STATUS = 100, // Set display device status
         COMMAND_LIST_END = 400,
     };
 

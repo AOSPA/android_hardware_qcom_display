@@ -156,8 +156,6 @@ class DisplayBase : public DisplayInterface {
   DisplayState GetLastPowerMode();
   void SetPUonDestScaler();
   void ClearColorInfo();
-  bool NeedsGpuFallback(const Layer *layer);
-  bool NeedsHdrHandling();
   void GetColorPrimaryTransferFromAttributes(const AttrVal &attr,
       std::vector<PrimariesTransfer> *supported_pt);
   bool DisplayPowerResetPending();
@@ -210,10 +208,12 @@ class DisplayBase : public DisplayInterface {
   std::string current_color_mode_ = "hal_native";
   int disable_hdr_lut_gen_ = 0;
   DisplayState last_power_mode_ = kStateOff;
-  bool gpu_fallback_ = false;
   bool hw_recovery_logs_captured_ = false;
   int disable_hw_recovery_dump_ = 0;
   HWQosData default_qos_data_;
+  bool drop_hw_vsync_ = false;
+  uint32_t current_refresh_rate_ = 0;
+  bool drop_skewed_vsync_ = false;
 
   static Locker display_power_reset_lock_;
   static bool display_power_reset_pending_;

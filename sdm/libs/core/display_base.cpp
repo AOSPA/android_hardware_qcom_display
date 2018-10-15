@@ -98,6 +98,7 @@ DisplayError DisplayBase::Init() {
   int property_value = Debug::GetMaxPipesPerMixer(display_type_);
 
   uint32_t active_index = 0;
+  int drop_vsync = 0;
   hw_intf_->GetActiveConfig(&active_index);
   hw_intf_->GetDisplayAttributes(active_index, &display_attributes_);
   fb_config_ = display_attributes_;
@@ -116,12 +117,14 @@ DisplayError DisplayBase::Init() {
   fb_config_.x_pixels = mixer_attributes_.width;
   fb_config_.y_pixels = mixer_attributes_.height;
 
-  HWScaleLutInfo lut_info = {};
-  error = comp_manager_->GetScaleLutConfig(&lut_info);
-  if (error == kErrorNone) {
-    error = hw_intf_->SetScaleLutConfig(&lut_info);
-    if (error != kErrorNone) {
-      goto CleanupOnError;
+  if (IsPrimaryDisplay()) {
+    HWScaleLutInfo lut_info = {};
+    error = comp_manager_->GetScaleLutConfig(&lut_info);
+    if (error == kErrorNone) {
+      error = hw_intf_->SetScaleLutConfig(&lut_info);
+      if (error != kErrorNone) {
+        goto CleanupOnError;
+      }
     }
   }
 
@@ -166,6 +169,9 @@ DisplayError DisplayBase::Init() {
   Debug::GetProperty(DISABLE_HW_RECOVERY_DUMP_PROP, &disable_hw_recovery_dump_);
   DLOGI("disable_hw_recovery_dump_ set to %d", disable_hw_recovery_dump_);
 
+  Debug::Get()->GetProperty("DROP_SKEWED_VSYNC", &drop_vsync);
+  drop_skewed_vsync_ = (drop_vsync == 1);
+
   return kErrorNone;
 
 CleanupOnError:
@@ -182,6 +188,9 @@ DisplayError DisplayBase::Deinit() {
     lock_guard<recursive_mutex> obj(recursive_mutex_);
     ClearColorInfo();
     comp_manager_->UnregisterDisplay(display_comp_ctx_);
+    if (IsPrimaryDisplay()) {
+      hw_intf_->UnsetScaleLutConfig();
+    }
   }
   HWEventsInterface::Destroy(hw_events_intf_);
   HWInterface::Destroy(hw_intf_);
@@ -204,9 +213,6 @@ DisplayError DisplayBase::BuildLayerStackStats(LayerStack *layer_stack) {
       break;
     }
     hw_layers_info.app_layer_count++;
-    if (!gpu_fallback_) {
-      gpu_fallback_ = NeedsGpuFallback(layer);
-    }
     if (IsWideColor(layer->input_buffer.color_metadata.colorPrimaries)) {
       hw_layers_info.wide_color_primaries.push_back(
           layer->input_buffer.color_metadata.colorPrimaries);
@@ -273,7 +279,6 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   DisplayError error = kErrorNone;
   needs_validate_ = true;
-  gpu_fallback_ = false;
 
   if (!active_) {
     return kErrorPermission;
@@ -389,7 +394,10 @@ DisplayError DisplayBase::Commit(LayerStack *layer_stack) {
     return error;
   }
 
+  // Stop dropping vsync when first commit is received after idle fallback.
+  drop_hw_vsync_ = false;
   DLOGI_IF(kTagDisplay, "Exiting commit for display: %d-%d", display_id_, display_type_);
+
   return kErrorNone;
 }
 
@@ -604,6 +612,7 @@ std::string DisplayBase::Dump() {
     << max_mixer_stages_;
   os << "\nnum configs: " << num_modes << " active config index: " << active_index;
 
+  os << "\nCurrent Color Mode: " << current_color_mode_.c_str();
   os << "\nAvailable Color Modes:\n";
   for (auto it : color_mode_map_) {
     os << "  " << it.first << " " << std::setw(35 - INT(it.first.length())) <<
@@ -1049,6 +1058,10 @@ DisplayError DisplayBase::SetVSyncState(bool enable) {
   if (vsync_enable_ != enable) {
     error = hw_intf_->SetVSyncState(enable);
     if (error == kErrorNotSupported) {
+      if (drop_skewed_vsync_ && (hw_panel_info_.mode == kModeVideo) &&
+        enable && (current_refresh_rate_ == hw_panel_info_.min_fps)) {
+        drop_hw_vsync_ = true;
+      }
       error = hw_events_intf_->SetEventState(HWEvent::VSYNC, enable);
     }
     if (error == kErrorNone) {
@@ -1640,28 +1653,6 @@ void DisplayBase::DeInitializeColorModes() {
     num_color_modes_ = 0;
 }
 
-bool DisplayBase::NeedsGpuFallback(const Layer *layer) {
-  const LayerBufferFormat &format = layer->input_buffer.format;
-  const ColorRange &range = layer->input_buffer.color_metadata.range;
-
-  if (format == kFormatInvalid || range == Range_Extended) {
-    DLOGV_IF(kTagDisplay, "Format = %d Range = %d", format, range);
-    // when there is invalid format or extended range fall back to GPU
-    return true;
-  }
-
-  return false;
-}
-
-bool DisplayBase::NeedsHdrHandling() {
-  if (display_type_ != kBuiltIn || !num_color_modes_ || gpu_fallback_) {
-    // No HDR Handling for non-primary displays or when color modes are not present or
-    // if frame is falling back to GPU
-    return false;
-  }
-  return true;
-}
-
 void DisplayBase::GetColorPrimaryTransferFromAttributes(const AttrVal &attr,
     std::vector<PrimariesTransfer> *supported_pt) {
   std::string attribute_field = {};
@@ -1755,15 +1746,17 @@ PrimariesTransfer DisplayBase::GetBlendSpaceFromColorMode() {
   std::string color_gamut = kNative, dynamic_range = kSdr, pic_quality = kStandard;
   std::string transfer = {};
 
-  for (auto &it : attr) {
-    if (it.first.find(kColorGamutAttribute) != std::string::npos) {
-      color_gamut = it.second;
-    } else if (it.first.find(kDynamicRangeAttribute) != std::string::npos) {
-      dynamic_range = it.second;
-    } else if (it.first.find(kPictureQualityAttribute) != std::string::npos) {
-      pic_quality = it.second;
-    } else if (it.first.find(kGammaTransferAttribute) != std::string::npos) {
-      transfer = it.second;
+  if (attr.begin() != attr.end()) {
+    for (auto &it : attr) {
+      if (it.first.find(kColorGamutAttribute) != std::string::npos) {
+        color_gamut = it.second;
+      } else if (it.first.find(kDynamicRangeAttribute) != std::string::npos) {
+        dynamic_range = it.second;
+      } else if (it.first.find(kPictureQualityAttribute) != std::string::npos) {
+        pic_quality = it.second;
+      } else if (it.first.find(kGammaTransferAttribute) != std::string::npos) {
+        transfer = it.second;
+      }
     }
   }
   // TODO(user): Check is if someone calls with hal_display_p3

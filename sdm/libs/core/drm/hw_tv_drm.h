@@ -48,6 +48,7 @@ class HWTVDRM : public HWDeviceDRM {
   virtual DisplayError Standby();
   virtual DisplayError Commit(HWLayers *hw_layers);
   virtual void PopulateHWPanelInfo();
+  virtual DisplayError OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level);
   virtual DisplayError PowerOn(const HWQosData &qos_data, int *release_fence);
 
  private:
@@ -56,6 +57,10 @@ class HWTVDRM : public HWDeviceDRM {
 
   static const int kBitRGB  = 20;
   static const int kBitYUV  = 21;
+  const float kDefaultMinLuminance = 0.02f;
+  const float kDefaultMaxLuminance = 500.0f;
+  const float kMinPeakLuminance = 300.0f;
+  const float kMaxPeakLuminance = 1000.0f;
   drm_msm_ext_hdr_metadata hdr_metadata_ = {};
 };
 

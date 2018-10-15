@@ -601,6 +601,7 @@ struct DRMConnectorInfo {
   bool qsync_support;
   // Connection status of this connector
   bool is_connected;
+  bool is_wb_ubwc_supported;
 };
 
 // All DRM Connectors as map<Connector_id , connector_info>
@@ -801,6 +802,7 @@ class DRMAtomicReqInterface {
    * [return]: Error code if the API fails, 0 on success.
    */
   virtual int Commit(bool synchronous, bool retain_planes) = 0;
+
   /*
    * Validate the params set via Perform().
    * [return]: Error code if the API fails, 0 on success.
@@ -923,12 +925,20 @@ class DRMManagerInterface {
    * [return]: Error code if the API fails, 0 on success.
    */
   virtual int DestroyAtomicReq(DRMAtomicReqInterface *intf) = 0;
+
   /*
    * Sets the global scaler LUT
    * [input]: LUT Info
    * [return]: Error code if the API fails, 0 on success.
    */
   virtual int SetScalerLUT(const DRMScalerLUTInfo &lut_info) = 0;
+
+  /*
+   * Unsets the global scaler LUT
+   * [input]: None
+   * [return]: Error code if the API fails, 0 on success.
+   */
+  virtual int UnsetScalerLUT() = 0;
 
   /*
    * Get the DPPS feature info

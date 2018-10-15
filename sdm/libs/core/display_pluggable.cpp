@@ -334,6 +334,7 @@ DisplayError DisplayPluggable::InitializeColorModes() {
   var.push_back(std::make_pair(kDynamicRangeAttribute, kSdr));
   var.push_back(std::make_pair(kPictureQualityAttribute, kStandard));
   color_mode_attr_map_.insert(std::make_pair(kSrgb, var));
+  current_color_mode_ = kSrgb;
   pt.primaries = ColorPrimaries_BT2020;
   if (!hw_panel_info_.hdr_enabled) {
     UpdateColorModes();
@@ -405,17 +406,19 @@ static PrimariesTransfer GetBlendSpaceFromAttributes(const std::string &color_ga
 DisplayError DisplayPluggable::SetColorMode(const std::string &color_mode) {
   auto current_color_attr_ = color_mode_attr_map_.find(color_mode);
   if (current_color_attr_ == color_mode_attr_map_.end()) {
-    DLOGE("Failed to get attribues for color mode = %s", color_mode.c_str());
+    DLOGE("Failed to get the color mode = %s", color_mode.c_str());
     return kErrorNone;
   }
   AttrVal attr = current_color_attr_->second;
   std::string color_gamut = kNative, transfer = {};
 
-  for (auto &it : attr) {
-    if (it.first.find(kColorGamutAttribute) != std::string::npos) {
-      color_gamut = it.second;
-    } else if (it.first.find(kGammaTransferAttribute) != std::string::npos) {
-      transfer = it.second;
+  if (attr.begin() != attr.end()) {
+    for (auto &it : attr) {
+      if (it.first.find(kColorGamutAttribute) != std::string::npos) {
+        color_gamut = it.second;
+      } else if (it.first.find(kGammaTransferAttribute) != std::string::npos) {
+        transfer = it.second;
+      }
     }
   }
 
@@ -425,6 +428,7 @@ DisplayError DisplayPluggable::SetColorMode(const std::string &color_mode) {
   if (error != kErrorNone) {
     DLOGE("Failed Set blend space, error = %d display_type_=%d", error, display_type_);
   }
+  current_color_mode_ = color_mode;
 
   return kErrorNone;
 }
@@ -479,9 +483,10 @@ void DisplayPluggable::UpdateColorModes() {
   for (ColorModeAttrMap::iterator it = color_mode_attr_map_.begin();
        ((i < num_color_modes_) && (it != color_mode_attr_map_.end())); i++, it++) {
     color_modes_[i].id = INT32(i);
-    strncpy(color_modes_[i].name, it->first.c_str(), sizeof(color_modes_[i].name));
+    std::size_t length = (it->first).copy(color_modes_[i].name, sizeof(SDEDisplayMode::name) - 1);
+    color_modes_[i].name[length] = '\0';
     color_mode_map_.insert(std::make_pair(color_modes_[i].name, &color_modes_[i]));
-    DLOGI("Attr map name = %s", it->first.c_str());
+    DLOGI("Color mode = %s", color_modes_[i].name);
   }
   return;
 }

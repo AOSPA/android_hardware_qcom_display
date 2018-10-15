@@ -1,4 +1,5 @@
 soong_namespace {
+  imports: ["vendor/qcom/sm8150",],
 }
 
 cc_defaults {
@@ -21,7 +22,7 @@ cc_defaults {
 
 cc_library_headers {
     name: "display_headers",
-    vendor_available: true,
+    vendor: true,
     export_include_dirs: [
         "include",
         "libcopybit",
@@ -33,20 +34,8 @@ cc_library_headers {
         "gralloc",
         "libdebug",
     ],
-    header_libs: ["libhardware_headers"],
-    export_header_lib_headers: ["libhardware_headers"],
-}
-
-cc_library_headers {
-    name: "display_intf_headers",
-    vendor_available: true,
-    export_include_dirs: [
-        "include",
-        "libqdutils",
-        "gralloc",
-    ],
-    header_libs: ["libhardware_headers"],
-    export_header_lib_headers: ["libhardware_headers"],
+    header_libs: ["libhardware_headers", "display_intf_headers"],
+    export_header_lib_headers: ["libhardware_headers", "display_intf_headers"],
 }
 
 subdirs = [

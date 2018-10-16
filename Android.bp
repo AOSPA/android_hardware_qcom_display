@@ -1,5 +1,4 @@
 soong_namespace {
-  imports: ["vendor/qcom/sm8150",],
 }
 
 cc_defaults {

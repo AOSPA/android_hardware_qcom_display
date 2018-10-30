@@ -81,6 +81,7 @@ public:
         SET_COLOR_MODE_WITH_RENDER_INTENT = 39,
         SET_IDLE_PC = 40, // Enable/disable Idle power collapse
         SET_DISPLAY_DEVICE_STATUS = 100, // Set display device status
+        SET_DPPS_AD4_ROI_CONFIG = 41, // Set ad4 roi config for debug
         COMMAND_LIST_END = 400,
     };
 

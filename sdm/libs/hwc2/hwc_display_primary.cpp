@@ -251,6 +251,33 @@ HWC2::Error HWCDisplayPrimary::Present(int32_t *out_retire_fence) {
     }
   }
 
+  if (CC_UNLIKELY(!has_init_light_server_)) {
+    using ILight = ::hardware::google::light::V1_0::ILight;
+    vendor_ILight_ = ILight::getService();
+    if (vendor_ILight_ != nullptr) {
+      vendor_ILight_->setHbm(false);
+    } else {
+      DLOGE("failed to get vendor light service");
+    }
+
+    uint32_t panel_x, panel_y;
+    GetPanelResolution(&panel_x, &panel_y);
+    hbm_threshold_px_ = float(panel_x * panel_y) * hbm_threshold_pct_;
+    DLOGI("Configure hbm_threshold_px_ to %f", hbm_threshold_px_);
+
+    has_init_light_server_ = true;
+  }
+
+  const bool enable_hbm(hdr_largest_layer_px_ > hbm_threshold_px_);
+  if (high_brightness_mode_ != enable_hbm && vendor_ILight_ != nullptr) {
+    using ::android::hardware::light::V2_0::Status;
+    if (Status::SUCCESS == vendor_ILight_->setHbm(enable_hbm)) {
+      high_brightness_mode_ = enable_hbm;
+    } else {
+      DLOGE("failed to setHbm to %d", enable_hbm);
+    }
+  }
+
   CloseFd(&output_buffer_.acquire_fence_fd);
   pending_commit_ = false;
   return status;
@@ -565,8 +592,9 @@ void HWCDisplayPrimary::HandleFrameDump() {
   }
 }
 
-HWC2::Error HWCDisplayPrimary::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type) {
-  HWCDisplay::SetFrameDumpConfig(count, bit_mask_layer_type);
+HWC2::Error HWCDisplayPrimary::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type,
+                                                  int32_t format, bool post_processed) {
+  HWCDisplay::SetFrameDumpConfig(count, bit_mask_layer_type, format, post_processed);
   dump_output_to_file_ = bit_mask_layer_type & (1 << OUTPUT_LAYER_DUMP);
   DLOGI("output_layer_dump_enable %d", dump_output_to_file_);
 
@@ -576,10 +604,18 @@ HWC2::Error HWCDisplayPrimary::SetFrameDumpConfig(uint32_t count, uint32_t bit_m
 
   // Allocate and map output buffer
   output_buffer_info_ = {};
-  // Since we dump DSPP output use Panel resolution.
-  GetPanelResolution(&output_buffer_info_.buffer_config.width,
-                     &output_buffer_info_.buffer_config.height);
-  output_buffer_info_.buffer_config.format = kFormatRGB888;
+
+  if (post_processed) {
+    // To dump post-processed (DSPP) output, use Panel resolution.
+    GetPanelResolution(&output_buffer_info_.buffer_config.width,
+                       &output_buffer_info_.buffer_config.height);
+  } else {
+    // To dump Layer Mixer output, use FrameBuffer resolution.
+    GetFrameBufferResolution(&output_buffer_info_.buffer_config.width,
+                             &output_buffer_info_.buffer_config.height);
+  }
+
+  output_buffer_info_.buffer_config.format = GetSDMFormat(format, 0);
   output_buffer_info_.buffer_config.buffer_count = 1;
   if (buffer_allocator_->AllocateBuffer(&output_buffer_info_) != 0) {
     DLOGE("Buffer allocation failed");
@@ -599,7 +635,7 @@ HWC2::Error HWCDisplayPrimary::SetFrameDumpConfig(uint32_t count, uint32_t bit_m
 
   output_buffer_base_ = buffer;
   const native_handle_t *handle = static_cast<native_handle_t *>(output_buffer_info_.private_data);
-  SetReadbackBuffer(handle, -1, true);
+  SetReadbackBuffer(handle, -1, post_processed);
 
   return HWC2::Error::None;
 }

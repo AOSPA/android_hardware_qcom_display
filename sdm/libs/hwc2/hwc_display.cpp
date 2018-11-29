@@ -374,6 +374,12 @@ int HWCDisplay::Init() {
   current_refresh_rate_ = max_refresh_rate_;
 
   GetUnderScanConfig();
+
+  DisplayConfigFixedInfo fixed_info = {};
+  display_intf_->GetConfig(&fixed_info);
+  partial_update_enabled_ = fixed_info.partial_update;
+  client_target_->SetPartialUpdate(partial_update_enabled_);
+
   DLOGI("Display created with id: %d", id_);
 
   return 0;
@@ -407,6 +413,7 @@ HWC2::Error HWCDisplay::CreateLayer(hwc2_layer_t *out_layer_id) {
   geometry_changes_ |= GeometryChanges::kAdded;
   validated_ = false;
   layer_stack_invalid_ = true;
+  layer->SetPartialUpdate(partial_update_enabled_);
 
   return HWC2::Error::None;
 }
@@ -455,6 +462,7 @@ void HWCDisplay::BuildLayerStack() {
 
   uint32_t color_mode_count = 0;
   display_intf_->GetColorModeCount(&color_mode_count);
+  hdr_largest_layer_px_ = 0.0f;
 
   // Add one layer for fb target
   // TODO(user): Add blit target layers
@@ -490,11 +498,15 @@ void HWCDisplay::BuildLayerStack() {
     }
 
     bool is_secure = false;
+    bool is_video = false;
     const private_handle_t *handle =
         reinterpret_cast<const private_handle_t *>(layer->input_buffer.buffer_id);
     if (handle) {
       if (handle->buffer_type == BUFFER_TYPE_VIDEO) {
         layer_stack_.flags.video_present = true;
+        is_video = true;
+      } else if (layer->transform.rotation != 0.0f) {
+        layer->flags.skip = true;
       }
       // TZ Protected Buffer - L1
       // Gralloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback
@@ -535,9 +547,15 @@ void HWCDisplay::BuildLayerStack() {
       // In such cases, we should not handle HDR as the HDR mode isn't applied
       layer->input_buffer.flags.hdr = true;
       layer_stack_.flags.hdr_present = true;
+
+      // HDR area
+      auto hdr_layer_area = (layer->dst_rect.right - layer->dst_rect.left) *
+                            (layer->dst_rect.bottom - layer->dst_rect.top);
+      hdr_largest_layer_px_ = std::max(hdr_largest_layer_px_, hdr_layer_area);
     }
 
-    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure) {
+    if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !layer->flags.solid_fill &&
+        !is_video) {
       layer->flags.skip = true;
     }
 
@@ -577,7 +595,7 @@ void HWCDisplay::BuildLayerStack() {
 
     layer->flags.updating = true;
     if (layer_set_.size() <= kMaxLayerCount) {
-      layer->flags.updating = IsLayerUpdating(layer);
+      layer->flags.updating = IsLayerUpdating(hwc_layer);
     }
 
     layer_stack_.layers.push_back(layer);
@@ -598,7 +616,7 @@ void HWCDisplay::BuildLayerStack() {
   layer_stack_.flags.geometry_changed = UINT32(geometry_changes_ > 0);
   // Append client target to the layer stack
   Layer *sdm_client_target = client_target_->GetSDMLayer();
-  sdm_client_target->flags.updating = IsLayerUpdating(sdm_client_target);
+  sdm_client_target->flags.updating = IsLayerUpdating(client_target_);
   layer_stack_.layers.push_back(sdm_client_target);
   // fall back frame composition to GPU when client target is 10bit
   // TODO(user): clarify the behaviour from Client(SF) and SDM Extn -
@@ -984,7 +1002,8 @@ DisplayError HWCDisplay::SetMixerResolution(uint32_t width, uint32_t height) {
   return kErrorNotSupported;
 }
 
-HWC2::Error HWCDisplay::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type) {
+HWC2::Error HWCDisplay::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type,
+                                           int32_t format, bool post_processed) {
   dump_frame_count_ = count;
   dump_frame_index_ = 0;
   dump_input_layers_ = ((bit_mask_layer_type & (1 << INPUT_LAYER_DUMP)) != 0);
@@ -1059,6 +1078,11 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
   }
 
   UpdateRefreshRate();
+
+  if (CanSkipSdmPrepare(out_num_types, out_num_requests)) {
+    return ((*out_num_types > 0) ? HWC2::Error::HasChanges : HWC2::Error::None);
+  }
+
   if (!skip_prepare_) {
     DisplayError error = display_intf_->Prepare(&layer_stack_);
     if (error != kErrorNone) {
@@ -1540,6 +1564,7 @@ LayerBufferFormat HWCDisplay::GetSDMFormat(const int32_t &source, const int flag
 
 void HWCDisplay::DumpInputBuffers() {
   char dir_path[PATH_MAX];
+  int  status;
 
   if (!dump_frame_count_ || flush_ || !dump_input_layers_) {
     return;
@@ -1549,13 +1574,14 @@ void HWCDisplay::DumpInputBuffers() {
   snprintf(dir_path, sizeof(dir_path), "%s/frame_dump_%s", HWCDebugHandler::DumpDir(),
            GetDisplayString());
 
-  if (mkdir(dir_path, 0777) != 0 && errno != EEXIST) {
+  status = mkdir(dir_path, 777);
+  if ((status != 0) && errno != EEXIST) {
     DLOGW("Failed to create %s directory errno = %d, desc = %s", dir_path, errno, strerror(errno));
     return;
   }
 
-  // if directory exists already, need to explicitly change the permission.
-  if (errno == EEXIST && chmod(dir_path, 0777) != 0) {
+  // Even if directory exists already, need to explicitly change the permission.
+  if (chmod(dir_path, 0777) != 0) {
     DLOGW("Failed to change permissions on %s directory", dir_path);
     return;
   }
@@ -1616,17 +1642,19 @@ void HWCDisplay::DumpInputBuffers() {
 
 void HWCDisplay::DumpOutputBuffer(const BufferInfo &buffer_info, void *base, int fence) {
   char dir_path[PATH_MAX];
+  int  status;
 
   snprintf(dir_path, sizeof(dir_path), "%s/frame_dump_%s", HWCDebugHandler::DumpDir(),
            GetDisplayString());
 
-  if (mkdir(dir_path, 777) != 0 && errno != EEXIST) {
+  status = mkdir(dir_path, 777);
+  if ((status != 0) && errno != EEXIST) {
     DLOGW("Failed to create %s directory errno = %d, desc = %s", dir_path, errno, strerror(errno));
     return;
   }
 
-  // if directory exists already, need to explicitly change the permission.
-  if (errno == EEXIST && chmod(dir_path, 0777) != 0) {
+  // Even if directory exists already, need to explicitly change the permission.
+  if (chmod(dir_path, 0777) != 0) {
     DLOGW("Failed to change permissions on %s directory", dir_path);
     return;
   }
@@ -1644,7 +1672,8 @@ void HWCDisplay::DumpOutputBuffer(const BufferInfo &buffer_info, void *base, int
     }
 
     snprintf(dump_file_name, sizeof(dump_file_name), "%s/output_layer_%dx%d_%s_frame%d.raw",
-             dir_path, buffer_info.buffer_config.width, buffer_info.buffer_config.height,
+             dir_path, buffer_info.alloc_buffer_info.aligned_width,
+             buffer_info.alloc_buffer_info.aligned_height,
              GetFormatString(buffer_info.buffer_config.format), dump_frame_index_);
 
     FILE *fp = fopen(dump_file_name, "w+");
@@ -2025,22 +2054,15 @@ uint32_t HWCDisplay::GetUpdatingLayersCount(void) {
   return updating_count;
 }
 
-bool HWCDisplay::IsLayerUpdating(const Layer *layer) {
+bool HWCDisplay::IsLayerUpdating(HWCLayer *hwc_layer) {
+  auto layer = hwc_layer->GetSDMLayer();
   // Layer should be considered updating if
   //   a) layer is in single buffer mode, or
   //   b) valid dirty_regions(android specific hint for updating status), or
   //   c) layer stack geometry has changed (TODO(user): Remove when SDM accepts
   //      geometry_changed as bit fields).
-  return (layer->flags.single_buffer || IsSurfaceUpdated(layer->dirty_regions) ||
+  return (layer->flags.single_buffer || hwc_layer->IsSurfaceUpdated() ||
           geometry_changes_);
-}
-
-bool HWCDisplay::IsSurfaceUpdated(const std::vector<LayerRect> &dirty_regions) {
-  // based on dirty_regions determine if its updating
-  // dirty_rect count = 0 - whole layer - updating.
-  // dirty_rect count = 1 or more valid rects - updating.
-  // dirty_rect count = 1 with (0,0,0,0) - not updating.
-  return (dirty_regions.empty() || IsValid(dirty_regions.at(0)));
 }
 
 uint32_t HWCDisplay::SanitizeRefreshRate(uint32_t req_refresh_rate) {
@@ -2073,7 +2095,7 @@ std::string HWCDisplay::Dump() {
     auto transform = sdm_layer->transform;
     os << "layer: " << std::setw(4) << layer->GetId();
     os << " z: " << layer->GetZ();
-    os << " compositon: " <<
+    os << " composition: " <<
           to_string(layer->GetClientRequestedCompositionType()).c_str();
     os << "/" <<
           to_string(layer->GetDeviceSelectedCompositionType()).c_str();
@@ -2158,6 +2180,39 @@ void HWCDisplay::UpdateRefreshRate() {
     auto layer = hwc_layer->GetSDMLayer();
     layer->frame_rate = current_refresh_rate_;
   }
+}
+
+// Skip SDM prepare if all the layers in the current draw cycle are marked as Skip and
+// previous draw cycle had GPU Composition, as the resources for GPU Target layer have
+// already been validated and configured to the driver.
+bool HWCDisplay::CanSkipSdmPrepare(uint32_t *num_types, uint32_t *num_requests) {
+  if (!validated_ || layer_set_.empty()) {
+    return false;
+  }
+
+  bool skip_prepare = true;
+  for (auto hwc_layer : layer_set_) {
+    if (!hwc_layer->GetSDMLayer()->flags.skip ||
+        (hwc_layer->GetDeviceSelectedCompositionType() != HWC2::Composition::Client)) {
+      skip_prepare = false;
+      layer_changes_.clear();
+      break;
+    }
+    if (hwc_layer->GetClientRequestedCompositionType() != HWC2::Composition::Client) {
+      layer_changes_[hwc_layer->GetId()] = HWC2::Composition::Client;
+    }
+  }
+
+  if (skip_prepare) {
+    *num_types = UINT32(layer_changes_.size());
+    *num_requests = 0;
+    layer_stack_invalid_ = false;
+    has_client_composition_ = true;
+    client_target_->ResetValidation();
+    validate_state_ = kNormalValidate;
+  }
+
+  return skip_prepare;
 }
 
 }  // namespace sdm

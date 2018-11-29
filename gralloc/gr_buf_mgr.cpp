@@ -326,7 +326,7 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   bool use_adreno_for_size = false;
   GraphicsMetadata graphics_metadata = {};
 
-  use_adreno_for_size = ((buffer_type != BUFFER_TYPE_VIDEO) && GetAdrenoSizeAPIStatus());
+  use_adreno_for_size = CanUseAdrenoForSize(buffer_type, usage);
   if (use_adreno_for_size) {
     GetGpuResourceSizeAndDimensions(info, &size, &alignedw, &alignedh, &graphics_metadata);
   } else {
@@ -376,10 +376,10 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   hnd->layer_count = layer_count;
 
   ColorSpace_t colorSpace = ITU_R_601;
-  setMetaData(hnd, UPDATE_COLOR_SPACE, reinterpret_cast<void *>(&colorSpace));
+  setMetaDataAndUnmap(hnd, UPDATE_COLOR_SPACE, reinterpret_cast<void *>(&colorSpace));
 
   if (use_adreno_for_size) {
-    setMetaData(hnd, SET_GRAPHICS_METADATA, reinterpret_cast<void *>(&graphics_metadata));
+    setMetaDataAndUnmap(hnd, SET_GRAPHICS_METADATA, reinterpret_cast<void *>(&graphics_metadata));
   }
 
   *handle = hnd;

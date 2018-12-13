@@ -37,6 +37,7 @@
 #include <xf86drmMode.h>
 
 #include "histogram_collector.h"
+#include "ringbuffer.h"
 
 namespace {
 
@@ -274,80 +275,12 @@ enum class CrtcPowerState
     UNKNOWN
 };
 
-}
-
-namespace histogram {
-struct VHistogram
-{
-    VHistogram() :
-        frame_count(0),
-        bins(desired_buckets, 0) {
-    }
-
-    std::string dump() const {
-        std::unique_lock<decltype(mutex)> lk(mutex);
-        std::stringstream ss;
-        ss << "Color Sampling, dark (0.0) to light (1.0): sampled frames: " << frame_count << '\n';
-        if (frame_count == 0) {
-            ss << "\tno color statistics collected\n";
-            return ss.str();
-        }
-
-        ss << std::fixed << std::setprecision(3);
-        ss << "\tbucket\t\t: # of displayed pixels at bucket value\n";
-        for (auto i = 0u; i < bins.size(); i++) {
-            ss << "\t" << i / static_cast<float>(bins.size()) <<
-                  " to " << ( i + 1 ) / static_cast<float>(bins.size()) << "\t: " <<
-                  bins[i] << '\n';
-        }
-        return ss.str();
-    }
-
-    void insert_frame(drm_msm_hist* hist) {
-        static_assert((HIST_V_SIZE % desired_buckets) == 0,
-                "histogram cannot be rebucketed to smaller number of buckets");
-
-        std::unique_lock<decltype(mutex)> lk(mutex);
-        for (auto i = 0u; i < HIST_V_SIZE; i++)
-            bins[i / bucket_compression] += hist->data[i];
-        frame_count++;
-    }
-
-    HWC2::Error collect(uint64_t /*max_frames*/,
-                        uint64_t /*timestamp*/,
-                        int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
-                        uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS],
-                        uint64_t* numFrames) const {
-        static constexpr int supportedComponentIdx = 2;
-        static_assert(supportedComponentIdx < NUM_HISTOGRAM_COLOR_COMPONENTS,
-                "supported component is out of range");
-
-        //TODO: add filtering by max_frames and timestamps.
-        if (!samples_size || !numFrames)
-            return HWC2::Error::BadParameter;
-
-        *numFrames = frame_count;
-        std::fill(samples_size, samples_size + NUM_HISTOGRAM_COLOR_COMPONENTS, 0);
-        samples_size[supportedComponentIdx] = static_cast<int32_t>(bins.size());
-
-        if (samples && samples[supportedComponentIdx])
-            std::copy(bins.begin(), bins.end(), samples[supportedComponentIdx]);
-        return HWC2::Error::None;
-    }
-
-private:
-    VHistogram(VHistogram const&) = delete;
-    VHistogram& operator=(VHistogram const&) = delete;
-    std::mutex mutable mutex;
-    uint64_t frame_count;
-    static constexpr int desired_buckets = 8;
-    static constexpr int bucket_compression = HIST_V_SIZE / desired_buckets;
-    std::vector<uint64_t> bins;
-};
+constexpr static auto implementation_defined_max_frame_ringbuffer = 300;
 }
 
 histogram::HistogramCollector::HistogramCollector() :
-    histogram(std::make_unique<histogram::VHistogram>()) {
+    histogram(histogram::Ringbuffer::create(
+        implementation_defined_max_frame_ringbuffer, std::make_unique<histogram::DefaultTimeKeeper>())) {
 }
 
 histogram::HistogramCollector::~HistogramCollector() {
@@ -355,16 +288,76 @@ histogram::HistogramCollector::~HistogramCollector() {
 }
 
 std::string histogram::HistogramCollector::Dump() const {
-    return histogram->dump();
+    uint64_t num_frames;
+    std::array<uint64_t, HIST_V_SIZE> samples;
+    std::tie(num_frames, samples) = histogram->collect_cumulative();
+    std::stringstream ss;
+    ss << "Color Sampling, dark (0.0) to light (1.0): sampled frames: " << num_frames << '\n';
+    if (num_frames == 0) {
+        ss << "\tno color statistics collected\n";
+        return ss.str();
+    }
+
+    ss << std::fixed << std::setprecision(3);
+    ss << "\tbucket\t\t: # of displayed pixels at bucket value\n";
+    for (auto i = 0u; i < samples.size(); i++) {
+        ss << "\t" << i / static_cast<float>(samples.size()) <<
+              " to " << ( i + 1 ) / static_cast<float>(samples.size()) << "\t: " <<
+              samples[i] << '\n';
+    }
+
+    return ss.str();
+}
+
+namespace {
+static constexpr size_t numBuckets = 8;
+static_assert((HIST_V_SIZE % numBuckets) == 0,
+           "histogram cannot be rebucketed to smaller number of buckets");
+static constexpr int bucket_compression = HIST_V_SIZE / numBuckets;
+
+std::array<uint64_t, numBuckets> rebucketTo8Buckets(std::array<uint64_t, HIST_V_SIZE> const& frame) {
+    std::array<uint64_t, numBuckets> bins;
+    bins.fill(0);
+    for (auto i = 0u; i < HIST_V_SIZE; i++)
+        bins[i / bucket_compression] += frame[i];
+    return bins;
+}
 }
 
 HWC2::Error histogram::HistogramCollector::collect(
     uint64_t max_frames,
     uint64_t timestamp,
-    int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
-    uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS],
-    uint64_t* numFrames) const {
-    return histogram->collect(max_frames, timestamp, samples_size, samples, numFrames);
+    int32_t out_samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
+    uint64_t* out_samples[NUM_HISTOGRAM_COLOR_COMPONENTS],
+    uint64_t* out_num_frames) const {
+
+    if (!out_samples_size || !out_num_frames)
+        return HWC2::Error::BadParameter;
+
+    out_samples_size[0] = 0;
+    out_samples_size[1] = 0;
+    out_samples_size[2] = numBuckets;
+    out_samples_size[3] = 0;
+
+    uint64_t num_frames;
+    std::array<uint64_t, HIST_V_SIZE> samples;
+
+    if (max_frames == 0 && timestamp == 0) {
+        std::tie(num_frames, samples) = histogram->collect_cumulative();
+    } else if (max_frames == 0) {
+        std::tie(num_frames, samples) = histogram->collect_after(timestamp);
+    } else if (timestamp == 0) {
+        std::tie(num_frames, samples) = histogram->collect_max(max_frames);
+    } else {
+        std::tie(num_frames, samples) = histogram->collect_max_after(timestamp, max_frames);
+    }
+
+    auto samples_rebucketed = rebucketTo8Buckets(samples);
+    *out_num_frames = num_frames;
+    if (out_samples && out_samples[2])
+        memcpy(out_samples[2], samples_rebucketed.data(), sizeof(uint64_t) * samples_rebucketed.size());
+
+    return HWC2::Error::None;
 }
 
 HWC2::Error histogram::HistogramCollector::getAttributes(int32_t* format,
@@ -380,8 +373,11 @@ HWC2::Error histogram::HistogramCollector::getAttributes(int32_t* format,
 }
 
 void histogram::HistogramCollector::start() {
-    std::unique_lock<decltype(thread_control)> lk(thread_control);
+    start(implementation_defined_max_frame_ringbuffer);
+}
 
+void histogram::HistogramCollector::start(uint64_t max_frames) {
+    std::unique_lock<decltype(thread_control)> lk(thread_control);
     if (started) {
         return;
     }
@@ -390,7 +386,7 @@ void histogram::HistogramCollector::start() {
         ALOGE("histogram thread not started, could not create control pipe.");
         return;
     }
-    histogram = std::make_unique<histogram::VHistogram>();
+    histogram = histogram::Ringbuffer::create(max_frames, std::make_unique<histogram::DefaultTimeKeeper>());
     monitoring_thread = std::thread(&HistogramCollector::collecting_thread, this, selfpipe[0]);
     started = true;
 }
@@ -544,7 +540,7 @@ void histogram::HistogramCollector::collecting_thread(int selfpipe) {
                 if (response->base.type == DRM_EVENT_HISTOGRAM) {
                     uint32_t blob_id = *reinterpret_cast<uint32_t*>(response->data);
                     drmModePropertyBlobPtr blob = drmModeGetPropertyBlob(*drm, blob_id);
-                    histogram->insert_frame(static_cast<struct drm_msm_hist*>(blob->data));
+                    histogram->insert(*static_cast<struct drm_msm_hist*>(blob->data));
                     drmModeFreePropertyBlob(blob);
                 }
 

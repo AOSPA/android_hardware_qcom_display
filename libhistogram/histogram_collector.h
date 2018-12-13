@@ -29,7 +29,7 @@
 
 namespace histogram {
 
-struct VHistogram;
+class Ringbuffer;
 class HistogramCollector
 {
 public:
@@ -37,6 +37,7 @@ public:
     ~HistogramCollector();
 
     void start();
+    void start(uint64_t max_frames);
     void stop();
 
     std::string Dump() const;
@@ -60,7 +61,8 @@ private:
     std::thread monitoring_thread;
     int selfpipe[2];
 
-    std::unique_ptr<VHistogram> histogram;
+    std::unique_ptr<histogram::Ringbuffer> histogram;
+
 };
 
 }  // namespace histogram

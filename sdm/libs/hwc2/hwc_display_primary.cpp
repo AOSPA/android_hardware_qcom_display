@@ -741,10 +741,13 @@ HWC2::Error HWCDisplayPrimary::SetDisplayedContentSamplingEnabled(int32_t enable
       api_sampling_vote = false;
     }
 
-    if (api_sampling_vote || vndservice_sampling_vote) {
-      histogram.start();
+    auto start = api_sampling_vote || vndservice_sampling_vote;
+    if (start && max_frames == 0) {
+        histogram.start();
+    } else if (start) {
+        histogram.start(max_frames);
     } else {
-      histogram.stop();
+        histogram.stop();
     }
     return HWC2::Error::None;
 }

@@ -110,9 +110,6 @@ bool GetTransfer(const int32_t &dataspace, GammaTransfer *gamma_transfer) {
     case HAL_DATASPACE_TRANSFER_HLG:
       *gamma_transfer = Transfer_HLG;
       break;
-    case HAL_DATASPACE_TRANSFER_LINEAR:
-      *gamma_transfer = Transfer_Linear;
-      break;
     case HAL_DATASPACE_TRANSFER_GAMMA2_2:
       *gamma_transfer = Transfer_Gamma2_2;
       break;

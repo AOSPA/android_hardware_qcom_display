@@ -20,7 +20,6 @@ PRODUCT_PACKAGES += \
 
 
 TARGET_FORCE_HWC_FOR_VIRTUAL_DISPLAYS := true
-MAX_VIRTUAL_DISPLAY_DIMENSION := 4096
 NUM_FRAMEBUFFER_SURFACE_BUFFERS := 2
 #Enable Charging Icon
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
@@ -35,6 +34,9 @@ PRODUCT_PROPERTY_OVERRIDES += \
     persist.demo.hdmirotationlock=false \
     ro.vendor.display.cabl=2 \
     debug.sf.latch_unsignaled=1 \
+
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    ro.surface_flinger.max_virtual_display_dimension=4096
 
 # This matrix should be in column major order, per SurfaceFlinger requirement
 #  1.16868   -0.16868    0.00000

@@ -154,7 +154,7 @@ set_light_backlight(struct light_device_t* dev,
         g_last_backlight_mode = state->brightnessMode;
     }
 
-    if (!err) {
+    if (!err && !lpEnabled) {
         if (!access(LCD_FILE, F_OK)) {
             err = write_int(LCD_FILE, brightness);
         } else {

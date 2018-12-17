@@ -34,10 +34,6 @@
 
 #include <hardware/lights.h>
 
-#ifndef DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS
-#define DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS 0x80
-#endif
-
 /******************************************************************************/
 
 static pthread_once_t g_init = PTHREAD_ONCE_INIT;
@@ -153,9 +149,6 @@ set_light_backlight(struct light_device_t* dev,
             if ((err = write_int(PERSISTENCE_FILE, lpEnabled)) != 0) {
                 ALOGE("%s: Failed to write to %s: %s\n", __FUNCTION__,
                        PERSISTENCE_FILE, strerror(errno));
-            }
-            if (lpEnabled != 0) {
-                brightness = DEFAULT_LOW_PERSISTENCE_MODE_BRIGHTNESS;
             }
         }
         g_last_backlight_mode = state->brightnessMode;

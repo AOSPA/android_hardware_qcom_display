@@ -54,11 +54,11 @@ char const*const LCD_FILE
 char const*const LCD_FILE2
         = "/sys/class/backlight/panel0-backlight/brightness";
 
+char const*const PERSISTENCE_FILE
+        = "/sys/class/backlight/panel0-backlight/vr_mode";
+
 char const*const BUTTON_FILE
         = "/sys/class/leds/button-backlight/brightness";
-
-char const*const PERSISTENCE_FILE
-        = "/sys/class/graphics/fb0/msm_fb_persist_mode";
 
 enum rgb_led {
     LED_RED = 0,

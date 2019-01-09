@@ -36,6 +36,8 @@
 
 #define __CLASS__ "CoreImpl"
 
+int value = 0;
+
 namespace sdm {
 
 CoreImpl::CoreImpl(BufferAllocator *buffer_allocator,
@@ -182,6 +184,8 @@ DisplayError CoreImpl::GetFirstDisplayInterfaceType(HWDisplayInterfaceInfo *hw_d
 }
 
 bool CoreImpl::IsColorTransformSupported() {
+    if (Debug::Get()->GetProperty("persist.hwc2.skip_client_color_transform", &value) == kErrorNone)
+        return false;
     return (hw_resource_.has_ppp) ? false : true;
 }
 }  // namespace sdm

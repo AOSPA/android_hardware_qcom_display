@@ -115,15 +115,6 @@ class DisplayBase : public DisplayInterface {
                                               LayerBufferFormat format,
                                               const ColorMetaData &color_metadata);
   virtual std::string Dump();
-  virtual DisplayError SetDynamicDSIClock(uint64_t bitclk) {
-    return kErrorNotSupported;
-  }
-  virtual DisplayError GetDynamicDSIClock(uint64_t *bitclk) {
-    return kErrorNotSupported;
-  }
-  virtual DisplayError GetSupportedDSIClock(std::vector<uint64_t> *bitclk_rates) {
-    return kErrorNotSupported;
-  }
 
  protected:
   DisplayError BuildLayerStackStats(LayerStack *layer_stack);

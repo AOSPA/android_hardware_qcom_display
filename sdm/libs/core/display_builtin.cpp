@@ -202,6 +202,20 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::SetActiveConfig(uint32_t index) {
+  lock_guard<recursive_mutex> obj(recursive_mutex_);
+  DisplayState state;
+
+  if (DisplayBase::GetDisplayState(&state) == kErrorNone) {
+    if (state == kStateDoze || state == kStateDozeSuspend) {
+      DLOGW("It is not allowed to set active config in AOD mode");
+      return kErrorPermission;
+    }
+  }
+
+  return DisplayBase::SetActiveConfig(index);
+}
+
 void DisplayBuiltIn::SetIdleTimeoutMs(uint32_t active_ms) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   comp_manager_->SetIdleTimeoutMs(display_comp_ctx_, active_ms);

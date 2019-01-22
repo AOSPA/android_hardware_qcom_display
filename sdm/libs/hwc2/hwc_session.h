@@ -215,6 +215,12 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static int32_t GetReadbackBufferFence(hwc2_device_t *device, hwc2_display_t display,
                                         int32_t *release_fence);
   static uint32_t GetMaxVirtualDisplayCount(hwc2_device_t *device);
+  static int32_t GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t display,
+                                        uint32_t* outNumCapabilities, uint32_t* outCapabilities);
+  static int32_t GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_display_t display,
+                                             bool *out_support);
+  static int32_t SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t display,
+                                      float brightness);
 
   // HWCDisplayEventHandler
   virtual void DisplayPowerReset();
@@ -419,6 +425,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   int32_t max_sde_pluggable_displays_ = 0;
   int32_t max_sde_builtin_displays_ = 0;
   int32_t registered_builtin_displays_ = 0;
+  int brightness_fd_ = -1;
 };
 
 }  // namespace sdm

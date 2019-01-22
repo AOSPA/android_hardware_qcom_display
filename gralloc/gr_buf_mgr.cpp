@@ -469,6 +469,12 @@ int BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_han
   gralloc1_consumer_usage_t cons_usage = descriptor.GetConsumerUsage();
   uint32_t layer_count = descriptor.GetLayerCount();
 
+  // Check if GPU supports requested hardware buffer usage
+  if (!IsGPUSupportedHwBuffer(prod_usage)) {
+    ALOGE("AllocateBuffer - Requested HW Buffer usage not supported by GPU");
+    return GRALLOC1_ERROR_UNSUPPORTED;
+  }
+
   // Get implementation defined format
   int gralloc_format = allocator_->GetImplDefinedFormat(prod_usage, cons_usage, format);
 
@@ -849,6 +855,9 @@ static bool IsYuvFormat(const private_handle_t *hnd) {
     case HAL_PIXEL_FORMAT_RAW10:
     case HAL_PIXEL_FORMAT_YV12:
     case HAL_PIXEL_FORMAT_Y8:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010:
+    case HAL_PIXEL_FORMAT_YCbCr_420_TP10_UBWC:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010_UBWC:
       return true;
     default:
       return false;

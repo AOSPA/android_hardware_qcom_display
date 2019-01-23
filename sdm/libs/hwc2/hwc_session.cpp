@@ -1039,7 +1039,7 @@ HWC2::Error HWCSession::CreateVirtualDisplayObject(uint32_t width, uint32_t heig
                                             height, format, &hwc_display_[HWC_DISPLAY_VIRTUAL]);
     // TODO(user): validate width and height support
     if (status) {
-      return HWC2::Error::Unsupported;
+      return HWC2::Error::NoResources;
     }
   }
 

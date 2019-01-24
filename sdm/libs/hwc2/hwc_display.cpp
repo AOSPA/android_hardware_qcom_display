@@ -79,7 +79,6 @@ HWC2::Error HWCColorMode::GetColorModes(uint32_t *out_num_modes, ColorMode *out_
   *out_num_modes = std::min(*out_num_modes, UINT32(color_mode_map_.size()));
   for (uint32_t i = 0; i < *out_num_modes; it++, i++) {
     out_modes[i] = it->first;
-    DLOGI("Color mode = %d is supported", out_modes[i]);
   }
   return HWC2::Error::None;
 }
@@ -93,7 +92,6 @@ HWC2::Error HWCColorMode::GetRenderIntents(ColorMode mode, uint32_t *out_num_int
   *out_num_intents = std::min(*out_num_intents, UINT32(color_mode_map_[mode].size()));
   for (uint32_t i = 0; i < *out_num_intents; it++, i++) {
     out_intents[i] = it->first;
-    DLOGI("Color mode = %d is supported with render intent = %d", mode, out_intents[i]);
   }
   return HWC2::Error::None;
 }

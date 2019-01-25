@@ -366,7 +366,7 @@ HWC2::Error histogram::HistogramCollector::getAttributes(int32_t* format,
     if (!format || !dataspace || !supported_components)
         return HWC2::Error::BadParameter;
 
-    *format = HAL_PIXEL_FORMAT_HSV_888;
+    *format = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
     *dataspace = HAL_DATASPACE_UNKNOWN;
     *supported_components = HWC2_FORMAT_COMPONENT_2;
     return HWC2::Error::None;

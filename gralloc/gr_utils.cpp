@@ -218,6 +218,21 @@ uint32_t GetDataAlignment(int format, uint64_t usage) {
   return align;
 }
 
+bool IsGPUFlagSupported(uint64_t usage) {
+  bool ret = true;
+  if ((usage & BufferUsage::GPU_MIPMAP_COMPLETE)) {
+    ALOGE("GPU_MIPMAP_COMPLETE not supported");
+    ret = false;
+  }
+
+  if ((usage & BufferUsage::GPU_CUBE_MAP)) {
+    ALOGE("GPU_CUBE_MAP not supported");
+    ret = false;
+  }
+
+  return ret;
+}
+
 // Returns the final buffer size meant to be allocated with ion
 unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int alignedh) {
   unsigned int size = 0;
@@ -225,6 +240,11 @@ unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int
   int width = info.width;
   int height = info.height;
   uint64_t usage = info.usage;
+
+  if (!IsGPUFlagSupported(usage)) {
+    ALOGE("Unsupported GPU usage flags present 0x%" PRIx64, usage);
+    return 0;
+  }
 
   if (IsUBwcEnabled(format, usage)) {
     size = GetUBwcSize(width, height, format, alignedw, alignedh);
@@ -320,8 +340,19 @@ unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int
 
 void GetBufferSizeAndDimensions(const BufferInfo &info, unsigned int *size, unsigned int *alignedw,
                                 unsigned int *alignedh) {
-  GetAlignedWidthAndHeight(info, alignedw, alignedh);
-  *size = GetSize(info, *alignedw, *alignedh);
+  GraphicsMetadata graphics_metadata = {};
+  GetBufferSizeAndDimensions(info, size, alignedw, alignedh, &graphics_metadata);
+}
+
+void GetBufferSizeAndDimensions(const BufferInfo &info, unsigned int *size, unsigned int *alignedw,
+                                unsigned int *alignedh, GraphicsMetadata *graphics_metadata) {
+  int buffer_type = GetBufferType(info.format);
+  if (CanUseAdrenoForSize(buffer_type, info.usage)) {
+    GetGpuResourceSizeAndDimensions(info, size, alignedw, alignedh, graphics_metadata);
+  } else {
+    GetAlignedWidthAndHeight(info, alignedw, alignedh);
+    *size = GetSize(info, *alignedw, *alignedh);
+  }
 }
 
 void GetYuvUbwcSPPlaneInfo(uint64_t base, uint32_t width, uint32_t height, int color_format,
@@ -1010,6 +1041,10 @@ bool GetAdrenoSizeAPIStatus() {
     return adreno_mem_info->AdrenoSizeAPIAvaliable();
   }
   return false;
+}
+
+int GetBufferType(int inputFormat) {
+  return IsYuvFormat(inputFormat) ? BUFFER_TYPE_VIDEO : BUFFER_TYPE_UI;
 }
 
 }  // namespace gralloc

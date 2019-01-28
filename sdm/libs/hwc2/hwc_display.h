@@ -256,6 +256,9 @@ class HWCDisplay : public DisplayEventHandler {
     return HWC2::Error::None;
   }
   virtual HWC2::Error GetValidateDisplayOutput(uint32_t *out_num_types, uint32_t *out_num_requests);
+  virtual HWC2::Error ControlIdlePowerCollapse(bool enable, bool synchronous) {
+    return HWC2::Error::Unsupported;
+  }
 
   virtual HWC2::Error SetDisplayedContentSamplingEnabledVndService(bool enabled);
   virtual HWC2::Error SetDisplayedContentSamplingEnabled(int32_t enabled, uint8_t component_mask, uint64_t max_frames);

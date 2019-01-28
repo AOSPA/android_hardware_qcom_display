@@ -375,7 +375,7 @@ int HWCDisplay::Init() {
 
   DisplayConfigFixedInfo fixed_info = {};
   display_intf_->GetConfig(&fixed_info);
-  partial_update_enabled_ = fixed_info.partial_update;
+  partial_update_enabled_ = fixed_info.partial_update || (!fixed_info.is_cmdmode);
   client_target_->SetPartialUpdate(partial_update_enabled_);
 
   DLOGI("Display created with id: %d", id_);
@@ -2203,6 +2203,9 @@ void HWCDisplay::UpdateRefreshRate() {
     auto layer = hwc_layer->GetSDMLayer();
     layer->frame_rate = current_refresh_rate_;
   }
+
+  Layer *sdm_client_target = client_target_->GetSDMLayer();
+  sdm_client_target->frame_rate = current_refresh_rate_;
 }
 
 // Skip SDM prepare if all the layers in the current draw cycle are marked as Skip and

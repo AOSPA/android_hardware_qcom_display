@@ -49,6 +49,7 @@ class HWTVDRM : public HWDeviceDRM {
   virtual DisplayError Commit(HWLayers *hw_layers);
   virtual void PopulateHWPanelInfo();
   virtual DisplayError OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level);
+  virtual DisplayError PowerOn(int *release_fence);
 
  private:
   DisplayError UpdateHDRMetaData(HWLayers *hw_layers);

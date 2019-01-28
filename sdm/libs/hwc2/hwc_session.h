@@ -20,7 +20,11 @@
 #ifndef __HWC_SESSION_H__
 #define __HWC_SESSION_H__
 
-#ifdef DISPLAY_CONFIG_1_1
+#ifdef DISPLAY_CONFIG_1_3
+#include <vendor/display/config/1.3/IDisplayConfig.h>
+#elif DISPLAY_CONFIG_1_2
+#include <vendor/display/config/1.2/IDisplayConfig.h>
+#elif DISPLAY_CONFIG_1_1
 #include <vendor/display/config/1.1/IDisplayConfig.h>
 #else
 #include <vendor/display/config/1.0/IDisplayConfig.h>
@@ -40,7 +44,11 @@
 
 namespace sdm {
 
-#ifdef DISPLAY_CONFIG_1_1
+#ifdef DISPLAY_CONFIG_1_3
+using vendor::display::config::V1_3::IDisplayConfig;
+#elif DISPLAY_CONFIG_1_2
+using vendor::display::config::V1_2::IDisplayConfig;
+#elif DISPLAY_CONFIG_1_1
 using vendor::display::config::V1_1::IDisplayConfig;
 #else
 using ::vendor::display::config::V1_0::IDisplayConfig;
@@ -176,7 +184,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
 
  private:
   static const int kExternalConnectionTimeoutMs = 500;
-  static const int kPartialUpdateControlTimeoutMs = 100;
+  static const int kCommitDoneTimeoutMs = 100;
 
   // hwc methods
   static int Open(const hw_module_t *module, const char *name, hw_device_t **device);
@@ -234,10 +242,16 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                   getHDRCapabilities_cb _hidl_cb) override;
   Return<int32_t> setCameraLaunchStatus(uint32_t on) override;
   Return<void> displayBWTransactionPending(displayBWTransactionPending_cb _hidl_cb) override;
-
-  // Methods from ::android::hardware::display::config::V1_1::IDisplayConfig follow.
 #ifdef DISPLAY_CONFIG_1_1
   Return<int32_t> setDisplayAnimating(uint64_t display_id, bool animating) override;
+#endif
+  // Methods from ::android::hardware::display::config::V1_2::IDisplayConfig follow.
+#ifdef DISPLAY_CONFIG_1_2
+  Return<int32_t> setDisplayIndex(IDisplayConfig::DisplayTypeExt disp_type,
+                                  uint32_t base, uint32_t count)  { return 0; }
+#endif
+#ifdef DISPLAY_CONFIG_1_3
+  Return<int32_t> controlIdlePowerCollapse(bool enable, bool synchronous) override;
 #endif
 
   // QClient methods
@@ -260,6 +274,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
 
   android::status_t SetColorModeById(const android::Parcel *input_parcel);
   android::status_t getComposerStatus();
+  android::status_t SetIdlePC(const android::Parcel *input_parcel);
 
   android::status_t setColorSamplingEnabled(const android::Parcel *input_parcel);
 
@@ -288,6 +303,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   Locker callbacks_lock_;
   int hpd_bpp_ = 0;
   int hpd_pattern_ = 0;
+  uint32_t idle_pc_ref_cnt_ = 0;
 };
 
 }  // namespace sdm

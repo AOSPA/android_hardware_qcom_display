@@ -34,34 +34,6 @@ namespace qdutils {
 
 int getHDMINode(void)
 {
-    FILE *displayDeviceFP = NULL;
-    char fbType[MAX_FRAME_BUFFER_NAME_SIZE];
-    char msmFbTypePath[MAX_FRAME_BUFFER_NAME_SIZE];
-    int j = 0;
-
-    for(j = 0; j < HWC_NUM_DISPLAY_TYPES; j++) {
-        snprintf (msmFbTypePath, sizeof(msmFbTypePath),
-                  "/sys/class/graphics/fb%d/msm_fb_type", j);
-        displayDeviceFP = fopen(msmFbTypePath, "r");
-        if(displayDeviceFP) {
-            fread(fbType, sizeof(char), MAX_FRAME_BUFFER_NAME_SIZE,
-                    displayDeviceFP);
-            if(strncmp(fbType, "dtv panel", strlen("dtv panel")) == 0) {
-                ALOGD("%s: HDMI is at fb%d", __func__, j);
-                fclose(displayDeviceFP);
-                break;
-            }
-            fclose(displayDeviceFP);
-        } else {
-            ALOGE("%s: Failed to open fb node %d", __func__, j);
-        }
-    }
-
-    if (j < HWC_NUM_DISPLAY_TYPES)
-        return j;
-    else
-        ALOGE("%s: Failed to find HDMI node", __func__);
-
     return -1;
 }
 

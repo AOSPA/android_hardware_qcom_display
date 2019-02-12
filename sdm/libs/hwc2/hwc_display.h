@@ -64,6 +64,7 @@ class HWCColorMode {
   HWC2::Error SetColorModeById(int32_t color_mode_id);
   HWC2::Error SetColorTransform(const float *matrix, android_color_transform_t hint);
   HWC2::Error RestoreColorTransform();
+  android_color_mode_t GetCurrentColorMode() { return current_color_mode_; }
 
  private:
   static const uint32_t kColorTransformMatrixCount = 16;
@@ -169,6 +170,9 @@ class HWCDisplay : public DisplayEventHandler {
   HWCLayer *GetHWCLayer(hwc2_layer_t layer_id);
   void ResetValidation() { validated_ = false; }
   uint32_t GetGeometryChanges() { return geometry_changes_; }
+  android_color_mode_t GetCurrentColorMode() {
+    return (color_mode_ ? color_mode_->GetCurrentColorMode() : HAL_COLOR_MODE_SRGB);
+  }
 
   // HWC2 APIs
   virtual HWC2::Error AcceptDisplayChanges(void);
@@ -191,6 +195,21 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::Error HandleColorModeTransform(android_color_mode_t mode,
                                                android_color_transform_t hint,
                                                const double *matrix) {
+    return HWC2::Error::Unsupported;
+  }
+  virtual DisplayError SetDynamicDSIClock(uint64_t bitclk) {
+    return kErrorNotSupported;
+  }
+  virtual DisplayError GetDynamicDSIClock(uint64_t *bitclk) {
+    return kErrorNotSupported;
+  }
+  virtual DisplayError GetSupportedDSIClock(std::vector<uint64_t> *bitclk) {
+    return kErrorNotSupported;
+  }
+  virtual HWC2::Error UpdateDisplayId(hwc2_display_t id) {
+    return HWC2::Error::Unsupported;
+  }
+  virtual HWC2::Error SetPendingRefresh() {
     return HWC2::Error::Unsupported;
   }
   virtual HWC2::Error GetDisplayConfigs(uint32_t *out_num_configs, hwc2_config_t *out_configs);
@@ -229,6 +248,7 @@ class HWCDisplay : public DisplayEventHandler {
     validated_ = false;
   }
   virtual DisplayError Refresh();
+  virtual void SetVsyncSource(bool enable) { vsync_source_ = enable; }
 
  protected:
   // Maximum number of layers supported by display manager.
@@ -315,6 +335,8 @@ class HWCDisplay : public DisplayEventHandler {
   bool config_pending_ = false;
   bool pending_commit_ = false;
   LayerRect window_rect_ = {};
+  bool vsync_source_ = false;
+  bool skip_commit_ = false;
 
  private:
   void DumpInputBuffers(void);

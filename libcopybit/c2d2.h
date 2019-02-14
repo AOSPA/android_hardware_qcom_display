@@ -208,7 +208,7 @@ typedef enum {
 
     C2D_COLOR_FORMAT_800_Y800     = 190,
     C2D_COLOR_FORMAT_420_TP10     = 191,
-
+    C2D_FORMAT_BT601_FULLRANGE    = 192,
 } C2D_YUV_FORMAT;
 
 

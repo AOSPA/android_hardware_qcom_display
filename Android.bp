@@ -1,0 +1,20 @@
+subdirs = [
+    "libqdutils",
+]
+
+cc_library_headers {
+    name: "display_headers",
+    vendor_available: true,
+    export_include_dirs: [
+        "include",
+        "libcopybit",
+        "libgralloc",
+        "libhwcomposer",
+        "libhdmi",
+        "liboverlay",
+        "libqdutils",
+        "libqservice",
+    ],
+    header_libs: ["libhardware_headers"],
+    export_header_lib_headers: ["libhardware_headers"],
+}

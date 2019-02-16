@@ -1,0 +1,28 @@
+cc_library_shared {
+    name: "libqdMetaData.system",
+    cflags: ["-DDEBUG_CALC_FPS", "-Wno-missing-field-initializers", "-Wconversion", "-Wall", "-Werror", "-Wno-sign-conversion", "-Wno-format", "-D__ARM_HAVE_NEON", "-DVENUS_COLOR_FORMAT", "-DMDSS_TARGET", "-DQTI_BSP", "-Wno-sign-conversion", "-DLOG_TAG=\"DisplayMetaData\"",],
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libutils",
+        "libhardware",
+    ],
+    srcs: ["qdMetaData.cpp","qd_utils.cpp"],
+    header_libs: ["display_headers"],
+    clang: true,
+}
+
+cc_library_shared {
+    name: "libqdMetaData",
+    cflags: ["-DDEBUG_CALC_FPS", "-Wno-missing-field-initializers", "-Wconversion", "-Wall", "-Werror", "-Wno-sign-conversion", "-Wno-format", "-D__ARM_HAVE_NEON", "-DVENUS_COLOR_FORMAT", "-DMDSS_TARGET", "-DQTI_BSP", "-Wno-sign-conversion", "-DLOG_TAG=\"DisplayMetaData\"",],
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libutils",
+        "libhardware",
+    ],
+    srcs: ["qdMetaData.cpp","qd_utils.cpp"],
+    header_libs: ["display_headers"],
+    clang: true,
+    vendor: true,
+}

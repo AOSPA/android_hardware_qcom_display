@@ -30,6 +30,8 @@
 #ifndef __HWC_DISPLAY_BUILTIN_H__
 #define __HWC_DISPLAY_BUILTIN_H__
 
+#include <hardware/google/light/1.0/ILight.h>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -124,6 +126,13 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   // Members for 1 frame capture in a client provided buffer
   bool frame_capture_buffer_queued_ = false;
   int frame_capture_status_ = -EAGAIN;
+
+  // Members for HBM feature
+  static constexpr float hbm_threshold_pct_ = 0.5f;
+  float hbm_threshold_px_ = std::numeric_limits<float>::max();
+  android::sp<hardware::google::light::V1_0::ILight> hardware_ILight_ = nullptr;
+  bool has_init_light_server_ = false;
+  bool high_brightness_mode_ = false;
 };
 
 }  // namespace sdm

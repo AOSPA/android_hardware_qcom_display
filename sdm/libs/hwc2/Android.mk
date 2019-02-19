@@ -27,6 +27,7 @@ LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware li
                                  android.hardware.graphics.allocator@2.0 \
                                  android.hardware.graphics.composer@2.2 \
                                  android.hardware.graphics.composer@2.3 \
+                                 hardware.google.light@1.0 \
 
 $(info IDisplayConfig version: $(display_config_version))
 ifeq ($(display_config_version), DISPLAY_CONFIG_1_1)

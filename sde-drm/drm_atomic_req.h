@@ -39,6 +39,7 @@
 namespace sde_drm {
 
 class DRMManager;
+class DRMCrtc;
 
 class DRMAtomicReq : public DRMAtomicReqInterface {
  public:
@@ -50,6 +51,8 @@ class DRMAtomicReq : public DRMAtomicReqInterface {
   int Init(const DRMDisplayToken &tok);
 
  private:
+  int CallAtomic(DRMCrtc *crtc, uint32_t flags);
+
   drmModeAtomicReq *drm_atomic_req_ = {};
   DRMManager *drm_mgr_ = {};
   int fd_ = -1;

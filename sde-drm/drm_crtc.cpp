@@ -36,7 +36,6 @@
 #include <string.h>
 
 #include <algorithm>
-#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -51,7 +50,6 @@ namespace sde_drm {
 using std::string;
 using std::stringstream;
 using std::unique_ptr;
-using std::map;
 using std::mutex;
 using std::lock_guard;
 using std::pair;
@@ -169,46 +167,36 @@ void DRMCrtcManager::Init(drmModeRes *resource) {
     drmModeCrtc *libdrm_crtc = drmModeGetCrtc(fd_, resource->crtcs[i]);
     if (libdrm_crtc) {
       crtc->InitAndParse(libdrm_crtc);
-      crtc_pool_[resource->crtcs[i]] = std::move(crtc);
+      object_pool_[resource->crtcs[i]] = std::move(crtc);
     } else {
       DRM_LOGE("Critical error: drmModeGetCrtc() failed for crtc %d.", resource->crtcs[i]);
     }
   }
 }
 
-void DRMCrtcManager::DumpByID(uint32_t id) {
-  crtc_pool_.at(id)->Dump();
-}
-
-void DRMCrtcManager::DumpAll() {
-  for (auto &crtc : crtc_pool_) {
-    crtc.second->Dump();
-  }
-}
-
 void DRMCrtcManager::Perform(DRMOps code, uint32_t obj_id, drmModeAtomicReq *req,
                              va_list args) {
   lock_guard<mutex> lock(lock_);
-  auto it = crtc_pool_.find(obj_id);
-  if (it == crtc_pool_.end()) {
+  auto crtc = GetObject(obj_id);
+  if (crtc == nullptr) {
     DRM_LOGE("Invalid crtc id %d", obj_id);
     return;
   }
 
   if (code == DRMOps::CRTC_SET_DEST_SCALER_CONFIG) {
-    if (crtc_pool_.at(obj_id)->ConfigureScalerLUT(req, dir_lut_blob_id_, cir_lut_blob_id_,
-                                                  sep_lut_blob_id_)) {
+    if (crtc->ConfigureScalerLUT(dir_lut_blob_id_, cir_lut_blob_id_,
+                                 sep_lut_blob_id_)) {
       DRM_LOGD("CRTC %d: Configuring scaler LUTs", obj_id);
     }
   }
 
-  it->second->Perform(code, req, args);
+  crtc->Perform(code, req, args);
 }
 
 void DRMCrtcManager::SetScalerLUT(const DRMScalerLUTInfo &lut_info) {
   // qseed3lite lut is hardcoded in HW. No need to program from sw.
   DRMCrtcInfo info;
-  crtc_pool_.begin()->second->GetInfo(&info);
+  object_pool_.begin()->second->GetInfo(&info);
   if (info.qseed_version == QSEEDVersion::V3LITE) {
     return;
   }
@@ -244,14 +232,14 @@ void DRMCrtcManager::UnsetScalerLUT() {
 
 int DRMCrtcManager::GetCrtcInfo(uint32_t crtc_id, DRMCrtcInfo *info) {
   if (crtc_id == 0) {
-    crtc_pool_.begin()->second->GetInfo(info);
+    object_pool_.begin()->second->GetInfo(info);
   } else {
-    auto iter = crtc_pool_.find(crtc_id);
-    if (iter ==  crtc_pool_.end()) {
+    auto crtc = GetObject(crtc_id);
+    if (crtc == nullptr)  {
       DRM_LOGE("Invalid crtc id %d", crtc_id);
       return -ENODEV;
     } else {
-      iter->second->GetInfo(info);
+      crtc->GetInfo(info);
     }
   }
 
@@ -259,18 +247,18 @@ int DRMCrtcManager::GetCrtcInfo(uint32_t crtc_id, DRMCrtcInfo *info) {
 }
 
 void DRMCrtcManager::GetPPInfo(uint32_t crtc_id, DRMPPFeatureInfo *info) {
-  auto it = crtc_pool_.find(crtc_id);
-  if (it == crtc_pool_.end()) {
+  auto crtc = GetObject(crtc_id);
+  if (crtc == nullptr) {
     DRM_LOGE("Invalid crtc id %d", crtc_id);
     return;
   }
 
-  it->second->GetPPInfo(info);
+  crtc->GetPPInfo(info);
 }
 
 int DRMCrtcManager::Reserve(const std::set<uint32_t> &possible_crtc_indices,
                              DRMDisplayToken *token) {
-  for (auto &item : crtc_pool_) {
+  for (auto &item : object_pool_) {
     if (item.second->GetStatus() == DRMStatus::FREE) {
       if (possible_crtc_indices.find(item.second->GetIndex()) != possible_crtc_indices.end()) {
         item.second->Lock();
@@ -286,25 +274,18 @@ int DRMCrtcManager::Reserve(const std::set<uint32_t> &possible_crtc_indices,
 
 void DRMCrtcManager::Free(DRMDisplayToken *token) {
   lock_guard<mutex> lock(lock_);
-  crtc_pool_.at(token->crtc_id)->Unlock();
+  object_pool_.at(token->crtc_id)->Unlock();
   token->crtc_id = 0;
   token->crtc_index = 0;
-}
-
-void DRMCrtcManager::PostValidate(uint32_t crtc_id, bool success) {
-  lock_guard<mutex> lock(lock_);
-  crtc_pool_.at(crtc_id)->PostValidate(success);
-}
-
-void DRMCrtcManager::PostCommit(uint32_t crtc_id, bool success) {
-  lock_guard<mutex> lock(lock_);
-  crtc_pool_.at(crtc_id)->PostCommit(success);
 }
 
 // ==============================================================================================//
 
 #undef __CLASS__
 #define __CLASS__ "DRMCrtc"
+
+DRMCrtc::DRMCrtc(int fd, uint32_t crtc_index)
+    : DRMObject(prop_mgr_), fd_(fd), crtc_index_(crtc_index) {}
 
 DRMCrtc::~DRMCrtc() {
   if (drm_crtc_) {
@@ -594,8 +575,7 @@ void DRMCrtc::Unlock() {
     mode_blob_id_ = 0;
   }
 
-  tmp_prop_val_map_.clear();
-  committed_prop_val_map_.clear();
+  ClearProperties();
   status_ = DRMStatus::FREE;
 }
 
@@ -620,7 +600,6 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
   switch (code) {
     case DRMOps::CRTC_SET_MODE: {
       drmModeModeInfo *mode = va_arg(args, drmModeModeInfo *);
-      uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::MODE_ID);
       uint32_t blob_id = 0;
 
       if (mode) {
@@ -630,92 +609,71 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
         }
       }
 
-      AddProperty(req, obj_id, prop_id, blob_id, true /* cache */, tmp_prop_val_map_);
+      AddProperty(DRMProperty::MODE_ID, blob_id, true);
       SetModeBlobID(blob_id);
       DRM_LOGD("CRTC %d: Set mode %s", obj_id, mode ? mode->name : "null");
     } break;
 
     case DRMOps::CRTC_SET_OUTPUT_FENCE_OFFSET: {
       uint32_t offset = va_arg(args, uint32_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::OUTPUT_FENCE_OFFSET),
-                  offset, true /* cache */, tmp_prop_val_map_);
+      AddProperty(DRMProperty::OUTPUT_FENCE_OFFSET, offset);
     }; break;
 
     case DRMOps::CRTC_SET_CORE_CLK: {
       uint32_t core_clk = va_arg(args, uint32_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::CORE_CLK), core_clk, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::CORE_CLK, core_clk);
     }; break;
 
     case DRMOps::CRTC_SET_CORE_AB: {
       uint64_t core_ab = va_arg(args, uint64_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::CORE_AB), core_ab, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::CORE_AB, core_ab);
     }; break;
 
     case DRMOps::CRTC_SET_CORE_IB: {
       uint64_t core_ib = va_arg(args, uint64_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::CORE_IB), core_ib, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::CORE_IB, core_ib);
     }; break;
 
     case DRMOps::CRTC_SET_LLCC_AB: {
       uint64_t llcc_ab = va_arg(args, uint64_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::LLCC_AB), llcc_ab, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::LLCC_AB, llcc_ab);
     }; break;
 
     case DRMOps::CRTC_SET_LLCC_IB: {
       uint64_t llcc_ib = va_arg(args, uint64_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::LLCC_IB), llcc_ib, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::LLCC_IB, llcc_ib);
     }; break;
 
     case DRMOps::CRTC_SET_DRAM_AB: {
       uint64_t dram_ab = va_arg(args, uint64_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::DRAM_AB), dram_ab, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::DRAM_AB, dram_ab);
     }; break;
 
     case DRMOps::CRTC_SET_DRAM_IB: {
       uint64_t dram_ib = va_arg(args, uint64_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::DRAM_IB), dram_ib, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::DRAM_IB, dram_ib);
     }; break;
 
     case DRMOps::CRTC_SET_ROT_PREFILL_BW: {
       uint64_t rot_bw = va_arg(args, uint64_t);
-      drmModeAtomicAddProperty(req, obj_id,
-                               prop_mgr_.GetPropertyId(DRMProperty::ROT_PREFILL_BW), rot_bw);
+      AddProperty(DRMProperty::ROT_PREFILL_BW, rot_bw);
     }; break;
 
     case DRMOps::CRTC_SET_ROT_CLK: {
       uint32_t rot_clk = va_arg(args, uint32_t);
-      AddProperty(req, obj_id,
-                  prop_mgr_.GetPropertyId(DRMProperty::ROT_CLK), rot_clk, true /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::ROT_CLK, rot_clk);
     }; break;
 
     case DRMOps::CRTC_GET_RELEASE_FENCE: {
       int64_t *fence = va_arg(args, int64_t *);
       *fence = -1;
-      uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::OUTPUT_FENCE);
-      AddProperty(req, obj_id, prop_id, reinterpret_cast<uint64_t>(fence), false /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::OUTPUT_FENCE,
+                  reinterpret_cast<uint64_t>(fence), true);
     } break;
 
     case DRMOps::CRTC_SET_ACTIVE: {
       uint32_t enable = va_arg(args, uint32_t);
-      AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::ACTIVE), enable,
-                  true /* cache */, tmp_prop_val_map_);
+      AddProperty(DRMProperty::ACTIVE, enable);
       DRM_LOGD("CRTC %d: Set active %d", obj_id, enable);
       if (enable == 0) {
         ClearVotesCache();
@@ -732,7 +690,7 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
     case DRMOps::CRTC_SET_ROI: {
       uint32_t num_roi = va_arg(args, uint32_t);
       DRMRect *crtc_rois = va_arg(args, DRMRect*);
-      SetROI(req, obj_id, num_roi, crtc_rois);
+      SetROI(num_roi, crtc_rois);
     } break;
 
     case DRMOps::CRTC_SET_SECURITY_LEVEL: {
@@ -741,32 +699,28 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       if (security_level == (int)DRMSecurityLevel::SECURE_ONLY) {
         crtc_security_level = SECURE_ONLY;
       }
-      AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::SECURITY_LEVEL),
-                  crtc_security_level, true /* cache */, tmp_prop_val_map_);
+      AddProperty(DRMProperty::SECURITY_LEVEL, crtc_security_level);
     } break;
 
     case DRMOps::CRTC_SET_SOLIDFILL_STAGES: {
       uint64_t dim_stages = va_arg(args, uint64_t);
       const std::vector<DRMSolidfillStage> *solid_fills =
         reinterpret_cast <std::vector <DRMSolidfillStage> *> (dim_stages);
-      SetSolidfillStages(req, obj_id, solid_fills);
+      SetSolidfillStages(solid_fills);
     } break;
 
     case DRMOps::CRTC_SET_IDLE_TIMEOUT: {
       uint32_t timeout_ms = va_arg(args, uint32_t);
-      AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::IDLE_TIME),
-                  timeout_ms, true /* cache */, tmp_prop_val_map_);
+      AddProperty(DRMProperty::IDLE_TIME, timeout_ms);
     } break;
 
     case DRMOps::CRTC_SET_DEST_SCALER_CONFIG: {
-      uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::DEST_SCALER);
       uint64_t dest_scaler = va_arg(args, uint64_t);
       sde_drm_dest_scaler_data *ds_data = reinterpret_cast<sde_drm_dest_scaler_data *>
                                            (dest_scaler);
       dest_scale_data_ = *ds_data;
-      AddProperty(req, obj_id, prop_id,
-                  reinterpret_cast<uint64_t>(&dest_scale_data_), false /* cache */,
-                  tmp_prop_val_map_);
+      AddProperty(DRMProperty::DEST_SCALER,
+                  reinterpret_cast<uint64_t>(&dest_scale_data_), true);
     } break;
 
     case DRMOps::CRTC_SET_CAPTURE_MODE: {
@@ -775,8 +729,7 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       if (capture_mode == (int)DRMCWbCaptureMode::DSPP_OUT) {
         cwb_capture_mode = CAPTURE_DSPP_OUT;
       }
-      uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::CAPTURE_MODE);
-      AddProperty(req, obj_id, prop_id, cwb_capture_mode, true /* cache */, tmp_prop_val_map_);
+      AddProperty(DRMProperty::CAPTURE_MODE, cwb_capture_mode);
     } break;
 
     case DRMOps::CRTC_SET_IDLE_PC_STATE: {
@@ -796,8 +749,7 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
           idle_pc_state = IDLE_PC_STATE_NONE;
           break;
       }
-      AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::IDLE_PC_STATE), idle_pc_state,
-                  true /* cache */, tmp_prop_val_map_);
+      AddProperty(DRMProperty::IDLE_PC_STATE, idle_pc_state);
       DRM_LOGD("CRTC %d: Set idle_pc_state %d", obj_id, idle_pc_state);
     }; break;
 
@@ -844,15 +796,13 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
   }
 }
 
-void DRMCrtc::SetROI(drmModeAtomicReq *req, uint32_t obj_id, uint32_t num_roi,
-                     DRMRect *crtc_rois) {
+void DRMCrtc::SetROI(uint32_t num_roi, DRMRect *crtc_rois) {
 #ifdef SDE_MAX_ROI_V1
   if (num_roi > SDE_MAX_ROI_V1 || !prop_mgr_.IsPropertyAvailable(DRMProperty::ROI_V1)) {
     return;
   }
   if (!num_roi || !crtc_rois) {
-    AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::ROI_V1),
-                0, false /* cache */, tmp_prop_val_map_);
+    AddProperty(DRMProperty::ROI_V1, 0, true);
     DRM_LOGD("CRTC ROI is set to NULL to indicate full frame update");
     return;
   }
@@ -864,16 +814,14 @@ void DRMCrtc::SetROI(drmModeAtomicReq *req, uint32_t obj_id, uint32_t num_roi,
     roi_v1_.roi[i].x2 = crtc_rois[i].right;
     roi_v1_.roi[i].y1 = crtc_rois[i].top;
     roi_v1_.roi[i].y2 = crtc_rois[i].bottom;
-    DRM_LOGD("CRTC %d, ROI[l,t,b,r][%d %d %d %d]", obj_id,
+    DRM_LOGD("CRTC %d, ROI[l,t,b,r][%d %d %d %d]", GetObjectId(),
              roi_v1_.roi[i].x1, roi_v1_.roi[i].y1, roi_v1_.roi[i].x2, roi_v1_.roi[i].y2);
   }
-  AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::ROI_V1),
-              reinterpret_cast<uint64_t>(&roi_v1_), false /* cache */, tmp_prop_val_map_);
+  AddProperty(DRMProperty::ROI_V1, reinterpret_cast<uint64_t>(&roi_v1_), true);
 #endif
 }
 
-void DRMCrtc::SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
-                                 const std::vector<DRMSolidfillStage> *solid_fills) {
+void DRMCrtc::SetSolidfillStages(const std::vector<DRMSolidfillStage> *solid_fills) {
 #if defined SDE_MAX_DIM_LAYERS
   memset(&drm_dim_layer_v1_, 0, sizeof(drm_dim_layer_v1_));
   uint32_t shift;
@@ -900,9 +848,9 @@ void DRMCrtc::SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
     drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3 =
       ((uint32_t)((((sf.alpha & 0xFF)) * plane_alpha)));
   }
-  AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::DIM_STAGES_V1),
-              reinterpret_cast<uint64_t> (&drm_dim_layer_v1_), false /* cache */,
-              tmp_prop_val_map_);
+
+  AddProperty(DRMProperty::DIM_STAGES_V1,
+              reinterpret_cast<uint64_t> (&drm_dim_layer_v1_), true);
 #endif
 }
 
@@ -911,25 +859,19 @@ void DRMCrtc::Dump() {
            drm_crtc_->buffer_id, drm_crtc_->x, drm_crtc_->y, drm_crtc_->width, drm_crtc_->height);
 }
 
-bool DRMCrtc::ConfigureScalerLUT(drmModeAtomicReq *req, uint32_t dir_lut_blob_id,
+bool DRMCrtc::ConfigureScalerLUT(uint32_t dir_lut_blob_id,
                                  uint32_t cir_lut_blob_id, uint32_t sep_lut_blob_id) {
   if (is_lut_configured_ && is_lut_validated_) {
     return false;
   }
   if (dir_lut_blob_id) {
-    AddProperty(req, drm_crtc_->crtc_id,
-                prop_mgr_.GetPropertyId(DRMProperty::DS_LUT_ED), dir_lut_blob_id,
-                false /* cache */, tmp_prop_val_map_);
+    AddProperty(DRMProperty::DS_LUT_ED, dir_lut_blob_id, true);
   }
   if (cir_lut_blob_id) {
-    AddProperty(req, drm_crtc_->crtc_id,
-                prop_mgr_.GetPropertyId(DRMProperty::DS_LUT_CIR), cir_lut_blob_id,
-                false /* cache */, tmp_prop_val_map_);
+    AddProperty(DRMProperty::DS_LUT_CIR, cir_lut_blob_id, true);
   }
   if (sep_lut_blob_id) {
-    AddProperty(req, drm_crtc_->crtc_id,
-                prop_mgr_.GetPropertyId(DRMProperty::DS_LUT_SEP), sep_lut_blob_id,
-                false /* cache */, tmp_prop_val_map_);
+    AddProperty(DRMProperty::DS_LUT_SEP, sep_lut_blob_id, true);
   }
   is_lut_validation_in_progress_ = true;
   return true;
@@ -940,29 +882,24 @@ void DRMCrtc::PostCommit(bool success) {
     if (is_lut_validated_) {
       is_lut_configured_ = true;
     }
-    committed_prop_val_map_ = tmp_prop_val_map_;
-  } else {
-    tmp_prop_val_map_ = committed_prop_val_map_;
+    CommitProperties();
   }
 }
 
-void DRMCrtc::PostValidate(bool success) {
-  if (success && is_lut_validation_in_progress_)  {
+void DRMCrtc::PostValidate() {
+  if (is_lut_validation_in_progress_)  {
     is_lut_validated_ = true;
   }
-
-  tmp_prop_val_map_ = committed_prop_val_map_;
 }
 
 void DRMCrtc::ClearVotesCache() {
-  // On subsequent SET_ACTIVE 1, commit these to MDP driver and re-add to cache automatically
-  tmp_prop_val_map_.erase(prop_mgr_.GetPropertyId(DRMProperty::CORE_CLK));
-  tmp_prop_val_map_.erase(prop_mgr_.GetPropertyId(DRMProperty::CORE_AB));
-  tmp_prop_val_map_.erase(prop_mgr_.GetPropertyId(DRMProperty::CORE_IB));
-  tmp_prop_val_map_.erase(prop_mgr_.GetPropertyId(DRMProperty::LLCC_AB));
-  tmp_prop_val_map_.erase(prop_mgr_.GetPropertyId(DRMProperty::LLCC_IB));
-  tmp_prop_val_map_.erase(prop_mgr_.GetPropertyId(DRMProperty::DRAM_AB));
-  tmp_prop_val_map_.erase(prop_mgr_.GetPropertyId(DRMProperty::DRAM_IB));
+  RemoveProperty(DRMProperty::CORE_CLK);
+  RemoveProperty(DRMProperty::CORE_AB);
+  RemoveProperty(DRMProperty::CORE_IB);
+  RemoveProperty(DRMProperty::LLCC_AB);
+  RemoveProperty(DRMProperty::LLCC_IB);
+  RemoveProperty(DRMProperty::DRAM_AB);
+  RemoveProperty(DRMProperty::DRAM_IB);
 }
 
 }  // namespace sde_drm

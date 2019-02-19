@@ -32,6 +32,9 @@
 
 #include <stdint.h>
 #include <string>
+#include <map>
+#include <unordered_map>
+#include <xf86drmMode.h>
 
 namespace sde_drm {
 
@@ -195,6 +198,61 @@ struct DRMPropertyManager {
 
  private:
   uint32_t properties_[(uint32_t)DRMProperty::MAX] {};
+};
+
+struct DRMObject {
+  virtual ~DRMObject() = default;
+  virtual uint32_t GetObjectId() = 0;
+  void Dump() {};
+
+  void AddProperty(DRMProperty prop, uint64_t value, bool force_dirty = false);
+  void RemoveProperty(DRMProperty prop);
+  size_t ApplyDirtyProperties(drmModeAtomicReq *req);
+  void DiscardDirtyProperties() { dirty_values_.clear(); }
+  void ClearProperties();
+  void CommitProperties();
+
+ protected:
+  explicit DRMObject(DRMPropertyManager &pm);
+
+ private:
+  std::unordered_map<uint32_t, uint64_t> property_values_ {};
+  // store properties ordered by prop_id to avoid re-sort in libdrm
+  std::map<uint32_t, uint64_t, std::greater<uint32_t>> dirty_values_ {};
+  DRMPropertyManager& property_manager_;
+};
+
+template<class T>
+struct DRMObjectManager {
+  virtual ~DRMObjectManager() = default;
+  void DumpById(uint32_t id) { object_pool_.at(id)->Dump(); }
+  void DumpAll() {
+    for (auto &obj : object_pool_)
+      obj.second->Dump();
+  }
+
+  size_t ApplyDirtyProperties(drmModeAtomicReq *req) {
+    size_t dirty_count = 0;
+    for (auto &obj : object_pool_)
+      dirty_count += obj.second->ApplyDirtyProperties(req);
+
+    return dirty_count;
+  }
+
+  void ClearProperties() {
+    for (auto &obj : object_pool_)
+      obj.second->ClearProperties();
+  }
+
+  T* GetObject(uint32_t obj_id) {
+    auto it = object_pool_.find(obj_id);
+    if (it == object_pool_.end())
+      return nullptr;
+    return it->second.get();
+  }
+ protected:
+  // store objects ordered by obj_id to avoid re-sort in libdrm
+  std::map<uint32_t, std::unique_ptr<T>> object_pool_{};
 };
 
 }  // namespace sde_drm

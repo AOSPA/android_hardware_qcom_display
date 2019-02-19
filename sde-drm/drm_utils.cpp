@@ -102,17 +102,4 @@ void Tokenize(const std::string &str, std::vector<std::string> *tokens, char del
   }
 }
 
-void AddProperty(drmModeAtomicReqPtr req, uint32_t object_id, uint32_t property_id, uint64_t value,
-                 bool cache, std::unordered_map<uint32_t, uint64_t> &prop_val_map) {
-#ifndef SDM_VIRTUAL_DRIVER
-  auto it = prop_val_map.find(property_id);
-  if (it == prop_val_map.end() || it->second != value)
-#endif
-    drmModeAtomicAddProperty(req, object_id, property_id, value);
-#ifndef SDM_VIRTUAL_DRIVER
-  if (cache)
-    prop_val_map[property_id] = value;
-#endif
-}
-
 }  // namespace sde_drm

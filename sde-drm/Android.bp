@@ -10,6 +10,7 @@ cc_library_shared {
         "libdrm",
         "libdrmutils",
         "libdisplaydebug",
+        "libcutils",
     ],
     header_libs: [
         "display_headers",

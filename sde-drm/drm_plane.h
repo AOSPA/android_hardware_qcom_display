@@ -91,32 +91,32 @@ enum DRMPlaneLutState {
               //  to make sure it's cleared the next time plane is used
 };
 
-class DRMPlane {
+class DRMPlane : public DRMObject {
  public:
   explicit DRMPlane(int fd, uint32_t priority);
   ~DRMPlane();
   void InitAndParse(drmModePlane *plane);
-  void GetId(uint32_t *id) { *id = drm_plane_->plane_id; }
+  uint32_t GetObjectId() override { return drm_plane_->plane_id; }
   void GetType(DRMPlaneType *type) { *type = plane_type_info_.type; }
   void GetPriority(uint32_t *priority) { *priority = priority_; }
   void GetAssignedCrtc(uint32_t *crtc_id) { *crtc_id = assigned_crtc_id_; }
   void GetRequestedCrtc(uint32_t *crtc_id) { *crtc_id = requested_crtc_id_; }
   void SetAssignedCrtc(uint32_t crtc_id) { assigned_crtc_id_ = crtc_id; }
   void SetRequestedCrtc(uint32_t crtc_id) { requested_crtc_id_ = crtc_id; }
-  bool SetScalerConfig(drmModeAtomicReq *req, uint64_t handle);
-  bool SetCscConfig(drmModeAtomicReq *req, DRMCscType csc_type);
-  bool ConfigureScalerLUT(drmModeAtomicReq *req, uint32_t dir_lut_blob_id,
+  bool SetScalerConfig(uint64_t handle);
+  bool SetCscConfig(DRMCscType csc_type);
+  bool ConfigureScalerLUT(uint32_t dir_lut_blob_id,
                           uint32_t cir_lut_blob_id, uint32_t sep_lut_blob_id);
   const DRMPlaneTypeInfo& GetPlaneTypeInfo() { return plane_type_info_; }
-  void SetDecimation(drmModeAtomicReq *req, uint32_t prop_id, uint32_t prop_value);
-  void SetExclRect(drmModeAtomicReq *req, DRMRect rect);
+  void SetDecimation(DRMProperty prop, uint32_t prop_value);
+  void SetExclRect(DRMRect rect);
   void Perform(DRMOps code, drmModeAtomicReq *req, va_list args);
   void Dump();
-  void SetMultiRectMode(drmModeAtomicReq *req, DRMMultiRectMode drm_multirect_mode);
+  void SetMultiRectMode(DRMMultiRectMode drm_multirect_mode);
   void Unset(bool is_commit, drmModeAtomicReq *req);
-  void PostValidate(uint32_t crtc_id, bool success);
+  void PostValidate(uint32_t crtc_id);
   void PostCommit(uint32_t crtc_id, bool success);
-  bool SetDgmCscConfig(drmModeAtomicReq *req, uint64_t handle);
+  bool SetDgmCscConfig(uint64_t handle);
   void UpdatePPLutFeatureInuse(DRMPPFeatureInfo *data);
   void ResetColorLUTs(bool is_commit, drmModeAtomicReq *req);
   void ResetColorLUTState(DRMTonemapLutType lut_type, bool is_commit, drmModeAtomicReq *req);
@@ -140,8 +140,6 @@ class DRMPlane {
   bool has_excl_rect_ = false;
   drm_clip_rect excl_rect_copy_ = {};
   std::unique_ptr<DRMPPManager> pp_mgr_ {};
-  std::unordered_map<uint32_t, uint64_t> tmp_prop_val_map_ {};
-  std::unordered_map<uint32_t, uint64_t> committed_prop_val_map_ {};
 
   // Only applicable to planes that have scaler
   sde_drm_scaler_v2 scaler_v2_config_copy_ = {};
@@ -156,29 +154,25 @@ class DRMPlane {
   DRMPlaneLutState vig_3d_lut_gamut_state_ = kInactive;
 };
 
-class DRMPlaneManager {
+class DRMPlaneManager : public DRMObjectManager<DRMPlane> {
  public:
   explicit DRMPlaneManager(int fd);
   void Init();
   void DeInit() {}
   void GetPlanesInfo(DRMPlanesInfo *info);
-  void DumpAll();
-  void DumpByID(uint32_t id);
   void Perform(DRMOps code, uint32_t obj_id, drmModeAtomicReq *req, va_list args);
   void UnsetUnusedResources(uint32_t crtc_id, bool is_commit, drmModeAtomicReq *req);
   void ResetColorLutsOnUsedPlanes(uint32_t crtc_id, bool is_commit, drmModeAtomicReq *req);
   void RetainPlanes(uint32_t crtc_id);
   void SetScalerLUT(const DRMScalerLUTInfo &lut_info);
   void UnsetScalerLUT();
-  void PostValidate(uint32_t crtc_id, bool success);
+  void PostValidate(uint32_t crtc_id);
   void PostCommit(uint32_t crtc_id, bool success);
   void ResetCache(drmModeAtomicReq *req, uint32_t crtc_id);
   void ResetPlanesLUT(drmModeAtomicReq *req);
 
  private:
   int fd_ = -1;
-  // Map of plane id to DRMPlane *
-  std::map<uint32_t, std::unique_ptr<DRMPlane>> plane_pool_{};
   // Global Scaler LUT blobs
   uint32_t dir_lut_blob_id_ = 0;
   uint32_t cir_lut_blob_id_ = 0;

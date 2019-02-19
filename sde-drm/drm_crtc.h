@@ -46,16 +46,17 @@
 
 namespace sde_drm {
 
-class DRMCrtc {
+class DRMCrtc : public DRMObject {
  public:
-  DRMCrtc(int fd, uint32_t crtc_index) : fd_(fd), crtc_index_(crtc_index) {}
+  DRMCrtc(int fd, uint32_t crtc_index);
+  uint32_t GetObjectId() override { return drm_crtc_->crtc_id; }
   void InitAndParse(drmModeCrtc *crtc);
   DRMStatus GetStatus() { return status_; }
   void GetInfo(DRMCrtcInfo *info);
   void SetModeBlobID(uint64_t blob_id);
-  bool ConfigureScalerLUT(drmModeAtomicReq *req, uint32_t dir_lut_blob_id,
+  bool ConfigureScalerLUT(uint32_t dir_lut_blob_id,
                           uint32_t cir_lut_blob_id, uint32_t sep_lut_blob_id);
-  void PostValidate(bool success);
+  void PostValidate();
   void PostCommit(bool success);
   void Perform(DRMOps code, drmModeAtomicReq *req, va_list args);
   int GetIndex() { return crtc_index_; }
@@ -72,10 +73,8 @@ class DRMCrtc {
   void ParseProperties();
   void ParseCapabilities(uint64_t blob_id);
   void ParseCompRatio(std::string line, bool real_time);
-  void SetROI(drmModeAtomicReq *req, uint32_t obj_id, uint32_t num_roi,
-              DRMRect *crtc_rois);
-  void SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
-                          const std::vector<DRMSolidfillStage> *solid_fills);
+  void SetROI(uint32_t num_roi, DRMRect *crtc_rois);
+  void SetSolidfillStages(const std::vector<DRMSolidfillStage> *solid_fills);
   void ClearVotesCache();
 
   // Currently hardcoded to 10. In future we need to query bit depth from driver.
@@ -91,9 +90,9 @@ class DRMCrtc {
   bool is_lut_configured_ = false;
   bool is_lut_validated_ = false;
   bool is_lut_validation_in_progress_ = false;
+  struct sde_drm_roi_v1 roi_v1_;
+  struct sde_drm_dim_layer_v1  drm_dim_layer_v1_;
   std::unique_ptr<DRMPPManager> pp_mgr_{};
-  std::unordered_map<uint32_t, uint64_t> tmp_prop_val_map_ {};
-  std::unordered_map<uint32_t, uint64_t> committed_prop_val_map_ {};
 #if defined SDE_MAX_DIM_LAYERS
   sde_drm_dim_layer_v1 drm_dim_layer_v1_ {};
 #endif
@@ -103,13 +102,11 @@ class DRMCrtc {
   sde_drm_dest_scaler_data dest_scale_data_ = {};
 };
 
-class DRMCrtcManager {
+class DRMCrtcManager : public DRMObjectManager<DRMCrtc> {
  public:
   explicit DRMCrtcManager(int fd) : fd_(fd) {}
   void Init(drmModeRes *res);
   void DeInit() {}
-  void DumpAll();
-  void DumpByID(uint32_t id);
   int Reserve(const std::set<uint32_t> &possible_crtc_indices, DRMDisplayToken *token);
   void Free(DRMDisplayToken *token);
   void Perform(DRMOps code, uint32_t obj_id, drmModeAtomicReq *req, va_list args);
@@ -117,13 +114,11 @@ class DRMCrtcManager {
   void SetScalerLUT(const DRMScalerLUTInfo &lut_info);
   void UnsetScalerLUT();
   void GetPPInfo(uint32_t crtc_id, DRMPPFeatureInfo *info);
-  void PostValidate(uint32_t crtc_id, bool success);
-  void PostCommit(uint32_t crtc_id, bool success);
+  size_t ApplyDirtyProperties(drmModeAtomicReq *req, uint32_t crtc_id);
 
  private:
   int fd_ = -1;
-  std::map<uint32_t, std::unique_ptr<DRMCrtc>> crtc_pool_{};
-    // GLobal Scaler LUT blobs
+  // GLobal Scaler LUT blobs
   uint32_t dir_lut_blob_id_ = 0;
   uint32_t cir_lut_blob_id_ = 0;
   uint32_t sep_lut_blob_id_ = 0;

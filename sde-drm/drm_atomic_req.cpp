@@ -26,7 +26,9 @@
 * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#define ATRACE_TAG (ATRACE_TAG_GRAPHICS | ATRACE_TAG_HAL)
 
+#include <cutils/trace.h>
 #include <drm_logger.h>
 
 #include "drm_atomic_req.h"
@@ -150,33 +152,66 @@ int DRMAtomicReq::Perform(DRMOps opcode, uint32_t obj_id, ...) {
   return 0;
 }
 
-int DRMAtomicReq::Validate() {
-  // Call UnsetUnusedPlanes to find planes that need to be unset. Do not call CommitPlaneState,
-  // because we just want to validate, not actually mark planes as removed
-  drm_mgr_->GetPlaneMgr()->UnsetUnusedResources(token_.crtc_id, false/*is_commit*/,
-                                                drm_atomic_req_);
-  int ret = drmModeAtomicCommit(fd_, drm_atomic_req_,
-                                DRM_MODE_ATOMIC_ALLOW_MODESET | DRM_MODE_ATOMIC_TEST_ONLY, nullptr);
+int DRMAtomicReq::CallAtomic(DRMCrtc *crtc, uint32_t flags)
+{
+  auto plane_mgr = drm_mgr_->GetPlaneMgr();
+  size_t cnt;
+
+  cnt = plane_mgr->ApplyDirtyProperties(drm_atomic_req_);
+  ATRACE_INT("dirtyPlaneProps", cnt);
+  cnt = crtc->ApplyDirtyProperties(drm_atomic_req_);
+  ATRACE_INT("dirtyCrtcProps", cnt);
+
+  int ret = drmModeAtomicCommit(fd_, drm_atomic_req_, flags, nullptr);
   if (ret) {
     DRM_LOGE("drmModeAtomicCommit failed with error %d (%s).", errno, strerror(errno));
+    /* reset all properties so next atomic commit applies all values */
+    crtc->ClearProperties();
+    plane_mgr->ClearProperties();
   }
 
-  drm_mgr_->GetPlaneMgr()->PostValidate(token_.crtc_id, !ret);
-  drm_mgr_->GetCrtcMgr()->PostValidate(token_.crtc_id, !ret);
+  // reset the drm_atomic_req_ for next call
   drmModeAtomicSetCursor(drm_atomic_req_, 0);
+
+  return ret;
+}
+
+int DRMAtomicReq::Validate() {
+  auto crtc = drm_mgr_->GetCrtcMgr()->GetObject(token_.crtc_id);
+  if (crtc == nullptr) {
+    DRM_LOGE("Invalid crtc %d", token_.crtc_id);
+    return -EINVAL;
+  }
+
+  drm_mgr_->GetPlaneMgr()->UnsetUnusedResources(token_.crtc_id, false /*is_commit*/,
+                                                drm_atomic_req_);
+  int ret = CallAtomic(crtc, DRM_MODE_ATOMIC_ALLOW_MODESET | DRM_MODE_ATOMIC_TEST_ONLY);
+  if (!ret)
+    crtc->PostValidate();
+
+  // reset any dirty properties, all properties should be set again before Commit
+  crtc->DiscardDirtyProperties();
+  drm_mgr_->GetPlaneMgr()->PostValidate(token_.crtc_id);
 
   return ret;
 }
 
 int DRMAtomicReq::Commit(bool synchronous, bool retain_planes) {
   DTRACE_SCOPED();
+  auto crtc = drm_mgr_->GetCrtcMgr()->GetObject(token_.crtc_id);
+  if (crtc == nullptr) {
+    DRM_LOGE("Invalid crtc %d", token_.crtc_id);
+    return -EINVAL;
+  }
+
   if (retain_planes) {
     // It is not enough to simply avoid calling UnsetUnusedPlanes, since state transitons have to
     // be correct when CommitPlaneState is called
     drm_mgr_->GetPlaneMgr()->RetainPlanes(token_.crtc_id);
   }
 
-  drm_mgr_->GetPlaneMgr()->UnsetUnusedResources(token_.crtc_id, true/*is_commit*/, drm_atomic_req_);
+  drm_mgr_->GetPlaneMgr()->UnsetUnusedResources(token_.crtc_id, true /*is_commit*/,
+                                                drm_atomic_req_);
 
   uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
 
@@ -184,14 +219,13 @@ int DRMAtomicReq::Commit(bool synchronous, bool retain_planes) {
     flags |= DRM_MODE_ATOMIC_NONBLOCK;
   }
 
-  int ret = drmModeAtomicCommit(fd_, drm_atomic_req_, flags, nullptr);
-  if (ret) {
-    DRM_LOGE("drmModeAtomicCommit failed with error %d (%s).", errno, strerror(errno));
-  }
+  int ret = CallAtomic(crtc, flags);
 
   drm_mgr_->GetPlaneMgr()->PostCommit(token_.crtc_id, !ret);
-  drm_mgr_->GetCrtcMgr()->PostCommit(token_.crtc_id, !ret);
-  drmModeAtomicSetCursor(drm_atomic_req_, 0);
+  crtc->PostCommit(!ret);
+
+  ATRACE_INT("dirtyPlaneProps", 0);
+  ATRACE_INT("dirtyCrtcProps", 0);
 
   return ret;
 }

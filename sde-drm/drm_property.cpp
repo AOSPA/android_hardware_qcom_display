@@ -27,7 +27,9 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <drm_logger.h>
 #include "drm_property.h"
+#include "drm_utils.h"
 
 namespace sde_drm {
 
@@ -170,6 +172,51 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "SDE_DSPP_RC_MASK_V1") { return DRMProperty::DSPP_RC_MASK_V1; }
 
   return DRMProperty::INVALID;
+}
+
+#define __CLASS__ "DRMObject"
+
+DRMObject::DRMObject(DRMPropertyManager& pm) : property_manager_(pm) {}
+
+void DRMObject::AddProperty(DRMProperty prop, uint64_t value, bool force_dirty) {
+  const uint32_t prop_id = property_manager_.GetPropertyId(prop);
+
+  // bypass check if forced dirty or property is already dirty
+  if (!force_dirty && dirty_values_.find(prop_id) == dirty_values_.end()) {
+    auto it = property_values_.find(prop_id);
+
+    // skip update if value hasn't changed
+    if (it != property_values_.end() && it->second == value) {
+      return;
+    }
+  }
+
+  dirty_values_[prop_id] = value;
+}
+
+void DRMObject::RemoveProperty(DRMProperty prop) {
+  const uint32_t prop_id = property_manager_.GetPropertyId(prop);
+  dirty_values_.erase(prop_id);
+}
+
+size_t DRMObject::ApplyDirtyProperties(drmModeAtomicReq *req) {
+  const uint32_t obj_id = GetObjectId();
+
+  for (const auto& it : dirty_values_)
+    drmModeAtomicAddProperty(req, obj_id, it.first, it.second);
+
+  return dirty_values_.size();
+}
+
+void DRMObject::CommitProperties() {
+  for (const auto& it : dirty_values_)
+    property_values_[it.first] = it.second;
+  DiscardDirtyProperties();
+}
+
+void DRMObject::ClearProperties() {
+  property_values_.clear();
+  DiscardDirtyProperties();
 }
 
 }  // namespace sde_drm

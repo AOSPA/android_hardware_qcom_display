@@ -51,6 +51,10 @@ ifeq ($(TARGET_USES_HWC2), true)
     common_flags += -DVIDEO_MODE_DEFER_RETIRE_FENCE
 endif
 
+ifeq ($(TARGET_USES_NV21_CAMERA_PREVIEW),true)
+    common_flags += -DUSE_NV21_CAMERA_PREVIEW
+endif
+
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
     common_flags += -DUSER_DEBUG
 endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2019 The Linux Foundation. All rights reserved.
  * Not a Contribution
  *
  * Copyright (C) 2010 The Android Open Source Project
@@ -227,6 +227,10 @@ void BufferManager::RegisterHandleLocked(const private_handle_t *hnd,
 }
 
 gralloc1_error_t BufferManager::ImportHandleLocked(private_handle_t *hnd) {
+  if (private_handle_t::validate(hnd) != 0) {
+    ALOGE("ImportHandleLocked: Invalid handle: %p", hnd);
+    return GRALLOC1_ERROR_BAD_HANDLE;
+  }
   ALOGD_IF(DEBUG, "Importing handle:%p id: %" PRIu64, hnd, hnd->id);
   int ion_handle = allocator_->ImportBuffer(hnd->fd);
   if (ion_handle < 0) {
@@ -855,6 +859,9 @@ static bool IsYuvFormat(const private_handle_t *hnd) {
     case HAL_PIXEL_FORMAT_RAW10:
     case HAL_PIXEL_FORMAT_YV12:
     case HAL_PIXEL_FORMAT_Y8:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010:
+    case HAL_PIXEL_FORMAT_YCbCr_420_TP10_UBWC:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010_UBWC:
       return true;
     default:
       return false;

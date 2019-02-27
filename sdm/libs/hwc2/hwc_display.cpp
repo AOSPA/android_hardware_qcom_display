@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -1235,7 +1235,8 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(int32_t *out_retire_fence) {
   if (flush_ && flush_on_error_) {
     display_intf_->Flush(secure_display_transition_);
     secure_display_transition_ = false;
-    validated_.reset();
+    validated_.reset(type_);
+    flush_on_error_ = false;
   }
 
   if (tone_mapper_ && tone_mapper_->IsActive()) {
@@ -1687,11 +1688,15 @@ int HWCDisplay::SetDisplayStatus(DisplayStatus display_status) {
     case kDisplayStatusResume:
       display_paused_ = false;
       fbt_valid_ = false;
+      status = INT32(SetPowerMode(HWC2::PowerMode::On));
+      break;
     case kDisplayStatusOnline:
       status = INT32(SetPowerMode(HWC2::PowerMode::On));
       break;
     case kDisplayStatusPause:
       display_paused_ = true;
+      status = INT32(SetPowerMode(HWC2::PowerMode::Off));
+      break;
     case kDisplayStatusOffline:
       status = INT32(SetPowerMode(HWC2::PowerMode::Off));
       break;

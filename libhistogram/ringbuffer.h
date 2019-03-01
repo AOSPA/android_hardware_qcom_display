@@ -66,11 +66,13 @@ private:
 
     Sample collect_max(uint32_t max_frames, std::unique_lock<std::mutex> const&) const;
     Sample collect_max_after(nsecs_t timestamp, uint32_t max_frames, std::unique_lock<std::mutex> const&) const;
+    void update_cumulative(nsecs_t now, uint64_t& count, std::array<uint64_t, HIST_V_SIZE>& bins) const;
 
     std::mutex mutable mutex;
     struct HistogramEntry {
         drm_msm_hist histogram;
-        nsecs_t timestamp;
+        nsecs_t start_timestamp;
+        nsecs_t end_timestamp;
     };
     std::deque<HistogramEntry> ringbuffer;
     size_t rb_max_size;

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cutils/compiler.h>
 #include <algorithm>
 
 #include "ringbuffer.h"
@@ -28,22 +29,44 @@ histogram::Ringbuffer::Ringbuffer(size_t ringbuffer_size, std::unique_ptr<histog
     cumulative_bins.fill(0);
 }
 
-std::unique_ptr<histogram::Ringbuffer> histogram::Ringbuffer::create(size_t ringbuffer_size, std::unique_ptr<histogram::TimeKeeper> tk) {
+std::unique_ptr<histogram::Ringbuffer> histogram::Ringbuffer::create(
+    size_t ringbuffer_size, std::unique_ptr<histogram::TimeKeeper> tk) {
     if ((ringbuffer_size == 0) || !tk)
         return nullptr;
     return std::unique_ptr<histogram::Ringbuffer>(new histogram::Ringbuffer(ringbuffer_size, std::move(tk)));
 }
 
+void histogram::Ringbuffer::update_cumulative(nsecs_t now,
+    uint64_t& count, std::array<uint64_t, HIST_V_SIZE>& bins) const {
+
+    if (ringbuffer.empty())
+        return;
+
+    count++;
+
+    const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::nanoseconds(now - ringbuffer.front().start_timestamp));
+
+    for (auto i = 0u; i < bins.size(); i++) {
+        auto const increment = ringbuffer.front().histogram.data[i] * delta.count();
+        if (CC_UNLIKELY((bins[i] + increment < bins[i]) || (increment < ringbuffer.front().histogram.data[i]))) {
+            bins[i] = std::numeric_limits<uint64_t>::max();
+        } else {
+            bins[i] += increment;
+        }
+    }
+}
+
 void histogram::Ringbuffer::insert(drm_msm_hist const& frame) {
     std::unique_lock<decltype(mutex)> lk(mutex);
+    auto now = timekeeper->current_time();
+    update_cumulative(now, cumulative_frame_count, cumulative_bins);
 
     if (ringbuffer.size() == rb_max_size)
         ringbuffer.pop_back();
-    ringbuffer.push_front({frame, timekeeper->current_time()});
-
-    cumulative_frame_count++;
-    for (auto i = 0u; i < cumulative_bins.size(); i++)
-        cumulative_bins[i] += frame.data[i];
+    if (!ringbuffer.empty())
+        ringbuffer.front().end_timestamp = now;
+    ringbuffer.push_front({frame, now, 0});
 }
 
 bool histogram::Ringbuffer::resize(size_t ringbuffer_size) {
@@ -58,7 +81,9 @@ bool histogram::Ringbuffer::resize(size_t ringbuffer_size) {
 
 histogram::Ringbuffer::Sample histogram::Ringbuffer::collect_cumulative() const {
     std::unique_lock<decltype(mutex)> lk(mutex);
-    return {cumulative_frame_count, cumulative_bins};
+    histogram::Ringbuffer::Sample sample { cumulative_frame_count, cumulative_bins };
+    update_cumulative(timekeeper->current_time(), std::get<0>(sample), std::get<1>(sample));
+    return sample;
 }
 
 histogram::Ringbuffer::Sample histogram::Ringbuffer::collect_ringbuffer_all() const {
@@ -91,8 +116,14 @@ histogram::Ringbuffer::Sample histogram::Ringbuffer::collect_max(
     std::array<uint64_t, HIST_V_SIZE> bins;
     bins.fill(0);
     for (auto it = ringbuffer.begin(); it != ringbuffer.begin() + collect_first; it++) {
+        nsecs_t end_timestamp = it->end_timestamp;
+        if (it == ringbuffer.begin() ) {
+            end_timestamp = timekeeper->current_time();
+        }
+        const auto time_displayed = std::chrono::nanoseconds(end_timestamp - it->start_timestamp);
+        const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(time_displayed);
         for (auto i = 0u; i < HIST_V_SIZE; i++) {
-            bins[i] += it->histogram.data[i];
+            bins[i] += it->histogram.data[i] * delta.count();
         }
     }
     return { collect_first, bins };
@@ -100,11 +131,11 @@ histogram::Ringbuffer::Sample histogram::Ringbuffer::collect_max(
 
 histogram::Ringbuffer::Sample histogram::Ringbuffer::collect_max_after(
         nsecs_t timestamp, uint32_t max_frames, std::unique_lock<std::mutex> const& lk) const {
-    auto ts_filter_begin = std::lower_bound(ringbuffer.begin(), ringbuffer.end(),
-        HistogramEntry{ {}, timestamp},
-        [](auto const& a, auto const& b) { return a.timestamp >= b.timestamp; });
+    auto ts_filter_begin = std::lower_bound(
+        ringbuffer.begin(), ringbuffer.end(), HistogramEntry{{}, timestamp, 0},
+        [](auto const &a, auto const &b) { return a.start_timestamp >= b.start_timestamp; });
 
-    auto collect_last = std::min(
-        std::distance(ringbuffer.begin(), ts_filter_begin), static_cast<std::ptrdiff_t>(max_frames));
+    auto collect_last = std::min(std::distance(ringbuffer.begin(), ts_filter_begin),
+                                 static_cast<std::ptrdiff_t>(max_frames));
     return collect_max(collect_last, lk);
 }

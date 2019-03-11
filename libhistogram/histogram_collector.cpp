@@ -287,10 +287,27 @@ histogram::HistogramCollector::~HistogramCollector() {
     stop();
 }
 
+namespace {
+static constexpr size_t numBuckets = 8;
+static_assert((HIST_V_SIZE % numBuckets) == 0,
+           "histogram cannot be rebucketed to smaller number of buckets");
+static constexpr int bucket_compression = HIST_V_SIZE / numBuckets;
+
+std::array<uint64_t, numBuckets> rebucketTo8Buckets(std::array<uint64_t, HIST_V_SIZE> const& frame) {
+    std::array<uint64_t, numBuckets> bins;
+    bins.fill(0);
+    for (auto i = 0u; i < HIST_V_SIZE; i++)
+        bins[i / bucket_compression] += frame[i];
+    return bins;
+}
+}
+
 std::string histogram::HistogramCollector::Dump() const {
     uint64_t num_frames;
-    std::array<uint64_t, HIST_V_SIZE> samples;
-    std::tie(num_frames, samples) = histogram->collect_cumulative();
+    std::array<uint64_t, HIST_V_SIZE> all_sample_buckets;
+    std::tie(num_frames, all_sample_buckets) = histogram->collect_cumulative();
+    std::array<uint64_t, numBuckets> samples = rebucketTo8Buckets(all_sample_buckets);
+
     std::stringstream ss;
     ss << "Color Sampling, dark (0.0) to light (1.0): sampled frames: " << num_frames << '\n';
     if (num_frames == 0) {
@@ -307,21 +324,6 @@ std::string histogram::HistogramCollector::Dump() const {
     }
 
     return ss.str();
-}
-
-namespace {
-static constexpr size_t numBuckets = 8;
-static_assert((HIST_V_SIZE % numBuckets) == 0,
-           "histogram cannot be rebucketed to smaller number of buckets");
-static constexpr int bucket_compression = HIST_V_SIZE / numBuckets;
-
-std::array<uint64_t, numBuckets> rebucketTo8Buckets(std::array<uint64_t, HIST_V_SIZE> const& frame) {
-    std::array<uint64_t, numBuckets> bins;
-    bins.fill(0);
-    for (auto i = 0u; i < HIST_V_SIZE; i++)
-        bins[i / bucket_compression] += frame[i];
-    return bins;
-}
 }
 
 HWC2::Error histogram::HistogramCollector::collect(

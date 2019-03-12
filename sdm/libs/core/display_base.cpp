@@ -299,7 +299,7 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
   }
   // TODO(user): Temporary changes, to be removed when DRM driver supports
   // Partial update with Destination scaler enabled.
-  if (partial_update_control_ == false || disable_pu_one_frame_ ||
+  if (!partial_update_control_ || disable_pu_one_frame_ ||
       disable_pu_on_dest_scaler_) {
     comp_manager_->ControlPartialUpdate(display_comp_ctx_, false /* enable */);
     disable_pu_one_frame_ = false;
@@ -309,6 +309,13 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
   while (true) {
     error = comp_manager_->Prepare(display_comp_ctx_, &hw_layers_);
     if (error != kErrorNone) {
+      break;
+    }
+
+    if (layer_stack->flags.fast_path && hw_layers_.info.fast_path_composition) {
+      // In Fast Path, driver validation happens in COMMIT Phase.
+      DLOGI_IF(kTagDisplay, "Draw cycle qualifies for Fast Path!");
+      needs_validate_ = false;
       break;
     }
 
@@ -380,6 +387,12 @@ DisplayError DisplayBase::Commit(LayerStack *layer_stack) {
 
   error = hw_intf_->Commit(&hw_layers_);
   if (error != kErrorNone) {
+    if (layer_stack->flags.fast_path && hw_layers_.info.fast_path_composition) {
+      // If COMMIT fails on the Fast Path, set Safe Mode.
+      DLOGE("COMMIT failed in Fast Path, set Safe Mode!");
+      comp_manager_->SetSafeMode(true);
+      error = kErrorNotValidated;
+    }
     return error;
   }
 

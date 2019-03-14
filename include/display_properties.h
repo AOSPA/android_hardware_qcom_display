@@ -94,6 +94,8 @@
 #define ENABLE_DEFAULT_COLOR_MODE            DISPLAY_PROP("enable_default_color_mode")
 #define DISABLE_HDR                          DISPLAY_PROP("disable_hdr")
 #define DATASPACE_SATURATION_MATRIX_PROP     DISPLAY_PROP("dataspace_saturation_matrix")
+#define ADAPTIVE_WHITE_COEFFICIENT_PROP      DISPLAY_PROP("adaptive_white_coefficient")
+#define ADAPTIVE_SATURATION_PARAMETER_PROP   DISPLAY_PROP("adaptive_saturation_parameter")
 
 #define HDR_CONFIG_PROP                      RO_DISPLAY_PROP("hdr.config")
 #define QDCM_PCC_TRANS_PROP                  DISPLAY_PROP("qdcm.pcc_for_trans")

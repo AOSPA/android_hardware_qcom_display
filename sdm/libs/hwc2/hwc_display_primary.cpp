@@ -372,6 +372,18 @@ HWC2::Error HWCDisplayPrimary::SetColorMode(ColorMode mode) {
   return SetColorModeWithRenderIntent(mode, RenderIntent::COLORIMETRIC);
 }
 
+HWC2::Error HWCDisplayPrimary::SetWhiteCompensation(bool enabled) {
+  auto status = color_mode_->SetWhiteCompensation(enabled);
+  if (status != HWC2::Error::None) {
+    DLOGE("failed for SetWhiteCompensation to %d", enabled);
+    return status;
+  }
+
+  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+
+  return status;
+}
+
 HWC2::Error HWCDisplayPrimary::SetColorModeWithRenderIntent(ColorMode mode, RenderIntent intent) {
   auto status = color_mode_->SetColorModeWithRenderIntent(mode, intent);
   if (status != HWC2::Error::None) {

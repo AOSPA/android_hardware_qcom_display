@@ -82,6 +82,7 @@ public:
 
         // Start custom transactions from 200
         SET_COLOR_SAMPLING_ENABLED = 200, // Toggle the collection of display color stats
+        SET_WHITE_COMPENSATION = 201, // Enable/disable white point compensation
         COMMAND_LIST_END = 400,
     };
 

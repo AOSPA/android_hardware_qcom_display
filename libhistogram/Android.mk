@@ -18,8 +18,9 @@ include $(CLEAR_VARS)
 LOCAL_HEADER_LIBRARIES := display_headers
 LOCAL_MODULE := libhistogram
 LOCAL_SRC_FILES := histogram_collector.cpp ringbuffer.cpp
-LOCAL_SHARED_LIBRARIES := libdrm.vendor liblog libcutils libutils
-LOCAL_CFLAGS := -DLOG_TAG=\"SDM-histogram\" -Wall -std=c++14 -Werror -fno-operator-names
+LOCAL_SHARED_LIBRARIES := libdrm.vendor liblog libcutils libutils libbase
+LOCAL_CFLAGS := -DLOG_TAG=\"SDM-histogram\" -Wall -std=c++14 -Werror -fno-operator-names \
+	-Wthread-safety
 LOCAL_CLANG  := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_VENDOR_MODULE := true
@@ -35,7 +36,8 @@ LOCAL_SRC_FILES := color_sampling_tool.cpp
 
 LOCAL_STATIC_LIBRARIES := libhistogram
 LOCAL_SHARED_LIBRARIES := libdrm.vendor liblog libcutils libutils libbase
-LOCAL_CFLAGS := -DLOG_TAG=\"SDM-histogram\" -Wall -std=c++14 -Werror -fno-operator-names
+LOCAL_CFLAGS := -DLOG_TAG=\"SDM-histogram\" -Wall -std=c++14 -Werror -fno-operator-names \
+	-Wthread-safety
 LOCAL_CLANG  := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_VENDOR_MODULE := true
@@ -50,7 +52,8 @@ LOCAL_SRC_FILES := ringbuffer_test.cpp
 
 LOCAL_STATIC_LIBRARIES := libhistogram libgtest libgmock
 LOCAL_SHARED_LIBRARIES := libdrm.vendor liblog libcutils libutils libbase
-LOCAL_CFLAGS := -DLOG_TAG=\"SDM-histogram\" -Wall -std=c++14 -Werror -fno-operator-names
+LOCAL_CFLAGS := -DLOG_TAG=\"SDM-histogram\" -Wall -std=c++14 -Werror -fno-operator-names \
+	-Wthread-safety
 LOCAL_CLANG  := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_VENDOR_MODULE := true

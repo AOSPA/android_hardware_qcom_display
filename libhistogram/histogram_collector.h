@@ -16,8 +16,11 @@
 
 #ifndef HISTOGRAM_HISTOGRAM_COLLECTOR_H_
 #define HISTOGRAM_HISTOGRAM_COLLECTOR_H_
+#include <android-base/thread_annotations.h>
 #include <string>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #define HWC2_INCLUDE_STRINGIFICATION
 #define HWC2_USE_CPP11
 #include <hardware/hwcomposer2.h>
@@ -28,6 +31,7 @@
 #define NUM_HISTOGRAM_COLOR_COMPONENTS 4
 
 namespace histogram {
+typedef uint32_t BlobId;
 
 class Ringbuffer;
 class HistogramCollector
@@ -39,6 +43,8 @@ public:
     void start();
     void start(uint64_t max_frames);
     void stop();
+
+    void notify_histogram_event(int blob_source_fd, BlobId id);
 
     std::string Dump() const;
 
@@ -54,15 +60,22 @@ public:
 private:
     HistogramCollector(HistogramCollector const&) = delete;
     HistogramCollector& operator=(HistogramCollector const&) = delete;
-    void collecting_thread(int pipe);
+    void blob_processing_thread();
 
-    std::mutex thread_control;
-    bool started = false;
+    std::condition_variable cv;
+    std::mutex mutable mutex;
+    bool started /* GUARDED_BY(mutex) */ = false;
+
+    struct BlobWork {
+        int fd; /* non-owning! */
+        BlobId id;
+    } blobwork /* GUARDED_BY(mutex) */;
+    //no optional in c++14.
+    bool work_available = false; /* GUARDED_BY(mutex) */;
+
     std::thread monitoring_thread;
-    int selfpipe[2];
 
     std::unique_ptr<histogram::Ringbuffer> histogram;
-
 };
 
 }  // namespace histogram

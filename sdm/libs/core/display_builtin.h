@@ -31,6 +31,7 @@
 
 #include "display_base.h"
 #include "hw_events_interface.h"
+#include "drm_interface.h"
 
 namespace sdm {
 
@@ -78,6 +79,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   virtual DisplayError SetDynamicDSIClock(uint64_t bit_clk_rate);
   virtual DisplayError GetDynamicDSIClock(uint64_t *bit_clk_rate);
   virtual DisplayError GetSupportedDSIClock(std::vector<uint64_t> *bitclk_rates);
+  virtual DisplayError colorSamplingOn() override;
+  virtual DisplayError colorSamplingOff() override;
 
   // Implement the HWEventHandlers
   virtual DisplayError VSync(int64_t timestamp);
@@ -105,6 +108,17 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool commit_event_enabled_ = false;
   DppsInfo dpps_info_ = {};
   QSyncMode qsync_mode_ = kQSyncModeNone;
+
+  enum class SamplingState {
+      Off,
+      On
+  } samplingState = SamplingState::Off;
+  DisplayError setColorSamplingState(SamplingState state);
+
+  bool histogramSetup = false;
+  sde_drm::DppsFeaturePayload histogramCtrl;
+  sde_drm::DppsFeaturePayload histogramIRQ;
+  void initColorSamplingState();
 };
 
 }  // namespace sdm

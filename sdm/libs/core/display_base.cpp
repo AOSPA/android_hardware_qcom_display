@@ -1855,4 +1855,12 @@ bool DisplayBase::IsHdrMode(const AttrVal &attr) {
   return false;
 }
 
+DisplayError DisplayBase::colorSamplingOn() {
+  return kErrorNone;
+}
+
+DisplayError DisplayBase::colorSamplingOff() {
+  return kErrorNone;
+}
+
 }  // namespace sdm

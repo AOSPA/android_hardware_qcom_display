@@ -109,6 +109,8 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(SetDynamicDSIClock(uint64_t bit_clk_rate))
   MAKE_NO_OP(GetDynamicDSIClock(uint64_t *bit_clk_rate))
   MAKE_NO_OP(GetSupportedDSIClock(vector<uint64_t> *bitclk_rates))
+  MAKE_NO_OP(colorSamplingOn());
+  MAKE_NO_OP(colorSamplingOff());
 
  protected:
   DisplayConfigVariableInfo default_variable_config_ = {};

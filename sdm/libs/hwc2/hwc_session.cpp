@@ -633,6 +633,10 @@ static int32_t SetLayerPerFrameMetadata(hwc2_device_t *device, hwc2_display_t di
                                        num_elements, keys, metadata);
 }
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif
 static int32_t SetDisplayedContentSamplingEnabled(hwc2_device_t* device,
                                                   hwc2_display_t display,
                                                   int32_t enabled, uint8_t component_mask,
@@ -665,6 +669,9 @@ static int32_t GetDisplayedContentSample(
     return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayedContentSample,
                                     max_frames, timestamp, numFrames, samples_size, samples);
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 static int32_t GetDisplayAttribute(hwc2_device_t *device, hwc2_display_t display,
                                    hwc2_config_t config, int32_t int_attribute,
@@ -1274,11 +1281,10 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
     case HWC2::FunctionDescriptor::SetDisplayBrightness:
       return AsFP<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(SetDisplayBrightness);
     case HWC2::FunctionDescriptor::SetDisplayedContentSamplingEnabled:
-      return AsFP<HWC2_PFN_SET_DISPLAYED_CONTENT_SAMPLING_ENABLED>(SetDisplayedContentSamplingEnabled);
     case HWC2::FunctionDescriptor::GetDisplayedContentSamplingAttributes:
-      return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLING_ATTRIBUTES>(GetDisplayedContentSamplingAttributes);
     case HWC2::FunctionDescriptor::GetDisplayedContentSample:
-      return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLE>(GetDisplayedContentSample);
+      DLOGD("Temorarily disabled histogram functions during port");
+      return nullptr;
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());

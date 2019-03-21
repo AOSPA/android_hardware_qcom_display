@@ -381,6 +381,10 @@ void DisplayBuiltIn::HwRecovery(const HWRecoveryEvent sdm_event_code) {
   DisplayBase::HwRecovery(sdm_event_code);
 }
 
+void DisplayBuiltIn::Histogram(int histogram_fd, uint32_t blob_id) {
+    event_handler_->HistogramEvent(histogram_fd, blob_id);
+}
+
 DisplayError DisplayBuiltIn::GetPanelBrightness(int *level) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   return hw_intf_->GetPanelBrightness(level);

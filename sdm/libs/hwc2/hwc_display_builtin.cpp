@@ -918,4 +918,8 @@ DisplayError HWCDisplayBuiltIn::GetSupportedDSIClock(std::vector<uint64_t> *bitc
   return kErrorNotSupported;
 }
 
+DisplayError HWCDisplayBuiltIn::HistogramEvent(int fd, uint32_t blob_id) {
+  histogram.notify_histogram_event(fd, blob_id);
+  return kErrorNone;
+}
 }  // namespace sdm

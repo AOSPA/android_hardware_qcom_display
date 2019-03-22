@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2018, The Linux Foundataion. All rights reserved.
+/* Copyright (c) 2015 - 2019, The Linux Foundataion. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -225,13 +225,15 @@ void PPHWAttributes::Set(const HWResourceInfo &hw_res,
   }
 }
 
-DisplayError ColorManagerProxy::ColorMgrGetNumOfModes(uint32_t *mode_cnt) {
-  return color_intf_->ColorIntfGetNumDisplayModes(&pp_features_, 0, mode_cnt);
+DisplayError ColorManagerProxy::ColorMgrGetNumOfModes(bool enum_user_modes,
+                                                      uint32_t *mode_cnt) {
+  return color_intf_->ColorIntfGetNumDisplayModes(&pp_features_, 0, enum_user_modes, mode_cnt);
 }
 
-DisplayError ColorManagerProxy::ColorMgrGetModes(uint32_t *mode_cnt,
+DisplayError ColorManagerProxy::ColorMgrGetModes(bool enum_user_modes, uint32_t *mode_cnt,
                                                  SDEDisplayMode *modes) {
-  return color_intf_->ColorIntfEnumerateDisplayModes(&pp_features_, 0, modes, mode_cnt);
+  return color_intf_->ColorIntfEnumerateDisplayModes(&pp_features_, 0, enum_user_modes,
+                                                     modes, mode_cnt);
 }
 
 DisplayError ColorManagerProxy::ColorMgrSetMode(int32_t color_mode_id) {
@@ -249,6 +251,10 @@ DisplayError ColorManagerProxy::ColorMgrSetColorTransform(uint32_t length,
 
 DisplayError ColorManagerProxy::ColorMgrGetDefaultModeID(int32_t *mode_id) {
   return color_intf_->ColorIntfGetDefaultModeID(&pp_features_, 0, mode_id);
+}
+
+DisplayError ColorManagerProxy::ColorMgrCombineColorModes() {
+  return color_intf_->ColorIntfCombineColorModes();
 }
 
 }  // namespace sdm

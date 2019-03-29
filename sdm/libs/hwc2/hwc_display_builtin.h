@@ -147,6 +147,7 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   bool high_brightness_mode_ = false;
 
   // Members for Color sampling feature
+  DisplayError HistogramEvent(int fd, uint32_t blob_id) override;
   histogram::HistogramCollector histogram;
   std::mutex sampling_mutex;
   bool api_sampling_vote = false;

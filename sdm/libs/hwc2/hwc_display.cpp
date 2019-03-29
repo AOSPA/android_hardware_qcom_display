@@ -65,7 +65,7 @@ HWCColorMode::HWCColorMode(DisplayInterface *display_intf) : display_intf_(displ
 
 HWC2::Error HWCColorMode::Init() {
   PopulateColorModes();
-  return ApplyDefaultColorMode();
+  return HWC2::Error::None;
 }
 
 HWC2::Error HWCColorMode::DeInit() {
@@ -1258,6 +1258,10 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
       break;
   }
 
+  return kErrorNone;
+}
+
+DisplayError HWCDisplay::HistogramEvent(int /* fd */, uint32_t /* blob_fd */) {
   return kErrorNone;
 }
 

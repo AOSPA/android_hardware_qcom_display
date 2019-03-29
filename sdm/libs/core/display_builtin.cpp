@@ -85,17 +85,26 @@ DisplayError DisplayBuiltIn::Init() {
   if (hw_panel_info_.mode == kModeCommand) {
     event_list_ = {HWEvent::VSYNC,
                    HWEvent::EXIT,
+                   /* HWEvent::IDLE_NOTIFY, */
+                   /* HWEvent::CEC_READ_MESSAGE, */
                    HWEvent::SHOW_BLANK_EVENT,
                    HWEvent::THERMAL_LEVEL,
                    HWEvent::IDLE_POWER_COLLAPSE,
                    HWEvent::PINGPONG_TIMEOUT,
                    HWEvent::PANEL_DEAD,
-                   HWEvent::HW_RECOVERY};
+                   HWEvent::HW_RECOVERY,
+                   HWEvent::HISTOGRAM};
   } else {
-    event_list_ = {HWEvent::VSYNC,         HWEvent::EXIT,
-                   HWEvent::IDLE_NOTIFY,   HWEvent::SHOW_BLANK_EVENT,
-                   HWEvent::THERMAL_LEVEL, HWEvent::PINGPONG_TIMEOUT,
-                   HWEvent::PANEL_DEAD,    HWEvent::HW_RECOVERY};
+    event_list_ = {HWEvent::VSYNC,
+                   HWEvent::EXIT,
+                   HWEvent::IDLE_NOTIFY,
+                   /* HWEvent::CEC_READ_MESSAGE, */
+                   HWEvent::SHOW_BLANK_EVENT,
+                   HWEvent::THERMAL_LEVEL,
+                   HWEvent::PINGPONG_TIMEOUT,
+                   HWEvent::PANEL_DEAD,
+                   HWEvent::HW_RECOVERY,
+                   HWEvent::HISTOGRAM};
   }
 
   avr_prop_disabled_ = Debug::IsAVRDisabled();
@@ -370,6 +379,10 @@ void DisplayBuiltIn::PanelDead() {
 // HWEventHandler overload, not DisplayBase
 void DisplayBuiltIn::HwRecovery(const HWRecoveryEvent sdm_event_code) {
   DisplayBase::HwRecovery(sdm_event_code);
+}
+
+void DisplayBuiltIn::Histogram(int histogram_fd, uint32_t blob_id) {
+    event_handler_->HistogramEvent(histogram_fd, blob_id);
 }
 
 DisplayError DisplayBuiltIn::GetPanelBrightness(int *level) {

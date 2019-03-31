@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e8f52e63_c1c69309",
+        "filename": "sdm/libs/core/core_impl.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2019-03-31T21:15:38Z",
+      "side": 1,
+      "message": "Does it make sense for this variable to be global?",
+      "revId": "89d260dc31f1654da7a8ff6490f43dce9934b0dc",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad",
+      "unresolved": true
+    }
+  ]
+}

@@ -44,6 +44,7 @@ endif
 
 PRODUCT_PROPERTY_OVERRIDES += \
     persist.demo.hdmirotationlock=false \
+    persist.sys.sf.color_saturation=1.0 \
     ro.vendor.display.cabl=2 \
     debug.sf.latch_unsignaled=1 \
     vendor.display.enable_default_color_mode=1 \

@@ -100,6 +100,7 @@ class HWDevice : public HWInterface {
   virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) {
     return kErrorNotSupported;
   }
+  virtual DisplayError TeardownConcurrentWriteback(void) { return kErrorNotSupported; }
 
   enum {
     kHWEventVSync,

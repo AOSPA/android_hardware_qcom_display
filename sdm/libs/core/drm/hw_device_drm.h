@@ -98,6 +98,7 @@ class HWDeviceDRM : public HWInterface {
   virtual DisplayError SetScaleLutConfig(HWScaleLutInfo *lut_info);
   virtual DisplayError SetMixerAttributes(const HWMixerAttributes &mixer_attributes);
   virtual DisplayError GetMixerAttributes(HWMixerAttributes *mixer_attributes);
+  virtual DisplayError TeardownConcurrentWriteback(void) { return kErrorNotSupported; }
   virtual void InitializeConfigs();
   virtual DisplayError DumpDebugData() { return kErrorNone; }
   virtual void PopulateHWPanelInfo();

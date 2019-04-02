@@ -694,6 +694,11 @@ class DisplayInterface {
   */
   virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) = 0;
 
+/*! @brief Method to free concurrent writeback resoures for primary display.
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError TeardownConcurrentWriteback(void) = 0;
+
   /*
    * Returns a string consisting of a dump of SDM's display and layer related state
    * as programmed to driver

@@ -62,6 +62,7 @@ class DisplayPrimary : public DisplayBase, HWEventHandler {
   virtual void IdlePowerCollapse();
   virtual void PingPongTimeout();
   virtual void PanelDead();
+  virtual DisplayError TeardownConcurrentWriteback(void);
 
  private:
   bool NeedsAVREnable();

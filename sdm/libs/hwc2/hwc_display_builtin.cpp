@@ -279,7 +279,7 @@ HWC2::Error HWCDisplayBuiltIn::SetColorModeWithRenderIntent(ColorMode mode, Rend
     DLOGE("failed for mode = %d intent = %d", mode, intent);
     return status;
   }
-  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+  callbacks_->Refresh(id_);
   validated_ = false;
   return status;
 }
@@ -291,7 +291,7 @@ HWC2::Error HWCDisplayBuiltIn::SetColorModeById(int32_t color_mode_id) {
     return status;
   }
 
-  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+  callbacks_->Refresh(id_);
   validated_ = false;
 
   return status;
@@ -323,7 +323,7 @@ HWC2::Error HWCDisplayBuiltIn::RestoreColorTransform() {
     return status;
   }
 
-  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+  callbacks_->Refresh(id_);
 
   return status;
 }
@@ -341,7 +341,7 @@ HWC2::Error HWCDisplayBuiltIn::SetColorTransform(const float *matrix,
     return status;
   }
 
-  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+  callbacks_->Refresh(id_);
   color_tranform_failed_ = false;
   validated_ = false;
 
@@ -394,6 +394,28 @@ HWC2::Error HWCDisplayBuiltIn::GetReadbackBufferFence(int32_t *release_fence) {
   return status;
 }
 
+DisplayError HWCDisplayBuiltIn::TeardownConcurrentWriteback(void) {
+  DisplayError error = kErrorNotSupported;
+
+  if (output_buffer_.release_fence_fd >= 0) {
+    int32_t release_fence_fd = dup(output_buffer_.release_fence_fd);
+    int ret = sync_wait(output_buffer_.release_fence_fd, 1000);
+    if (ret < 0) {
+      DLOGE("sync_wait error errno = %d, desc = %s", errno, strerror(errno));
+    }
+
+    ::close(release_fence_fd);
+    if (ret)
+      return kErrorResources;
+  }
+
+  if (display_intf_) {
+    error = display_intf_->TeardownConcurrentWriteback();
+  }
+
+  return error;
+}
+
 HWC2::Error HWCDisplayBuiltIn::SetDisplayDppsAdROI(uint32_t h_start, uint32_t h_end,
                                                    uint32_t v_start, uint32_t v_end,
                                                    uint32_t factor_in, uint32_t factor_out) {
@@ -429,7 +451,7 @@ HWC2::Error HWCDisplayBuiltIn::SetDisplayDppsAdROI(uint32_t h_start, uint32_t h_
   if (error)
     return HWC2::Error::BadConfig;
 
-  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+  callbacks_->Refresh(id_);
 
   return HWC2::Error::None;
 }
@@ -530,6 +552,10 @@ int HWCDisplayBuiltIn::HandleSecureSession(const std::bitset<kSecureMax> &secure
     return -EINVAL;
   }
 
+  if (current_power_mode_ != HWC2::PowerMode::On) {
+    return 0;
+  }
+
   if (active_secure_sessions_[kSecureDisplay] != secure_sessions[kSecureDisplay]) {
     SecureEvent secure_event =
         secure_sessions.test(kSecureDisplay) ? kSecureDisplayStart : kSecureDisplayEnd;
@@ -557,7 +583,7 @@ void HWCDisplayBuiltIn::ForceRefreshRate(uint32_t refresh_rate) {
 
   force_refresh_rate_ = refresh_rate;
 
-  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+  callbacks_->Refresh(id_);
 
   return;
 }
@@ -575,7 +601,7 @@ uint32_t HWCDisplayBuiltIn::GetOptimalRefreshRate(bool one_updating_layer) {
 DisplayError HWCDisplayBuiltIn::Refresh() {
   DisplayError error = kErrorNone;
 
-  callbacks_->Refresh(HWC_DISPLAY_PRIMARY);
+  callbacks_->Refresh(id_);
 
   return error;
 }
@@ -767,7 +793,9 @@ HWC2::Error HWCDisplayBuiltIn::SetDisplayedContentSamplingEnabledVndService(bool
   vndservice_sampling_vote = enabled;
   if (api_sampling_vote || vndservice_sampling_vote) {
     histogram.start();
+    display_intf_->colorSamplingOn();
   } else {
+    display_intf_->colorSamplingOff();
     histogram.stop();
   }
   return HWC2::Error::None;
@@ -787,11 +815,14 @@ HWC2::Error HWCDisplayBuiltIn::SetDisplayedContentSamplingEnabled(int32_t enable
 
     auto start = api_sampling_vote || vndservice_sampling_vote;
     if (start && max_frames == 0) {
-        histogram.start();
+      histogram.start();
+      display_intf_->colorSamplingOn();
     } else if (start) {
-        histogram.start(max_frames);
+      histogram.start(max_frames);
+      display_intf_->colorSamplingOn();
     } else {
-        histogram.stop();
+      display_intf_->colorSamplingOff();
+      histogram.stop();
     }
     return HWC2::Error::None;
 }

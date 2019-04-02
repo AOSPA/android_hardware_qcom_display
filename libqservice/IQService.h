@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (C) 2012-2014, 2016-2018 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2012-2014, 2016-2019 The Linux Foundation. All rights reserved.
  *
  * Not a Contribution, Apache license notifications and license are
  * retained for attribution purposes only.
@@ -86,6 +86,7 @@ public:
         GET_DSI_CLK = 43, // Get DSI Clk.
         GET_SUPPORTED_DSI_CLK = 44, // Get supported DSI Clk.
         SET_COLOR_SAMPLING_ENABLED = 45, // Toggle the collection of display color stats
+        SET_COLOR_MODE_FROM_CLIENT = 46, // Overrides the QDCM mode using the given mode ID
         COMMAND_LIST_END = 400,
     };
 

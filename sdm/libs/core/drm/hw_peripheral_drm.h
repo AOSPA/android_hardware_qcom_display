@@ -54,6 +54,7 @@ class HWPeripheralDRM : public HWDeviceDRM {
   virtual DisplayError Flush();
   virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous);
   virtual DisplayError PowerOn(int *release_fence);
+  virtual DisplayError TeardownConcurrentWriteback(void);
 
  private:
   void SetDestScalarData(HWLayersInfo hw_layer_info);

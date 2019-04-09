@@ -255,6 +255,12 @@ DisplayError DisplayPrimary::GetRefreshRateRange(uint32_t *min_refresh_rate,
   return error;
 }
 
+DisplayError DisplayPrimary::TeardownConcurrentWriteback(void) {
+  lock_guard<recursive_mutex> obj(recursive_mutex_);
+
+  return hw_intf_->TeardownConcurrentWriteback();
+}
+
 DisplayError DisplayPrimary::SetRefreshRate(uint32_t refresh_rate, bool final_rate) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
 

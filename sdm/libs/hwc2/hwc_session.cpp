@@ -1163,6 +1163,13 @@ HWC2::Error HWCSession::CreateVirtualDisplayObject(uint32_t width, uint32_t heig
       return HWC2::Error::NoResources;
     }
 
+    if (hwc_display_[HWC_DISPLAY_PRIMARY]) {
+      auto error = hwc_display_[HWC_DISPLAY_PRIMARY]->TeardownConcurrentWriteback();
+      if (error) {
+        return HWC2::Error::NoResources;
+      }
+    }
+
     auto status = HWCDisplayVirtual::Create(core_intf_, &buffer_allocator_, &callbacks_, width,
                                             height, format, &hwc_display_[HWC_DISPLAY_VIRTUAL]);
     // TODO(user): validate width and height support

@@ -65,6 +65,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetConfig(uint32_t, DisplayConfigVariableInfo *))
   MAKE_NO_OP(GetConfig(DisplayConfigFixedInfo *))
   MAKE_NO_OP(GetActiveConfig(uint32_t *))
+  MAKE_NO_OP(TeardownConcurrentWriteback(void))
   MAKE_NO_OP(GetVSyncState(bool *))
   MAKE_NO_OP(SetActiveConfig(uint32_t))
   MAKE_NO_OP(SetActiveConfig(DisplayConfigVariableInfo *))

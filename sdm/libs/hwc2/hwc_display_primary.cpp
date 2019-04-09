@@ -509,6 +509,28 @@ HWC2::Error HWCDisplayPrimary::PostCommitLayerStack(int32_t *out_retire_fence) {
   return HWC2::Error::None;
 }
 
+DisplayError HWCDisplayPrimary::TeardownConcurrentWriteback(void) {
+  DisplayError error = kErrorNotSupported;
+
+  if (output_buffer_.release_fence_fd >= 0) {
+    int32_t release_fence_fd = dup(output_buffer_.release_fence_fd);
+    int ret = sync_wait(output_buffer_.release_fence_fd, 1000);
+    if (ret < 0) {
+      DLOGE("sync_wait error errno = %d, desc = %s", errno, strerror(errno));
+    }
+
+    ::close(release_fence_fd);
+    if (ret)
+      return kErrorResources;
+  }
+
+  if (display_intf_) {
+    error = display_intf_->TeardownConcurrentWriteback();
+  }
+
+  return error;
+}
+
 int HWCDisplayPrimary::Perform(uint32_t operation, ...) {
   va_list args;
   va_start(args, operation);

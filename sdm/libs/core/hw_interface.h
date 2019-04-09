@@ -113,6 +113,7 @@ class HWInterface {
   virtual DisplayError GetMixerAttributes(HWMixerAttributes *mixer_attributes) = 0;
   virtual DisplayError DumpDebugData() = 0;
   virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) = 0;
+  virtual DisplayError TeardownConcurrentWriteback(void) = 0;
 
  protected:
   virtual ~HWInterface() { }

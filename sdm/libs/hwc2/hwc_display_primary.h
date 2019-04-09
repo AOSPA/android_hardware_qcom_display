@@ -93,6 +93,7 @@ class HWCDisplayPrimary : public HWCDisplay {
                                                 int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
                                                 uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) override;
   std::string Dump() override;
+  virtual DisplayError TeardownConcurrentWriteback(void);
 
  private:
   HWCDisplayPrimary(CoreInterface *core_intf, BufferAllocator *buffer_allocator,

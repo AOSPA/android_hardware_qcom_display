@@ -61,6 +61,7 @@ class HWCDisplayPrimary : public HWCDisplay {
   virtual HWC2::Error Present(int32_t *out_retire_fence);
   virtual HWC2::Error GetColorModes(uint32_t *out_num_modes, ColorMode *out_modes);
   virtual HWC2::Error SetColorMode(ColorMode mode);
+  virtual HWC2::Error SetWhiteCompensation(bool enabled);
   virtual HWC2::Error GetRenderIntents(ColorMode mode, uint32_t *out_num_intents,
                                        RenderIntent *out_intents);
   virtual HWC2::Error SetColorModeWithRenderIntent(ColorMode mode, RenderIntent intent);

@@ -277,6 +277,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   android::status_t SetMixerResolution(const android::Parcel *input_parcel);
   android::status_t SetColorModeOverride(const android::Parcel *input_parcel);
   android::status_t SetColorModeWithRenderIntentOverride(const android::Parcel *input_parcel);
+  android::status_t SetWhiteCompensation(const android::Parcel *input_parcel);
 
   android::status_t SetColorModeById(const android::Parcel *input_parcel);
   android::status_t getComposerStatus();

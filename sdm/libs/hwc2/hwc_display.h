@@ -47,6 +47,7 @@ namespace sdm {
 
 class BlitEngine;
 class HWCToneMapper;
+constexpr uint32_t kColorTransformMatrixCount = 16;
 
 // Subclasses set this to their type. This has to be different from DisplayType.
 // This is to avoid RTTI and dynamic_cast
@@ -55,6 +56,103 @@ enum DisplayClass {
   DISPLAY_CLASS_EXTERNAL,
   DISPLAY_CLASS_VIRTUAL,
   DISPLAY_CLASS_NULL
+};
+
+class HWCColorMatrix {
+ public:
+  HWCColorMatrix(const string &values) : key_values_(values){};
+  virtual ~HWCColorMatrix() = default;
+  virtual HWC2::Error SetEnabled(bool enabled);
+  bool GetEnabled() const { return enabled_; }
+  // Apply effect to input matrix
+  virtual void ApplyToMatrix(double *in) = 0;
+  bool ParseFloatValueByCommas(const string &values, uint32_t length,
+                               std::vector<float> &elements) const;
+
+ protected:
+  bool enabled_ = false;
+  const string key_values_;
+};
+
+class WhiteCompensation : public HWCColorMatrix {
+ public:
+  WhiteCompensation(const string &values) : HWCColorMatrix(values){};
+  int GetCompensatedRed() const { return compensated_red_; }
+  int GetCompensatedGreen() const { return compensated_green_; }
+  int GetCompensatedBlue() const { return compensated_blue_; }
+  HWC2::Error SetEnabled(bool enabled) override;
+  /*
+   * Transform matrix is 4 x 4
+   *  |r.r   r.g   r.b  0|
+   *  |g.r   g.g   g.b  0|
+   *  |b.r   b.g   b.b  0|
+   *  |T.r   T.g   T.b  1|
+   *   R_out = R_in * r.r + G_in * g.r + B_in * b.r + Tr
+   *   G_out = R_in * r.g + G_in * g.g + B_in * b.g + Tg
+   *   B_out = R_in * r.b + G_in * g.b + B_in * b.b + Tb
+   *
+   * Cr, Cg, Cb for white point compensation
+   *  |r.r*Cr   r.g*Cg   r.b*Cb  0|
+   *  |g.r*Cr   g.g*Cg   g.b*Cb  0|
+   *  |b.r*Cr   b.g*Cg   b.b*Cb  0|
+   *  |T.r*Cr   T.g*Cg   T.b*Cb  1|
+   *   R_out = R_in * r.r * Cr + G_in * g.r * Cr + B_in * b.r * Cr + Tr * Cr
+   *   G_out = R_in * r.g * Cg + G_in * g.g * Cg + B_in * b.g * Cg + Tg * Cg
+   *   B_out = R_in * r.b * Cb + G_in * g.b * Cb + B_in * b.b * Cb + Tb * Cb
+   */
+  void ApplyToMatrix(double *in) override;
+
+ private:
+  static constexpr int kCompensatedMaxRGB = 255;
+  static constexpr int kCompensatedMinRGB = 230;
+  static constexpr int kNumOfCompensationData = 3;
+  int compensated_red_ = kCompensatedMaxRGB;
+  int compensated_green_ = kCompensatedMaxRGB;
+  int compensated_blue_ = kCompensatedMaxRGB;
+
+  double compensated_red_ratio_ = 1.0;
+  double compensated_green_ratio_ = 1.0;
+  double compensated_blue_ratio_ = 1.0;
+
+  static constexpr int kCoefficientElements = 9;
+  float white_compensated_Coefficients_[kCoefficientElements] = {0.0, 1.0, 0.0, 0.0, 1.0,
+                                                                 0.0, 0.0, 1.0, 0.0};
+  bool ConfigCoefficients();
+  bool ParseWhitePointCalibrationData();
+  inline static constexpr bool CheckCompensatedRGB(int value) {
+    return ((value >= kCompensatedMinRGB) && (value <= kCompensatedMaxRGB));
+  }
+  void CalculateRGBRatio();
+};
+
+class SaturationCompensation : public HWCColorMatrix {
+ public:
+  SaturationCompensation(const string &values) : HWCColorMatrix(values){};
+  HWC2::Error SetEnabled(bool enabled) override;
+  /*  Saturated matrix is 4 x 4
+   *  | s0   s1   s2   s3|
+   *  | s4   s5   s6   s7|
+   *  | s8   s9   s10  s11|
+   *  | s12  s13  s14  s15|
+   * Transform matrix is 4 x 4
+   *  |a0   a1   a2   a3|
+   *  |a4   a5   a6   a7|
+   *  |a8   a9   a10  a11|
+   *  |a12  a13  a14  a15|
+   *
+   *  Saturated matrix[] X Transform matrix[]
+   */
+  void ApplyToMatrix(double *in) override;
+
+ private:
+  static constexpr int kSaturationParameters = 9;
+  static constexpr int kNumOfRows = 4;
+  static constexpr int kColumnsPerRow = 4;
+  static_assert(kNumOfRows * kColumnsPerRow == kColorTransformMatrixCount,
+                "Rows x Columns should be equal to matrix count");
+  float saturated_matrix_[kColorTransformMatrixCount] = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                                                         0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+  bool ConfigSaturationParameter();
 };
 
 class HWCColorMode {
@@ -74,9 +172,9 @@ class HWCColorMode {
   HWC2::Error RestoreColorTransform();
   PrimariesTransfer  GetWorkingColorSpace();
   ColorMode GetCurrentColorMode() { return current_color_mode_; }
+  HWC2::Error SetWhiteCompensation(bool enabled);
 
  private:
-  static const uint32_t kColorTransformMatrixCount = 16;
   void PopulateColorModes();
   void FindRenderIntent(const ColorMode &mode, const std::string &mode_string);
   template <class T>
@@ -98,6 +196,19 @@ class HWCColorMode {
                                                        0.0, 1.0, 0.0, 0.0, \
                                                        0.0, 0.0, 1.0, 0.0, \
                                                        0.0, 0.0, 0.0, 1.0 };
+  void InitColorCompensation();
+  std::unique_ptr<WhiteCompensation> adaptive_white_;
+  std::unique_ptr<SaturationCompensation> adaptive_saturation_;
+  double compensated_color_matrix_[kColorTransformMatrixCount] = { 1.0, 0.0, 0.0, 0.0, \
+                                                                   0.0, 1.0, 0.0, 0.0, \
+                                                                   0.0, 0.0, 1.0, 0.0, \
+                                                                   0.0, 0.0, 0.0, 1.0 };
+  bool HasWhiteCompensation() { return (adaptive_white_ && adaptive_white_->GetEnabled()); }
+  bool HasSaturationCompensation() {
+    return (adaptive_saturation_ && adaptive_saturation_->GetEnabled());
+  }
+
+  const double *PickTransferMatrix();
 };
 
 class HWCDisplay : public DisplayEventHandler {
@@ -203,6 +314,7 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::Error SetClientTarget(buffer_handle_t target, int32_t acquire_fence,
                                       int32_t dataspace, hwc_region_t damage);
   virtual HWC2::Error SetColorMode(ColorMode mode) { return HWC2::Error::Unsupported; }
+  virtual HWC2::Error SetWhiteCompensation(bool enabled) { return HWC2::Error::Unsupported; }
   virtual HWC2::Error SetColorModeWithRenderIntent(ColorMode mode, RenderIntent intent) {
     return HWC2::Error::Unsupported;
   }

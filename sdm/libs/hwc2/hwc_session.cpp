@@ -992,7 +992,7 @@ int32_t HWCSession::SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t d
     return INT32(status);
   }
   if (!brightness_support) {
-    return INT32(HWC2::Error::BadDisplay);
+    return HWC2_ERROR_UNSUPPORTED;
   }
   int backlight = -1;
   if (brightness == -1.0f) {
@@ -1143,10 +1143,12 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLING_ATTRIBUTES>(GetDisplayedContentSamplingAttributes);
     case HWC2::FunctionDescriptor::GetDisplayedContentSample:
       return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLE>(GetDisplayedContentSample);
+    case HWC2::FunctionDescriptor::GetDisplayCapabilities:
+      return AsFP<HWC2_PFN_GET_DISPLAY_CAPABILITIES>(GetDisplayCapabilities);
     case HWC2::FunctionDescriptor::GetDisplayBrightnessSupport:
-        return AsFP<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(GetDisplayBrightnessSupport);
+      return AsFP<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(GetDisplayBrightnessSupport);
     case HWC2::FunctionDescriptor::SetDisplayBrightness:
-        return AsFP<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(SetDisplayBrightness);
+      return AsFP<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(SetDisplayBrightness);
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());

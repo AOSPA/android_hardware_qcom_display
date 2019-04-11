@@ -181,8 +181,6 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                 int32_t *out_support);
   static int32_t GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t display,
                                         uint32_t* outNumCapabilities, uint32_t* outCapabilities);
-  static int32_t GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_display_t display,
-                                             bool *out_support);
   static int32_t SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t display,
                                       float brightness);
 
@@ -197,6 +195,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static int Close(hw_device_t *device);
   static void GetCapabilities(struct hwc2_device *device, uint32_t *outCount,
                               int32_t *outCapabilities);
+  static int32_t GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_display_t display,
+                                             bool *out_support);
   static hwc2_function_pointer_t GetFunction(struct hwc2_device *device, int32_t descriptor);
 
   // Uevent handler

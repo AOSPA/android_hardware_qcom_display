@@ -413,6 +413,13 @@ void HWCSession::GetCapabilities(struct hwc2_device *device, uint32_t *outCount,
   *outCount = count;
 }
 
+int32_t HWCSession::GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_display_t display,
+                                                bool *out_support) {
+  HWCSession *hwc_session = static_cast<HWCSession *>(device);
+  *out_support = display == HWC_DISPLAY_PRIMARY && hwc_session->brightness_fd_ != -1;
+  return INT32(HWC2::Error::None);
+}
+
 template <typename PFN, typename T>
 static hwc2_function_pointer_t AsFP(T function) {
   static_assert(std::is_same<PFN, T>::value, "Incompatible function pointer");
@@ -1107,13 +1114,6 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t
   return INT32(HWC2::Error::None);
 }
 
-int32_t HWCSession::GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_display_t display,
-                                                bool *out_support) {
-  HWCSession *hwc_session = static_cast<HWCSession *>(device);
-  *out_support = display == HWC_DISPLAY_PRIMARY && hwc_session->brightness_fd_ != -1;
-  return INT32(HWC2::Error::None);
-}
-
 int32_t HWCSession::SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t display,
                                          float brightness) {
   bool brightness_support = false;
@@ -1269,8 +1269,6 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_SET_LAYER_PER_FRAME_METADATA>(SetLayerPerFrameMetadata);
     case HWC2::FunctionDescriptor::GetDisplayCapabilities:
       return AsFP<HWC2_PFN_GET_DISPLAY_CAPABILITIES>(GetDisplayCapabilities);
-    case HWC2::FunctionDescriptor::GetDisplayBrightnessSupport:
-      return AsFP<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(GetDisplayBrightnessSupport);
     case HWC2::FunctionDescriptor::SetDisplayBrightness:
       return AsFP<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(SetDisplayBrightness);
     case HWC2::FunctionDescriptor::SetDisplayedContentSamplingEnabled:

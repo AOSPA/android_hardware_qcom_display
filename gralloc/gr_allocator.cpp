@@ -62,8 +62,8 @@
 // This ION flag allows to use EXT_DSR(RO)+SECCAM(RW)->HLOS(RWX) security rule.
 // Set EXT_DSP flag when we use secure camera datapath.
 // Later we probably have a way to set this flag from upper layers (like HAL).
-#ifndef ION_FLAG_EXT_DSP
-#define ION_FLAG_EXT_DSP (1ULL << 15)
+#ifndef ION_FLAG_CP_DSP_EXT
+#define ION_FLAG_CP_DSP_EXT 0
 #endif
 
 #ifdef SLAVE_SIDE_CP
@@ -78,7 +78,7 @@
 #define SD_HEAP_ID ION_SECURE_DISPLAY_HEAP_ID
 #define ION_CP_FLAGS (ION_SECURE | ION_FLAG_CP_PIXEL)
 #define ION_SD_FLAGS (ION_SECURE | ION_FLAG_CP_SEC_DISPLAY)
-#define ION_SC_FLAGS (ION_SECURE | ION_FLAG_CP_CAMERA | ION_FLAG_EXT_DSP)
+#define ION_SC_FLAGS (ION_SECURE | ION_FLAG_CP_CAMERA | ION_FLAG_CP_DSP_EXT)
 #define ION_SC_PREVIEW_FLAGS (ION_SECURE | ION_FLAG_CP_CAMERA_PREVIEW)
 #endif
 

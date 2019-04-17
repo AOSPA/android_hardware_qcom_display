@@ -100,6 +100,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
 
  private:
   bool NeedsAVREnable();
+  bool CanSkipDisplayPrepare(LayerStack *layer_stack);
 
   std::vector<HWEvent> event_list_;
   bool avr_prop_disabled_ = false;
@@ -119,6 +120,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   sde_drm::DppsFeaturePayload histogramCtrl;
   sde_drm::DppsFeaturePayload histogramIRQ;
   void initColorSamplingState();
+  LayerRect left_frame_roi_ = {};
+  LayerRect right_frame_roi_ = {};
 };
 
 }  // namespace sdm

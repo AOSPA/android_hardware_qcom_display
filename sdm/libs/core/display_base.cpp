@@ -623,9 +623,41 @@ std::string DisplayBase::Dump() {
   hw_intf_->GetDisplayAttributes(active_index, &attrib);
 
   os << "device type:" << display_type_;
-  os << "\nstate: " << state_ << " vsync on: " << vsync_enable_ << " max. mixer stages: "
-    << max_mixer_stages_;
+  os << "\nstate: " << state_ << " vsync on: " << vsync_enable_
+     << " max. mixer stages: " << max_mixer_stages_;
   os << "\nnum configs: " << num_modes << " active config index: " << active_index;
+  os << "\nDisplay Attributes:";
+  os << "\n Mode:" << (hw_panel_info_.mode == kModeVideo ? "Video" : "Command");
+  os << std::boolalpha;
+  os << " Primary:" << hw_panel_info_.is_primary_panel;
+  os << " DynFPS:" << hw_panel_info_.dynamic_fps;
+  os << "\n HDR Panel:" << hw_panel_info_.hdr_enabled;
+  os << " QSync:" << hw_panel_info_.qsync_support;
+  os << " DynBitclk:" << hw_panel_info_.dyn_bitclk_support;
+  os << "\n Alignment: l:" << hw_panel_info_.left_align << " w:" << hw_panel_info_.width_align;
+  os << " t:" << hw_panel_info_.top_align << " b:" << hw_panel_info_.height_align;
+  os << "   Left Split:" << hw_panel_info_.split_info.left_split << " Right Split:"
+     << hw_panel_info_.split_info.right_split;
+  os << "\n PartialUpdate:" << hw_panel_info_.partial_update;
+  os << " ROI Min w:" << hw_panel_info_.min_roi_width
+     << " Min h:" << hw_panel_info_.min_roi_height;
+  os << " NeedsMerge: " << hw_panel_info_.needs_roi_merge;
+  os << "\n FPS min:" << hw_panel_info_.min_fps << " max:" << hw_panel_info_.max_fps
+     << " cur:" << display_attributes_.fps;
+  os << " TransferTime: " << hw_panel_info_.transfer_time_us<<"us";
+  os << "\n WxH: " << display_attributes_.x_pixels << "x"
+     << display_attributes_.y_pixels;
+  os << " MixerWxH: " << mixer_attributes_.width << "x" << mixer_attributes_.height;
+  os << " DPI: " << display_attributes_.x_dpi << "x" << display_attributes_.y_dpi;
+  os << " LM_Split: " << display_attributes_.is_device_split;
+  os << "\n v_back_porch: " << display_attributes_.v_back_porch;
+  os << " v_front_porch: " << display_attributes_.v_front_porch;
+  os << " v_pulse_width: " << display_attributes_.v_pulse_width;
+  os << "\n v_total: " << display_attributes_.v_total;
+  os << " h_total: " << display_attributes_.h_total;
+  os << " clk: " << display_attributes_.clock_khz;
+  os << " Topology: " << display_attributes_.topology;
+  os << std::noboolalpha;
 
   os << "\nCurrent Color Mode: " << current_color_mode_.c_str();
   os << "\nAvailable Color Modes:\n";
@@ -638,6 +670,7 @@ std::string DisplayBase::Dump() {
     }
     os << "\n";
   }
+
   DisplayConfigVariableInfo &info = attrib;
 
   uint32_t num_hw_layers = 0;

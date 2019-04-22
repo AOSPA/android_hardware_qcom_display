@@ -121,5 +121,6 @@
 
 #define ZERO_SWAP_INTERVAL                   "vendor.debug.egl.swapinterval"
 #define ENABLE_OPTIMIZE_REFRESH              DISPLAY_PROP("enable_optimize_refresh")
+#define DISABLE_PARALLEL_CACHE               DISPLAY_PROP("disable_parallel_cache")
 
 #endif  // __DISPLAY_PROPERTIES_H__

@@ -204,6 +204,7 @@ DisplayError DisplayBase::Deinit() {
 DisplayError DisplayBase::BuildLayerStackStats(LayerStack *layer_stack) {
   std::vector<Layer *> &layers = layer_stack->layers;
   HWLayersInfo &hw_layers_info = hw_layers_.info;
+  hw_layers_info.app_layer_count = 0;
 
   hw_layers_info.stack = layer_stack;
 
@@ -308,7 +309,10 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
     disable_pu_one_frame_ = false;
   }
 
+  hw_layers_.updates_mask.set(kUpdateResources);
+  comp_manager_->GenerateROI(display_comp_ctx_, &hw_layers_);
   comp_manager_->PrePrepare(display_comp_ctx_, &hw_layers_);
+
   while (true) {
     error = comp_manager_->Prepare(display_comp_ctx_, &hw_layers_);
     if (error != kErrorNone) {
@@ -1331,7 +1335,7 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
       *new_mixer_width = display_width;
       *new_mixer_height = display_height;
     }
-    return true;
+    return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
   }
 
   return false;

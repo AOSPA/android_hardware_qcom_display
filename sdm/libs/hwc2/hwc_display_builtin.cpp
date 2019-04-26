@@ -860,7 +860,6 @@ HWC2::Error HWCDisplayBuiltIn::SetQSyncMode(QSyncMode qsync_mode) {
     return HWC2::Error::Unsupported;
   }
 
-  validated_ = false;
   return HWC2::Error::None;
 }
 

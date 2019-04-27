@@ -798,16 +798,6 @@ void HWCDisplay::BuildLayerStack() {
       layer->flags.updating = IsLayerUpdating(hwc_layer);
     }
 
-    if ((hwc_layer->GetDeviceSelectedCompositionType() != HWC2::Composition::Device) ||
-        (hwc_layer->GetClientRequestedCompositionType() != HWC2::Composition::Device) ||
-        layer->flags.skip) {
-      layer->update_mask.set(kClientCompRequest);
-    }
-
-    if (!validated_) {
-      layer->update_mask.set(kDisplayInvalidate);
-    }
-
     layer_stack_.layers.push_back(layer);
   }
 
@@ -1599,7 +1589,6 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(int32_t *out_retire_fence) {
     dump_frame_index_++;
   }
 
-  layer_stack_.flags.geometry_changed = false;
   geometry_changes_ = GeometryChanges::kNone;
   flush_ = false;
 

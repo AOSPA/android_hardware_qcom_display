@@ -43,7 +43,8 @@ class Strategy {
   DisplayError Init();
   DisplayError Deinit();
 
-  DisplayError Start(HWLayersInfo *hw_layers_info, uint32_t *max_attempts);
+  DisplayError Start(HWLayersInfo *hw_layers_info, uint32_t *max_attempts,
+                     const PUConstraints &pu_constraints);
   DisplayError GetNextStrategy(StrategyConstraints *constraints);
   DisplayError Stop();
   DisplayError Reconfigure(const HWPanelInfo &hw_panel_info,
@@ -55,7 +56,6 @@ class Strategy {
   DisplayError SetIdleTimeoutMs(uint32_t active_ms);
   DisplayError SetColorModesInfo(const std::vector<PrimariesTransfer> &colormodes_cs);
   DisplayError SetBlendSpace(const PrimariesTransfer &blend_space);
-  void GenerateROI(HWLayersInfo *hw_layers_info, const PUConstraints &pu_constraints);
 
  private:
   void GenerateROI();

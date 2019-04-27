@@ -264,6 +264,9 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   // Set vsync enable state to false, as driver disables vsync during display power off.
   if (state == kStateOff) {
     vsync_enable_ = false;
+  } else if (state == kStateOn && pendingActiveConfig != UINT_MAX) {
+    DisplayBase::SetActiveConfig(pendingActiveConfig);
+    pendingActiveConfig = UINT_MAX;
   }
 
   return kErrorNone;
@@ -275,11 +278,12 @@ DisplayError DisplayBuiltIn::SetActiveConfig(uint32_t index) {
 
   if (DisplayBase::GetDisplayState(&state) == kErrorNone) {
     if (state == kStateDoze || state == kStateDozeSuspend) {
-      DLOGW("It is not allowed to set active config in AOD mode");
-      return kErrorPermission;
+      pendingActiveConfig = index;
+      return kErrorNone;
     }
   }
 
+  pendingActiveConfig = UINT_MAX;
   return DisplayBase::SetActiveConfig(index);
 }
 

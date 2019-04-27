@@ -122,6 +122,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   void initColorSamplingState();
   LayerRect left_frame_roi_ = {};
   LayerRect right_frame_roi_ = {};
+
+  uint32_t pendingActiveConfig = UINT_MAX;
 };
 
 }  // namespace sdm

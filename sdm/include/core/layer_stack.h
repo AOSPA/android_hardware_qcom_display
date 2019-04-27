@@ -38,7 +38,6 @@
 #include <utility>
 #include <unordered_map>
 #include <memory>
-#include <bitset>
 
 #include "layer_buffer.h"
 #include "sdm_types.h"
@@ -129,17 +128,6 @@ enum LayerComposition {
                             //!< Blit target layers shall be placed after GPUTarget in the layer
                             //!< stack.
 };
-
-enum LayerUpdate {
-  kSecurity,
-  kMetadataUpdate,
-  kSurfaceDamage,
-  kSurfaceInvalidate,
-  kClientCompRequest,
-  kDisplayInvalidate,
-  kLayerUpdateMax,
-};
-
 
 /*! @brief This structure defines rotation and flip values for a display layer.
 
@@ -404,7 +392,6 @@ struct Layer {
                                                    //!< needed on this layer.
   LayerSolidFill solid_fill_info = {};             //!< solid fill info along with depth.
   std::shared_ptr<LayerBufferMap> buffer_map = nullptr;  //!< Map of handle_id and fb_id.
-  std::bitset<kLayerUpdateMax> update_mask = 0;
 };
 
 /*! @brief This structure defines the color space + transfer of a given layer.

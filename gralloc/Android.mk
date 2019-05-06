@@ -70,6 +70,7 @@ LOCAL_SHARED_LIBRARIES        := $(common_libs) \
                                   libgrallocutils \
                                   libgralloccore \
                                   libsync \
+                                  vendor.qti.hardware.display.mapper@1.0 \
                                   android.hardware.graphics.mapper@2.0 \
                                   android.hardware.graphics.mapper@2.1
 LOCAL_CFLAGS                  := $(common_flags) -DLOG_TAG=\"qdgralloc\" -Wno-sign-conversion
@@ -77,6 +78,7 @@ LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
 LOCAL_SRC_FILES               := QtiMapper.cpp
 include $(BUILD_SHARED_LIBRARY)
 
+#allocator
 include $(CLEAR_VARS)
 LOCAL_MODULE                  := vendor.qti.hardware.display.allocator@1.0-service
 LOCAL_VENDOR_MODULE           := true
@@ -89,6 +91,7 @@ LOCAL_SHARED_LIBRARIES        := $(common_libs) \
                                  libqdMetaData \
                                  libgrallocutils \
                                  libgralloccore \
+                                 vendor.qti.hardware.display.allocator@1.0 \
                                  android.hardware.graphics.mapper@2.1 \
                                  android.hardware.graphics.allocator@2.0
 LOCAL_CFLAGS                  := -DLOG_TAG=\"qdgralloc\" $(common_flags)

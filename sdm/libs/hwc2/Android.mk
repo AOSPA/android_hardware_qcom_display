@@ -88,6 +88,10 @@ endif
 # Allow implicit fallthroughs in hwc_display.cpp until they are fixed.
 LOCAL_CFLAGS                  += -Wno-error=implicit-fallthrough
 
+ifeq ($(TARGET_BOARD_AUTO), true)
+LOCAL_CFLAGS                  += -DCONFIG_BASEID_FROM_PROP
+endif
+
 LOCAL_SRC_FILES               := hwc_session.cpp \
                                  hwc_session_services.cpp \
                                  hwc_display.cpp \

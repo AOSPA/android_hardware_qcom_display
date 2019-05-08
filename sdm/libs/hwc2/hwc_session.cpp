@@ -1149,7 +1149,7 @@ int32_t HWCSession::SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t d
     return INT32(status);
   }
   if (!brightness_support) {
-    return INT32(HWC2::Error::BadDisplay);
+    return INT32(HWC2::Error::Unsupported);
   }
   int backlight = -1;
   if (brightness == -1.0f) {

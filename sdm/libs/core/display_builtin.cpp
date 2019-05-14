@@ -268,7 +268,7 @@ DisplayError DisplayBuiltIn::SetActiveConfig(uint32_t index) {
   DisplayState state;
 
   if (DisplayBase::GetDisplayState(&state) == kErrorNone) {
-    if (state == kStateDoze || state == kStateDozeSuspend) {
+    if (state != kStateOn) {
       pendingActiveConfig = index;
       return kErrorNone;
     }

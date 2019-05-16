@@ -32,7 +32,7 @@ LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware li
 
 LOCAL_STATIC_LIBRARIES        := libhistogram
 
-$(info IDisplayConfig version: $(display_config_version))
+#$(info IDisplayConfig version: $(display_config_version))
 ifeq ($(display_config_version), DISPLAY_CONFIG_1_1)
 LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
 endif

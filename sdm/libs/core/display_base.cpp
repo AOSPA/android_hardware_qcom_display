@@ -946,11 +946,7 @@ DisplayError DisplayBase::SetColorMode(const std::string &color_mode) {
 }
 
 DisplayError DisplayBase::SetColorModeById(int32_t color_mode_id) {
-  for (const auto &it: color_mode_map_)
-    if (it.second->id == color_mode_id)
-       return SetColorMode(it.first);
-
-  return kErrorNotSupported;
+  return color_mgr_->ColorMgrSetMode(color_mode_id);
 }
 
 DisplayError DisplayBase::SetColorModeInternal(const std::string &color_mode) {

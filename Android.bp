@@ -34,8 +34,8 @@ cc_library_headers {
         "libdebug",
         "libhistogram",
     ],
-    header_libs: ["libhardware_headers"],
-    export_header_lib_headers: ["libhardware_headers"],
+    header_libs: ["libhardware_headers", "display_intf_headers"],
+    export_header_lib_headers: ["libhardware_headers", "display_intf_headers"],
 }
 
 subdirs = [

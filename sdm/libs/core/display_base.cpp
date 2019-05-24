@@ -283,6 +283,7 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
   DisplayError error = kErrorNone;
   needs_validate_ = true;
 
+  DTRACE_SCOPED();
   if (!active_) {
     return kErrorPermission;
   }
@@ -308,6 +309,7 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
     disable_pu_one_frame_ = false;
   }
 
+  hw_layers_.updates_mask.set(kUpdateResources);
   comp_manager_->PrePrepare(display_comp_ctx_, &hw_layers_);
   while (true) {
     error = comp_manager_->Prepare(display_comp_ctx_, &hw_layers_);
@@ -1144,6 +1146,8 @@ DisplayError DisplayBase::ReconfigureDisplay() {
   HWPanelInfo hw_panel_info;
   uint32_t active_index = 0;
 
+  DTRACE_SCOPED();
+
   error = hw_intf_->GetActiveConfig(&active_index);
   if (error != kErrorNone) {
     return error;
@@ -1164,8 +1168,10 @@ DisplayError DisplayBase::ReconfigureDisplay() {
     return error;
   }
 
-  if (display_attributes == display_attributes_ && mixer_attributes == mixer_attributes_ &&
-      hw_panel_info == hw_panel_info_) {
+  bool display_unchanged = (display_attributes == display_attributes_);
+  bool mixer_unchanged = (mixer_attributes == mixer_attributes_);
+  bool panel_unchanged = (hw_panel_info == hw_panel_info_);
+  if (display_unchanged && mixer_unchanged && panel_unchanged) {
     return kErrorNone;
   }
 
@@ -1176,8 +1182,17 @@ DisplayError DisplayBase::ReconfigureDisplay() {
     return error;
   }
 
-  // Disable partial update for one frame on any display changes
-  DisablePartialUpdateOneFrame();
+  bool disble_pu = true;
+  if (mixer_unchanged && panel_unchanged) {
+    // Do not disable Partial Update for one frame, if only FPS has changed.
+    // Because if first frame after transition, has a partial Frame-ROI and
+    // is followed by Skip Validate frames, then it can benefit those frames.
+    disble_pu = !display_attributes_.OnlyFpsChanged(display_attributes);
+  }
+
+  if (disble_pu) {
+    DisablePartialUpdateOneFrame();
+  }
 
   display_attributes_ = display_attributes;
   mixer_attributes_ = mixer_attributes;
@@ -1219,6 +1234,7 @@ DisplayError DisplayBase::ReconfigureMixer(uint32_t width, uint32_t height) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   DisplayError error = kErrorNone;
 
+  DTRACE_SCOPED();
   if (!width || !height) {
     return kErrorParameters;
   }

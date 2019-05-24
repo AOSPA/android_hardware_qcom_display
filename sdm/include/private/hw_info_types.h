@@ -670,12 +670,18 @@ struct HWQosData {
   uint32_t rot_clock_hz = 0;
 };
 
+enum UpdateType {
+  kUpdateResources,  // Indicates Strategy & RM execution, which can update resources.
+  kUpdateMax,
+};
+
 struct HWLayers {
   HWLayersInfo info {};
   HWLayerConfig config[kMaxSDELayers] {};
   float output_compression = 1.0f;
   HWQosData qos_data = {};
   HWAVRInfo hw_avr_info = {};
+  std::bitset<kUpdateMax> updates_mask = 0;
 };
 
 struct HWDisplayAttributes : DisplayConfigVariableInfo {
@@ -709,6 +715,24 @@ struct HWDisplayAttributes : DisplayConfigVariableInfo {
 
   bool operator ==(const HWDisplayAttributes &display_attributes) {
     return !(operator !=(display_attributes));
+  }
+
+  bool OnlyFpsChanged(const HWDisplayAttributes &display_attributes) {
+    return ((fps != display_attributes.fps) &&
+            (vsync_period_ns != display_attributes.vsync_period_ns) &&
+            (x_pixels == display_attributes.x_pixels) &&
+            (y_pixels == display_attributes.y_pixels) &&
+            (x_dpi == display_attributes.x_dpi) &&
+            (y_dpi == display_attributes.y_dpi) &&
+            (topology == display_attributes.topology) &&
+            (is_device_split == display_attributes.is_device_split) &&
+            (v_front_porch == display_attributes.v_front_porch) &&
+            (v_back_porch == display_attributes.v_back_porch) &&
+            (v_pulse_width == display_attributes.v_pulse_width) &&
+            (h_total == display_attributes.h_total) &&
+            (is_yuv == display_attributes.is_yuv) &&
+            (s3d_config == display_attributes.s3d_config) &&
+            (clock_khz == display_attributes.clock_khz));
   }
 };
 

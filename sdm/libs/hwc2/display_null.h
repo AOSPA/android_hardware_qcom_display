@@ -57,6 +57,7 @@ class DisplayNull : public DisplayInterface {
   virtual void SetIdleTimeoutMs(uint32_t active_ms) { }
   virtual std::string Dump() { return ""; }
   virtual bool IsSupportSsppTonemap() { return false; }
+  virtual bool CanSkipValidate() { return true; }
 
   MAKE_NO_OP(TeardownConcurrentWriteback(void))
   MAKE_NO_OP(Commit(LayerStack *))

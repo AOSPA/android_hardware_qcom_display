@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -82,6 +82,7 @@ class CompManager {
                                  const std::vector<PrimariesTransfer> &colormodes_cs);
   DisplayError SetBlendSpace(Handle display_ctx, const PrimariesTransfer &blend_space);
   void HandleSecureEvent(Handle display_ctx, SecureEvent secure_event);
+  bool CanSkipValidate(Handle display_ctx);
 
  private:
   static const int kMaxThermalLevel = 3;

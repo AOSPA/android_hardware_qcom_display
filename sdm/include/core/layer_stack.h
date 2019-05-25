@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -262,6 +262,8 @@ struct LayerStackFlags {
                                            // This applies only to primary displays currently
 
       uint32_t hdr_present : 1;  //!< Set if stack has HDR content
+
+      uint32_t mask_present : 1;  //!< Set if layer stack has mask layers.
     };
 
     uint32_t flags = 0;               //!< For initialization purpose only.

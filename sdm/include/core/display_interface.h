@@ -840,6 +840,12 @@ class DisplayInterface {
   */
   virtual DisplayError GetSupportedDSIClock(std::vector<uint64_t> *bitclk_rates) = 0;
 
+  /*! @brief Method to query if there is a need to validate.
+
+      @return \link boolean \endlink
+  */
+  virtual bool CanSkipValidate() = 0;
+
  protected:
   virtual ~DisplayInterface() { }
 };

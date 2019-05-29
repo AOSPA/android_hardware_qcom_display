@@ -51,6 +51,11 @@
 namespace sdm {
 class HWInfoInterface;
 
+struct CWBConfig {
+  bool enabled = false;
+  sde_drm::DRMDisplayToken token = {};
+};
+
 class HWDeviceDRM : public HWInterface {
  public:
   HWDeviceDRM(BufferSyncHandler *buffer_sync_handler, BufferAllocator *buffer_allocator,
@@ -188,6 +193,7 @@ class HWDeviceDRM : public HWInterface {
   sde_drm::DRMConnectorInfo connector_info_ = {};
   bool first_cycle_ = true;
   bool synchronous_commit_ = false;
+  CWBConfig cwb_config_ = {};
 
  private:
   HWMixerAttributes mixer_attributes_ = {};

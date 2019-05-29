@@ -781,6 +781,13 @@ DisplayError HWDeviceDRM::PowerOff() {
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::OFF);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
   int ret = drm_atomic_intf_->Commit(true /* synchronous */, false /* retain_planes */);
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id, &current_mode);
+  if (cwb_config_.enabled) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, cwb_config_.token.conn_id, 0);
+    drm_mgr_intf_->UnregisterDisplay(cwb_config_.token);
+    cwb_config_.enabled = false;
+    registry_.Clear();
+  }
   if (ret) {
     DLOGE("Failed with error: %d", ret);
     return kErrorHardware;

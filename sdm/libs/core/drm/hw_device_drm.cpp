@@ -100,7 +100,6 @@ using sde_drm::DRMBlendType;
 using sde_drm::DRMSrcConfig;
 using sde_drm::DRMOps;
 using sde_drm::DRMTopology;
-using sde_drm::DRMPowerMode;
 using sde_drm::DRMSecureMode;
 using sde_drm::DRMSecurityLevel;
 using sde_drm::DRMCscType;
@@ -876,6 +875,7 @@ DisplayError HWDeviceDRM::PowerOn(const HWQosData &qos_data, int *release_fence)
   *release_fence = static_cast<int>(release_fence_t);
   DLOGD_IF(kTagDriverConfig, "RELEASE fence created: fd:%d", *release_fence);
   pending_doze_ = false;
+  last_power_mode_ = DRMPowerMode::ON;
 
   return kErrorNone;
 }
@@ -902,6 +902,7 @@ DisplayError HWDeviceDRM::PowerOff(bool teardown) {
     return kErrorHardware;
   }
   pending_doze_ = false;
+  last_power_mode_ = DRMPowerMode::OFF;
 
   return kErrorNone;
 }
@@ -909,7 +910,7 @@ DisplayError HWDeviceDRM::PowerOff(bool teardown) {
 DisplayError HWDeviceDRM::Doze(const HWQosData &qos_data, int *release_fence) {
   DTRACE_SCOPED();
 
-  if (!first_cycle_) {
+  if (first_cycle_ || last_power_mode_ != DRMPowerMode::OFF) {
     pending_doze_ = true;
     return kErrorNone;
   }
@@ -933,6 +934,9 @@ DisplayError HWDeviceDRM::Doze(const HWQosData &qos_data, int *release_fence) {
 
   *release_fence = static_cast<int>(release_fence_t);
   DLOGD_IF(kTagDriverConfig, "RELEASE fence created: fd:%d", *release_fence);
+
+  last_power_mode_ = DRMPowerMode::DOZE;
+
   return kErrorNone;
 }
 
@@ -961,6 +965,7 @@ DisplayError HWDeviceDRM::DozeSuspend(const HWQosData &qos_data, int *release_fe
   *release_fence = static_cast<int>(release_fence_t);
   DLOGD_IF(kTagDriverConfig, "RELEASE fence created: fd:%d", *release_fence);
   pending_doze_ = false;
+  last_power_mode_ = DRMPowerMode::DOZE_SUSPEND;
 
   return kErrorNone;
 }

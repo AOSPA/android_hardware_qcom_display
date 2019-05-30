@@ -148,6 +148,7 @@ void histogram::HistogramCollector::start(uint64_t max_frames) {
         return;
     }
 
+    started = true;
     histogram = histogram::Ringbuffer::create(max_frames, std::make_unique<histogram::DefaultTimeKeeper>());
     monitoring_thread = std::thread(&HistogramCollector::blob_processing_thread, this);
 }
@@ -185,7 +186,6 @@ void histogram::HistogramCollector::blob_processing_thread() {
     pthread_setname_np(pthread_self(), "histogram_blob");
 
     std::unique_lock<decltype(mutex)> lk(mutex);
-    started = true;
 
     while (true) {
         cv.wait(lk, [this] { return !started || work_available; });

@@ -145,7 +145,6 @@ class HWCDisplay : public DisplayEventHandler {
     return kErrorNotSupported;
   }
   virtual HWC2::PowerMode GetCurrentPowerMode();
-  virtual HWC2::Vsync GetLastVsyncMode();
   virtual int SetFrameBufferResolution(uint32_t x_pixels, uint32_t y_pixels);
   virtual void GetFrameBufferResolution(uint32_t *x_pixels, uint32_t *y_pixels);
   virtual int SetDisplayStatus(DisplayStatus display_status);
@@ -229,6 +228,7 @@ class HWCDisplay : public DisplayEventHandler {
   ColorMode GetCurrentColorMode() {
     return (color_mode_ ? color_mode_->GetCurrentColorMode() : ColorMode::SRGB);
   }
+  bool HasClientComposition() { return has_client_composition_; }
   bool HWCClientNeedsValidate() {
     return (has_client_composition_ || layer_stack_.flags.single_buffered_layer_present);
   }
@@ -322,7 +322,6 @@ class HWCDisplay : public DisplayEventHandler {
   }
   virtual HWC2::Error GetDisplayIdentificationData(uint8_t *out_port, uint32_t *out_data_size,
                                                    uint8_t *out_data);
-  virtual void SetVsyncSource(bool enable) { vsync_source_ = enable; }
 
   virtual HWC2::Error SetDisplayedContentSamplingEnabledVndService(bool enabled);
   virtual HWC2::Error SetDisplayedContentSamplingEnabled(int32_t enabled, uint8_t component_mask, uint64_t max_frames);
@@ -395,7 +394,6 @@ class HWCDisplay : public DisplayEventHandler {
   uint32_t dump_frame_index_ = 0;
   bool dump_input_layers_ = false;
   HWC2::PowerMode current_power_mode_ = HWC2::PowerMode::Off;
-  HWC2::Vsync last_vsync_mode_ = HWC2::Vsync::Invalid;
   bool swap_interval_zero_ = false;
   bool display_paused_ = false;
   uint32_t min_refresh_rate_ = 0;
@@ -421,7 +419,6 @@ class HWCDisplay : public DisplayEventHandler {
   bool pending_commit_ = false;
   bool is_cmd_mode_ = false;
   bool partial_update_enabled_ = false;
-  bool vsync_source_ = false;
   bool skip_commit_ = false;
   std::map<uint32_t, DisplayConfigVariableInfo> variable_config_map_;
   std::vector<uint32_t> hwc_config_map_;

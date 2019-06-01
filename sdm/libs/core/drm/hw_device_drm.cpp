@@ -290,6 +290,7 @@ void HWDeviceDRM::Registry::Register(HWLayers *hw_layers) {
   HWLayersInfo &hw_layer_info = hw_layers->info;
   uint32_t hw_layer_count = UINT32(hw_layer_info.hw_layers.size());
 
+  DTRACE_SCOPED();
   for (uint32_t i = 0; i < hw_layer_count; i++) {
     Layer &layer = hw_layer_info.hw_layers.at(i);
     LayerBuffer *input_buffer = &layer.input_buffer;
@@ -776,7 +777,7 @@ void HWDeviceDRM::GetHWPanelMaxBrightness() {
 
   if (Sys::pread_(fd, brightness, sizeof(brightness), 0) > 0) {
     hw_panel_info_.panel_max_brightness = atoi(brightness);
-    DLOGI("Max brightness level = %d", hw_panel_info_.panel_max_brightness);
+    DLOGI_IF(kTagDisplay, "Max brightness level = %d", hw_panel_info_.panel_max_brightness);
   } else {
     DLOGW("Failed to read max brightness level. error = %s", strerror(errno));
   }

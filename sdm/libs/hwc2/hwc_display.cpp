@@ -807,11 +807,19 @@ void HWCDisplay::BuildLayerStack() {
       layer->flags.updating = IsLayerUpdating(hwc_layer);
     }
 
+    if ((hwc_layer->GetDeviceSelectedCompositionType() != HWC2::Composition::Device) ||
+        (hwc_layer->GetClientRequestedCompositionType() != HWC2::Composition::Device) ||
+        layer->flags.skip) {
+      layer->update_mask.set(kClientCompRequest);
+    }
+
     layer_stack_.layers.push_back(layer);
   }
 
   // TODO(user): Set correctly when SDM supports geometry_changes as bitmask
   layer_stack_.flags.geometry_changed = UINT32(geometry_changes_ > 0);
+  layer_stack_.flags.config_changed = !validated_;
+
   // Append client target to the layer stack
   Layer *sdm_client_target = client_target_->GetSDMLayer();
   sdm_client_target->flags.updating = IsLayerUpdating(client_target_);
@@ -898,8 +906,6 @@ HWC2::Error HWCDisplay::SetVsyncEnabled(HWC2::Vsync enabled) {
     DLOGE("Failed. enabled = %s, error = %d", to_string(enabled).c_str(), error);
     return HWC2::Error::BadDisplay;
   }
-
-  last_vsync_mode_ = enabled;
 
   return HWC2::Error::None;
 }
@@ -1190,7 +1196,7 @@ HWC2::Error HWCDisplay::SetActiveConfig(hwc2_config_t config) {
   if (SetActiveDisplayConfig(config) != kErrorNone) {
     return HWC2::Error::BadConfig;
   }
-
+  DLOGI("Active configuration changed to: %d", config);
   validated_ = false;
   return HWC2::Error::None;
 }
@@ -1216,10 +1222,6 @@ HWC2::Error HWCDisplay::SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_lay
 
 HWC2::PowerMode HWCDisplay::GetCurrentPowerMode() {
   return current_power_mode_;
-}
-
-HWC2::Vsync HWCDisplay::GetLastVsyncMode() {
-  return last_vsync_mode_;
 }
 
 DisplayError HWCDisplay::VSync(const DisplayEventVSync &vsync) {
@@ -2297,9 +2299,10 @@ HWC2::Error HWCDisplay::GetDisplayIdentificationData(uint8_t *out_port, uint32_t
                                                      uint8_t *out_data) {
   DisplayError ret = display_intf_->GetDisplayIdentificationData(out_port, out_data_size, out_data);
   if (ret != kErrorNone) {
-    DLOGE("GetDisplayIdentificationData failed due to SDM/Driver (err = %d, disp id = %" PRIu64
+    DLOGE("Failed due to SDM/Driver (err = %d, disp id = %" PRIu64
           " %d-%d", ret, id_, sdm_id_, type_);
   }
+
   return HWC2::Error::None;
 }
 

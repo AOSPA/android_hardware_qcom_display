@@ -204,6 +204,7 @@ DisplayError DisplayBase::Deinit() {
 DisplayError DisplayBase::BuildLayerStackStats(LayerStack *layer_stack) {
   std::vector<Layer *> &layers = layer_stack->layers;
   HWLayersInfo &hw_layers_info = hw_layers_.info;
+  hw_layers_info.app_layer_count = 0;
 
   hw_layers_info.stack = layer_stack;
 
@@ -310,7 +311,9 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
   }
 
   hw_layers_.updates_mask.set(kUpdateResources);
+  comp_manager_->GenerateROI(display_comp_ctx_, &hw_layers_);
   comp_manager_->PrePrepare(display_comp_ctx_, &hw_layers_);
+
   while (true) {
     error = comp_manager_->Prepare(display_comp_ctx_, &hw_layers_);
     if (error != kErrorNone) {
@@ -636,23 +639,26 @@ std::string DisplayBase::Dump() {
   os << "\n HDR Panel:" << hw_panel_info_.hdr_enabled;
   os << " QSync:" << hw_panel_info_.qsync_support;
   os << " DynBitclk:" << hw_panel_info_.dyn_bitclk_support;
-  os << "\n Alignment: l:" << hw_panel_info_.left_align << " w:" << hw_panel_info_.width_align;
-  os << " t:" << hw_panel_info_.top_align << " b:" << hw_panel_info_.height_align;
-  os << "   Left Split:" << hw_panel_info_.split_info.left_split << " Right Split:"
+  os << "\n Left Split:" << hw_panel_info_.split_info.left_split << " Right Split:"
      << hw_panel_info_.split_info.right_split;
   os << "\n PartialUpdate:" << hw_panel_info_.partial_update;
-  os << " ROI Min w:" << hw_panel_info_.min_roi_width
-     << " Min h:" << hw_panel_info_.min_roi_height;
-  os << " NeedsMerge: " << hw_panel_info_.needs_roi_merge;
+  if (hw_panel_info_.partial_update) {
+    os << "\n ROI Min w:" << hw_panel_info_.min_roi_width;
+    os << " Min h:" << hw_panel_info_.min_roi_height;
+    os << " NeedsMerge: " << hw_panel_info_.needs_roi_merge;
+    os << " Alignment: l:" << hw_panel_info_.left_align << " w:" << hw_panel_info_.width_align;
+    os << " t:" << hw_panel_info_.top_align << " b:" << hw_panel_info_.height_align;
+  }
   os << "\n FPS min:" << hw_panel_info_.min_fps << " max:" << hw_panel_info_.max_fps
      << " cur:" << display_attributes_.fps;
-  os << " TransferTime: " << hw_panel_info_.transfer_time_us<<"us";
-  os << "\n WxH: " << display_attributes_.x_pixels << "x"
+  os << " TransferTime: " << hw_panel_info_.transfer_time_us <<"us";
+  os << "\n Display WxH: " << display_attributes_.x_pixels << "x"
      << display_attributes_.y_pixels;
   os << " MixerWxH: " << mixer_attributes_.width << "x" << mixer_attributes_.height;
   os << " DPI: " << display_attributes_.x_dpi << "x" << display_attributes_.y_dpi;
   os << " LM_Split: " << display_attributes_.is_device_split;
-  os << "\n v_back_porch: " << display_attributes_.v_back_porch;
+  os << "\n vsync_period " << display_attributes_.vsync_period_ns;
+  os << " v_back_porch: " << display_attributes_.v_back_porch;
   os << " v_front_porch: " << display_attributes_.v_front_porch;
   os << " v_pulse_width: " << display_attributes_.v_pulse_width;
   os << "\n v_total: " << display_attributes_.v_total;
@@ -673,8 +679,6 @@ std::string DisplayBase::Dump() {
     os << "\n";
   }
 
-  DisplayConfigVariableInfo &info = attrib;
-
   uint32_t num_hw_layers = 0;
   if (hw_layers_.info.stack) {
     num_hw_layers = UINT32(hw_layers_.info.hw_layers.size());
@@ -687,15 +691,9 @@ std::string DisplayBase::Dump() {
 
   LayerBuffer *out_buffer = hw_layers_.info.stack->output_buffer;
   if (out_buffer) {
-    os << "\nres: " << out_buffer->width << "x" << out_buffer->height << " format: "
+    os << "\n Output buffer res: " << out_buffer->width << "x" << out_buffer->height << " format: "
       << GetFormatString(out_buffer->format);
-  } else {
-    os.precision(2);
-    os << "\nres: " << info.x_pixels << "x" << info.y_pixels << " dpi: " << std::fixed <<
-      info.x_dpi << "x" << std::fixed << info.y_dpi << " fps: " << info.fps <<
-      " vsync period: " << info.vsync_period_ns;
   }
-
   HWLayersInfo &layer_info = hw_layers_.info;
   for (uint32_t i = 0; i < layer_info.left_frame_roi.size(); i++) {
     LayerRect &l_roi = layer_info.left_frame_roi.at(i);
@@ -1273,14 +1271,26 @@ bool DisplayBase::NeedsDownScale(const LayerRect &src_rect, const LayerRect &dst
 bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *new_mixer_width,
                                             uint32_t *new_mixer_height) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
-  uint32_t layer_count = UINT32(layer_stack->layers.size());
+  uint32_t mixer_width = mixer_attributes_.width;
+  uint32_t mixer_height = mixer_attributes_.height;
 
+  if (req_mixer_width_ && req_mixer_height_) {
+    DLOGD_IF(kTagDisplay, "Required mixer width : %d, height : %d",
+             req_mixer_width_, req_mixer_height_);
+    *new_mixer_width = req_mixer_width_;
+    *new_mixer_height = req_mixer_height_;
+    return (req_mixer_width_ != mixer_width || req_mixer_height_ != mixer_height);
+  }
+
+  if (!custom_mixer_resolution_) {
+    return false;
+  }
+
+  uint32_t layer_count = UINT32(layer_stack->layers.size());
   uint32_t fb_width  = fb_config_.x_pixels;
   uint32_t fb_height  = fb_config_.y_pixels;
   uint32_t fb_area = fb_width * fb_height;
   LayerRect fb_rect = (LayerRect) {0.0f, 0.0f, FLOAT(fb_width), FLOAT(fb_height)};
-  uint32_t mixer_width = mixer_attributes_.width;
-  uint32_t mixer_height = mixer_attributes_.height;
   uint32_t display_width = display_attributes_.x_pixels;
   uint32_t display_height = display_attributes_.y_pixels;
 
@@ -1290,14 +1300,6 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
   std::vector<Layer *> layers = layer_stack->layers;
   uint32_t align_x = display_attributes_.is_device_split ? 4 : 2;
   uint32_t align_y = 2;
-
-  if (req_mixer_width_ && req_mixer_height_) {
-    DLOGD_IF(kTagDisplay, "Required mixer width : %d, height : %d",
-             req_mixer_width_, req_mixer_height_);
-    *new_mixer_width = req_mixer_width_;
-    *new_mixer_height = req_mixer_height_;
-    return (req_mixer_width_ != mixer_width || req_mixer_height_ != mixer_height);
-  }
 
   for (uint32_t i = 0; i < layer_count; i++) {
     Layer *layer = layers.at(i);
@@ -1347,7 +1349,7 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
       *new_mixer_width = display_width;
       *new_mixer_height = display_height;
     }
-    return true;
+    return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
   }
 
   return false;

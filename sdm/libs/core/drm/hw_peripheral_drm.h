@@ -35,11 +35,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace sdm {
 
-struct CWBConfig {
-  bool enabled = false;
-  sde_drm::DRMDisplayToken token = {};
-};
-
 class HWPeripheralDRM : public HWDeviceDRM {
  public:
   explicit HWPeripheralDRM(BufferSyncHandler *buffer_sync_handler,
@@ -70,7 +65,6 @@ class HWPeripheralDRM : public HWDeviceDRM {
 
   sde_drm_dest_scaler_data sde_dest_scalar_data_ = {};
   std::vector<SDEScaler> scalar_data_ = {};
-  CWBConfig cwb_config_ = {};
   sde_drm::DRMIdlePCState idle_pc_state_ = sde_drm::DRMIdlePCState::NONE;
 };
 

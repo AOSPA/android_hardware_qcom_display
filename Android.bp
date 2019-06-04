@@ -1,8 +1,13 @@
 soong_namespace {
 }
 
+display_go_defaults {
+    name: "display_go_defaults",
+}
+
 cc_defaults {
     name: "display_defaults",
+    defaults: ["display_go_defaults"],
     cflags: [
         "-Wno-missing-field-initializers",
         "-Wconversion",
@@ -21,6 +26,7 @@ cc_defaults {
 
 cc_library_headers {
     name: "display_headers",
+    defaults: ["display_go_defaults"],
     vendor: true,
     export_include_dirs: [
         "include",
@@ -34,8 +40,8 @@ cc_library_headers {
         "libdebug",
         "libhistogram",
     ],
-    header_libs: ["libhardware_headers"],
-    export_header_lib_headers: ["libhardware_headers"],
+    header_libs: ["libhardware_headers", "//vendor/qcom/sm8150:display_intf_headers"],
+    export_header_lib_headers: ["libhardware_headers", "//vendor/qcom/sm8150:display_intf_headers"],
 }
 
 subdirs = [

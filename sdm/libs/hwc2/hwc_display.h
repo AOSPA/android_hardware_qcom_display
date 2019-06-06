@@ -420,6 +420,7 @@ class HWCDisplay : public DisplayEventHandler {
   uint32_t geometry_changes_ = GeometryChanges::kNone;
   bool animating_ = false;
   int null_display_mode_ = 0;
+  int enable_skip_bottom_solid_layer_ = 0;
   bool has_client_composition_ = false;
   DisplayValidateState validate_state_ = kNormalValidate;
   bool first_cycle_ = true;  // false if a display commit has succeeded on the device.

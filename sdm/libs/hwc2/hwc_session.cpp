@@ -2272,7 +2272,12 @@ void HWCSession::UEventHandler(const char *uevent_data, int length) {
   // uevent handling will be done once when SurfaceFlinger connects, at RegisterCallback(). Since
   // HandlePluggableDisplays() reads the latest connection states of all displays, no uevent is
   // lost.
-  if (client_connected_ && strcasestr(uevent_data, HWC_UEVENT_DRM_EXT_HOTPLUG)) {
+  callbacks_lock_.Lock();
+  // Guarded check in case client (SurfaceFlinger) is connecting i.e., doing HWC2_CALLBACK_HOTPLUG
+  // registration and subsequent [seconds long] hotplug handling operation.
+  bool client_connected = client_connected_;
+  callbacks_lock_.Unlock();
+  if (client_connected && strcasestr(uevent_data, HWC_UEVENT_DRM_EXT_HOTPLUG)) {
     // MST hotplug will not carry connection status/test pattern etc.
     // Pluggable display handler will check all connection status' and take action accordingly.
     const char *str_status = GetTokenValue(uevent_data, length, "status=");

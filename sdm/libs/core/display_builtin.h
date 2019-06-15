@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -33,6 +33,46 @@
 #include "hw_events_interface.h"
 
 namespace sdm {
+
+struct DeferFpsConfig {
+  uint32_t frame_count = 0;
+  uint32_t frames_to_defer = 0;
+  uint32_t fps = 0;
+  uint32_t vsync_period_ns = 0;
+  uint32_t transfer_time_us = 0;
+  bool dirty = false;
+  bool apply = false;
+
+  void Init(uint32_t refresh_rate, uint32_t vsync_period, uint32_t transfer_time) {
+    fps = refresh_rate;
+    vsync_period_ns = vsync_period;
+    transfer_time_us = transfer_time;
+    frames_to_defer = frame_count;
+    dirty = false;
+    apply = false;
+  }
+
+  bool IsDeferredState() { return (frames_to_defer != 0); }
+
+  bool CanApplyDeferredState() { return apply; }
+
+  bool IsDirty() { return dirty; }
+
+  void MarkDirty() { dirty = IsDeferredState(); }
+
+  void UpdateDeferCount() {
+    if (frames_to_defer > 0) {
+      frames_to_defer--;
+      apply = (frames_to_defer == 0);
+    }
+  }
+
+  void Clear() {
+    frames_to_defer = 0;
+    dirty = false;
+    apply = false;
+  }
+};
 
 class DppsInfo {
  public:
@@ -92,11 +132,16 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
 
   // Implement the DppsPropIntf
   virtual DisplayError DppsProcessOps(enum DppsOps op, void *payload, size_t size);
+  virtual DisplayError SetActiveConfig(uint32_t index);
+  virtual DisplayError ReconfigureDisplay();
 
  private:
   bool NeedsAVREnable();
   bool CanCompareFrameROI(LayerStack *layer_stack);
   bool CanSkipDisplayPrepare(LayerStack *layer_stack);
+  bool CanDeferFpsConfig(uint32_t fps);
+  void SetDeferredFpsConfig();
+  void GetFpsConfig(HWDisplayAttributes *display_attributes, HWPanelInfo *panel_info);
 
   std::vector<HWEvent> event_list_;
   bool avr_prop_disabled_ = false;
@@ -107,6 +152,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   QSyncMode qsync_mode_ = kQSyncModeNone;
   LayerRect left_frame_roi_ = {};
   LayerRect right_frame_roi_ = {};
+  DeferFpsConfig deferred_config_ = {};
 };
 
 }  // namespace sdm

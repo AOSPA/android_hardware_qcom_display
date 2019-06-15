@@ -1232,6 +1232,9 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
     } break;
     case kIdlePowerCollapse:
       break;
+    case kInvalidateDisplay:
+      validated_ = false;
+      break;
     default:
       DLOGW("Unknown event: %d", event);
       break;

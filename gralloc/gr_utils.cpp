@@ -209,8 +209,7 @@ uint32_t GetDataAlignment(int format, uint64_t usage) {
   }
 
   if (usage & BufferUsage::PROTECTED) {
-    if ((usage & BufferUsage::CAMERA_OUTPUT) || (usage & GRALLOC_USAGE_PRIVATE_SECURE_DISPLAY)) {
-      // The alignment here reflects qsee mmu V7L/V8L requirement
+    if (usage & GRALLOC_USAGE_PRIVATE_SECURE_DISPLAY) {
       align = SZ_2M;
     } else {
       align = SECURE_ALIGN;

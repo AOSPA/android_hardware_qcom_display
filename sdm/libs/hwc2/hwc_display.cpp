@@ -492,6 +492,8 @@ int HWCDisplay::Init() {
   DisplayError error = kErrorNone;
 
   HWCDebugHandler::Get()->GetProperty(ENABLE_NULL_DISPLAY_PROP, &null_display_mode_);
+  HWCDebugHandler::Get()->GetProperty(ENABLE_SKIP_BOTTOM_SOLID_LAYER,
+                                                   &enable_skip_bottom_solid_layer_);
 
   if (null_display_mode_) {
     DisplayNull *disp_null = new DisplayNull();
@@ -672,6 +674,7 @@ void HWCDisplay::BuildLayerStack() {
   display_rect_ = LayerRect();
   metadata_refresh_rate_ = 0;
   layer_stack_.flags.animating = animating_;
+  bool zero_solid_layer_at_bottom = true;
 
   // Add one layer for fb target
   // TODO(user): Add blit target layers
@@ -777,6 +780,16 @@ void HWCDisplay::BuildLayerStack() {
       layer->src_rect.top = 0;
       layer->src_rect.right = layer_buffer->width;
       layer->src_rect.bottom = layer_buffer->height;
+    }
+
+    // skip if solid layers are at the bottom and same as border color
+    if (enable_skip_bottom_solid_layer_ && zero_solid_layer_at_bottom) {
+      if (layer->flags.solid_fill && !(layer->solid_fill_color & 0xFFFFFF)) {
+        layer->composition = kCompositionSDE;
+        continue;
+      } else {
+        zero_solid_layer_at_bottom = false;
+      }
     }
 
     if (hwc_layer->HasMetaDataRefreshRate() && layer->frame_rate > metadata_refresh_rate_) {
@@ -2266,6 +2279,7 @@ bool HWCDisplay::CanSkipValidate() {
   }
 
   if (!layer_set_.empty() && !display_intf_->CanSkipValidate()) {
+    DLOGV_IF(kTagClient, "Display needs validation %d", id_);
     return false;
   }
 

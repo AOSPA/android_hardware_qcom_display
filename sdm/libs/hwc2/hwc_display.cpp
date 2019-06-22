@@ -1222,8 +1222,7 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
       validated_ = false;
       break;
     }
-    case kThermalEvent:
-    case kIdlePowerCollapse: {
+    case kThermalEvent: {
       SEQUENCE_WAIT_SCOPE_LOCK(HWCSession::locker_[id_]);
       validated_ = false;
     } break;
@@ -1236,6 +1235,9 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
         DLOGW("Cannot execute DisplayPowerReset (client_id = %d), event_handler_ is nullptr",
               id_);
       }
+    } break;
+    case kIdlePowerCollapse: {
+      // handle idle power collapse but do nothing
     } break;
     default:
       DLOGW("Unknown event: %d", event);

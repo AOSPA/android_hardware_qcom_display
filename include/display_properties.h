@@ -124,5 +124,6 @@
 #define ZERO_SWAP_INTERVAL                   "vendor.debug.egl.swapinterval"
 #define ENABLE_DROP_REFRESH                  DISPLAY_PROP("enable_drop_refresh")
 #define DISABLE_UI_3D_TONEMAP                DISPLAY_PROP("disable_ui_3d_tonemap")
+#define DEFER_FPS_FRAME_COUNT                DISPLAY_PROP("defer_fps_frame_count")
 
 #endif  // __DISPLAY_PROPERTIES_H__

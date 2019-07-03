@@ -120,6 +120,7 @@
 #define BUILTIN_BASEID_AND_SIZE_PROP         DISPLAY_PROP("builtin_baseid_and_size")
 #define PLUGGABLE_BASEID_AND_SIZE_PROP       DISPLAY_PROP("pluggable_baseid_and_size")
 #define VIRTUAL_BASEID_AND_SIZE_PROP         DISPLAY_PROP("virtual_baseid_and_size")
+#define QDCM_DISABLE_FACTORY_MODE_PROP       DISPLAY_PROP("qdcm.disable_factory_mode")
 
 #define ZERO_SWAP_INTERVAL                   "vendor.debug.egl.swapinterval"
 #define ENABLE_OPTIMIZE_REFRESH              DISPLAY_PROP("enable_optimize_refresh")

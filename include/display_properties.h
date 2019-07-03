@@ -48,6 +48,7 @@
 #define DISABLE_ROTATOR_DOWNSCALE_PROP       DISPLAY_PROP("disable_rotator_downscale")
 // Enables rotator for UI
 #define ENABLE_ROTATOR_UI_PROP               DISPLAY_PROP("enable_rotator_ui")
+#define ROTATOR_USE_PANEL_FPS_PROP           DISPLAY_PROP("rotator_use_panel_fps")
 #define DISABLE_DECIMATION_PROP              DISPLAY_PROP("disable_decimation")
 #define PRIMARY_MIXER_STAGES_PROP            DISPLAY_PROP("primary_mixer_stages")
 #define EXTERNAL_MIXER_STAGES_PROP           DISPLAY_PROP("external_mixer_stages")

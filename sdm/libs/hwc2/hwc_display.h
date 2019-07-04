@@ -227,6 +227,7 @@ class HWCDisplay : public DisplayEventHandler {
     return (color_mode_ ? color_mode_->GetCurrentColorMode() : ColorMode::SRGB);
   }
   bool HasClientComposition() { return has_client_composition_; }
+  bool HasForceClientComposition() { return has_force_client_composition_; }
   bool HWCClientNeedsValidate() {
     return (has_client_composition_ || layer_stack_.flags.single_buffered_layer_present);
   }
@@ -424,6 +425,7 @@ class HWCDisplay : public DisplayEventHandler {
   bool animating_ = false;
   int null_display_mode_ = 0;
   bool has_client_composition_ = false;
+  bool has_force_client_composition_ = false;
   DisplayValidateState validate_state_ = kNormalValidate;
   bool fast_path_enabled_ = true;
   bool first_cycle_ = true;  // false if a display commit has succeeded on the device.

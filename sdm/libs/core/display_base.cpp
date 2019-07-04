@@ -753,7 +753,7 @@ std::string DisplayBase::Dump() {
                0, input_buffer->width, input_buffer->height, buffer_format,
                INT(src_roi.left), INT(src_roi.top), INT(src_roi.right), INT(src_roi.bottom),
                INT(dst_roi.left), INT(dst_roi.top), INT(dst_roi.right), INT(dst_roi.bottom),
-               "-", "-    ", "-    ", "-", "-");
+               "-", "-    ", "-    ", "-", "-", "-");
       os << row;
       // print the below only once per layer block, fill with spaces for rest.
       idx[0] = 0;
@@ -771,6 +771,7 @@ std::string DisplayBase::Dump() {
       char flags[16] = { 0 };
       char z_order[8] = { 0 };
       const char *color_primary = "";
+      const char *transfer = "";
       const char *range = "";
       char row[1024] = { 0 };
 
@@ -781,7 +782,7 @@ std::string DisplayBase::Dump() {
                buffer_format, INT(src_roi.left), INT(src_roi.top),
                INT(src_roi.right), INT(src_roi.bottom), INT(src_roi.left),
                INT(src_roi.top), INT(src_roi.right), INT(src_roi.bottom),
-               z_order, flags, decimation, color_primary, range);
+               z_order, flags, decimation, color_primary, transfer, range);
       os << row;
       continue;
     }

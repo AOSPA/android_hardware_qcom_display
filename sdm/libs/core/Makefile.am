@@ -1,4 +1,4 @@
-HEADER_PATH := ${WORKSPACE}/display/display-hal/sdm/include
+HEADER_PATH := ../../include
 
 c_sources = core_interface.cpp \
             core_impl.cpp \

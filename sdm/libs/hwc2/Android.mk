@@ -31,7 +31,7 @@ LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware li
                                  android.hardware.graphics.composer@2.2 \
                                  android.hardware.graphics.composer@2.3 \
                                  hardware.google.light@1.0 \
-                                 libdrm.vendor \
+                                 libdrm \
 
 LOCAL_STATIC_LIBRARIES        := libhistogram
 

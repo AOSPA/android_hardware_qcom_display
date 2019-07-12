@@ -112,6 +112,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool first_cycle_ = true;
   int previous_retire_fence_ = -1;
   float level_remainder_ = 0.0f;
+  recursive_mutex brightness_lock_;
 };
 
 }  // namespace sdm

@@ -327,8 +327,6 @@ DisplayError CompManager::Prepare(Handle display_ctx, HWLayers *hw_layers) {
     return error;
   }
 
-  error = resource_intf_->Stop(display_resource_ctx, hw_layers);
-
   return error;
 }
 
@@ -402,11 +400,14 @@ DisplayError CompManager::PostCommit(Handle display_ctx, HWLayers *hw_layers) {
 
   display_comp_ctx->idle_fallback = false;
 
+  Handle &display_resource_ctx = display_comp_ctx->display_resource_ctx;
+  error = resource_intf_->Stop(display_resource_ctx, hw_layers);
+
   DLOGV_IF(kTagCompManager, "Registered displays [%s], configured displays [%s], display %d-%d",
            StringDisplayList(registered_displays_), StringDisplayList(configured_displays_),
            display_comp_ctx->display_id, display_comp_ctx->display_type);
 
-  return kErrorNone;
+  return error;
 }
 
 void CompManager::Purge(Handle display_ctx) {

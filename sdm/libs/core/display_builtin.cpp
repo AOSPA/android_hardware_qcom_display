@@ -320,6 +320,15 @@ DisplayError DisplayBuiltIn::SetActiveConfig(uint32_t index) {
   return DisplayBase::SetActiveConfig(index);
 }
 
+DisplayError DisplayBuiltIn::GetActiveConfig(uint32_t *index) {
+  lock_guard<recursive_mutex> obj(recursive_mutex_);
+  if (index && pendingActiveConfig != UINT_MAX) {
+    *index = pendingActiveConfig;
+    return kErrorNone;
+  }
+  return DisplayBase::GetActiveConfig(index);
+}
+
 void DisplayBuiltIn::SetIdleTimeoutMs(uint32_t active_ms) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   comp_manager_->SetIdleTimeoutMs(display_comp_ctx_, active_ms);

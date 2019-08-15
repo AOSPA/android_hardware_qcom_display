@@ -157,6 +157,9 @@ static void GetDRMFormat(LayerBufferFormat format, uint32_t *drm_format,
     case kFormatRGB888:
       *drm_format = DRM_FORMAT_BGR888;
       break;
+    case kFormatBGR888:
+      *drm_format = DRM_FORMAT_RGB888;
+      break;
     case kFormatRGB565:
       *drm_format = DRM_FORMAT_BGR565;
       break;
@@ -1181,11 +1184,13 @@ void HWDeviceDRM::SetupAtomic(HWLayers *hw_layers, bool validate) {
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, token_.conn_id, token_.crtc_id);
     DRMPowerMode power_mode = pending_doze_ ? DRMPowerMode::DOZE : DRMPowerMode::ON;
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, power_mode);
+    last_power_mode_ = power_mode;
   } else if (pending_doze_ && !validate) {
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::DOZE);
     pending_doze_ = false;
     synchronous_commit_ = true;
+    last_power_mode_ = DRMPowerMode::DOZE;
   }
 
   // Set CRTC mode, only if display config changes

@@ -48,6 +48,7 @@
 #define DISABLE_ROTATOR_DOWNSCALE_PROP       DISPLAY_PROP("disable_rotator_downscale")
 // Enables rotator for UI
 #define ENABLE_ROTATOR_UI_PROP               DISPLAY_PROP("enable_rotator_ui")
+#define ROTATOR_USE_PANEL_FPS_PROP           DISPLAY_PROP("rotator_use_panel_fps")
 #define DISABLE_DECIMATION_PROP              DISPLAY_PROP("disable_decimation")
 #define PRIMARY_MIXER_STAGES_PROP            DISPLAY_PROP("primary_mixer_stages")
 #define EXTERNAL_MIXER_STAGES_PROP           DISPLAY_PROP("external_mixer_stages")
@@ -119,6 +120,7 @@
 #define BUILTIN_BASEID_AND_SIZE_PROP         DISPLAY_PROP("builtin_baseid_and_size")
 #define PLUGGABLE_BASEID_AND_SIZE_PROP       DISPLAY_PROP("pluggable_baseid_and_size")
 #define VIRTUAL_BASEID_AND_SIZE_PROP         DISPLAY_PROP("virtual_baseid_and_size")
+#define QDCM_DISABLE_FACTORY_MODE_PROP       DISPLAY_PROP("qdcm.disable_factory_mode")
 
 #define ZERO_SWAP_INTERVAL                   "vendor.debug.egl.swapinterval"
 #define ENABLE_OPTIMIZE_REFRESH              DISPLAY_PROP("enable_optimize_refresh")

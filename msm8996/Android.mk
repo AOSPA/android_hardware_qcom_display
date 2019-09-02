@@ -1,4 +1,4 @@
-display-hals := libcopybit liblight libmemtrack libqservice libqdutils
+display-hals := include libcopybit liblight libmemtrack
 ifneq ($(TARGET_USES_GRALLOC1), true)
     display-hals += libgralloc
 else

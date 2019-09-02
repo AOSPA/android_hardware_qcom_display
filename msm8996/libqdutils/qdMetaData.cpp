@@ -37,13 +37,12 @@
 
 static int validateAndMap(private_handle_t* handle) {
     if (private_handle_t::validate(handle)) {
-        ALOGE("%s: Private handle is invalid - handle:%p id: %" PRIu64,
-                __func__, handle, handle->id);
+        ALOGE("%s: Private handle is invalid - handle:%p", __func__, handle);
         return -1;
     }
     if (handle->fd_metadata == -1) {
-        ALOGE("%s: Invalid metadata fd - handle:%p id: %" PRIu64 "fd: %d",
-                __func__, handle, handle->id, handle->fd_metadata);
+        ALOGE("%s: Invalid metadata fd - handle:%p fd: %d",
+                __func__, handle, handle->fd_metadata);
         return -1;
     }
 
@@ -52,8 +51,8 @@ static int validateAndMap(private_handle_t* handle) {
         void *base = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED,
                 handle->fd_metadata, 0);
         if (base == reinterpret_cast<void*>(MAP_FAILED)) {
-            ALOGE("%s: metadata mmap failed - handle:%p id: %" PRIu64  "fd: %d err: %s",
-                __func__, handle, handle->id, handle->fd_metadata, strerror(errno));
+            ALOGE("%s: metadata mmap failed - handle:%p fd: %d err: %s",
+                __func__, handle, handle->fd_metadata, strerror(errno));
 
             return -1;
         }

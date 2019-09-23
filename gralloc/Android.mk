@@ -30,6 +30,11 @@ ifneq ($(TARGET_KERNEL_VERSION), $(filter $(TARGET_KERNEL_VERSION),4.14 4.19))
 LOCAL_CFLAGS                  += -isystem  $(kernel_includes)
 endif
 LOCAL_CLANG                   := true
+
+ifeq ($(TARGET_USES_YCRCB_CAMERA_PREVIEW),true)
+    LOCAL_CFLAGS              += -DUSE_YCRCB_CAMERA_PREVIEW
+endif
+
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps) $(kernel_deps)
 LOCAL_SRC_FILES               := gr_ion_alloc.cpp \
                                  gr_allocator.cpp \

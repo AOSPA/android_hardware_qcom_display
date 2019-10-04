@@ -1,0 +1,8 @@
+Code-Review+1: Name of user not set #1000427
+Code-Review+2: Jake Weinstein <jake@aospa.co>
+Verified+1: Jake Weinstein <jake@aospa.co>
+Submitted-by: Jake Weinstein <jake@aospa.co>
+Submitted-at: Fri, 04 Oct 2019 21:42:01 +0000
+Reviewed-on: https://gerrit.aospa.co/c/AOSPA/android_hardware_qcom_display/+/6751
+Project: AOSPA/android_hardware_qcom_display
+Branch: refs/heads/quartz-8998

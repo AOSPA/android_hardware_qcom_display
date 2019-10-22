@@ -2312,6 +2312,19 @@ HWC2::Error HWCDisplay::GetDisplayedContentSample(uint64_t max_frames,
   return HWC2::Error::Unsupported;
 }
 
+HWC2::Error HWCDisplay::GetDisplayConnectionType(uint32_t *outType) {
+  switch (GetDisplayClass()) {
+    case DISPLAY_CLASS_BUILTIN:
+      *outType = HWC2_DISPLAY_CONNECTION_TYPE_INTERNAL;
+      return HWC2::Error::None;
+    case DISPLAY_CLASS_PLUGGABLE:
+      *outType = HWC2_DISPLAY_CONNECTION_TYPE_EXTERNAL;
+      return HWC2::Error::None;
+    default:
+      return HWC2::Error::BadDisplay;
+  }
+}
+
 // Skip SDM prepare if all the layers in the current draw cycle are marked as Skip and
 // previous draw cycle had GPU Composition, as the resources for GPU Target layer have
 // already been validated and configured to the driver.

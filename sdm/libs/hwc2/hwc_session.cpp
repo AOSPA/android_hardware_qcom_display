@@ -769,6 +769,12 @@ static int32_t GetReleaseFences(hwc2_device_t *device, hwc2_display_t display,
                                          out_num_elements, out_layers, out_fences);
 }
 
+static int32_t GetDisplayConnectionType(hwc2_device_t *device, hwc2_display_t display,
+                                        uint32_t /*hwc2_display_connection_type_t*/ *outType) {
+  return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayConnectionType,
+                                         outType);
+}
+
 int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display,
                                    int32_t *out_retire_fence) {
   HWCSession *hwc_session = static_cast<HWCSession *>(device);
@@ -1361,6 +1367,8 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
              (HWCSession::GetDisplayIdentificationData);
     case HWC2::FunctionDescriptor::GetDisplayBrightnessSupport:
       return AsFP<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(HWCSession::GetDisplayBrightnessSupport);
+    case HWC2::FunctionDescriptor::GetDisplayConnectionType:
+      return AsFP<HWC2_PFN_GET_DISPLAY_CONNECTION_TYPE>(GetDisplayConnectionType);
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());

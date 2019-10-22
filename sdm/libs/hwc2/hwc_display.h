@@ -333,6 +333,8 @@ class HWCDisplay : public DisplayEventHandler {
                                                 int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
                                                 uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]);
 
+  virtual HWC2::Error GetDisplayConnectionType(uint32_t *outType);
+
  protected:
   static uint32_t throttling_refresh_rate_;
   // Maximum number of layers supported by display manager.

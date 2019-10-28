@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <bits/epoll_event.h>
 #include <chrono>
 #include <ctime>
 #include <iomanip>

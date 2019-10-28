@@ -719,7 +719,7 @@ static int32_t GetDisplayAttribute(hwc2_device_t *device, hwc2_display_t display
                                    hwc2_config_t config, int32_t int_attribute,
                                    int32_t *out_value) {
   if (out_value == nullptr || int_attribute < HWC2_ATTRIBUTE_INVALID ||
-      int_attribute > HWC2_ATTRIBUTE_DPI_Y) {
+      int_attribute > HWC2_ATTRIBUTE_CONFIG_GROUP) {
     return HWC2_ERROR_BAD_PARAMETER;
   }
   auto attribute = static_cast<HWC2::Attribute>(int_attribute);
@@ -731,6 +731,21 @@ static int32_t GetDisplayConfigs(hwc2_device_t *device, hwc2_display_t display,
                                  uint32_t *out_num_configs, hwc2_config_t *out_configs) {
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayConfigs,
                                          out_num_configs, out_configs);
+}
+
+static int32_t GetDisplayVsyncPeriod(hwc2_device_t *device, hwc2_display_t display,
+                                     hwc2_vsync_period_t *out_vsync_period) {
+  return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayVsyncPeriod,
+                                         out_vsync_period);
+}
+
+static int32_t SetActiveConfigWithConstraints(
+    hwc2_device_t *device, hwc2_display_t display, hwc2_config_t config,
+    hwc_vsync_period_change_constraints_t *vsync_period_change_constraints,
+    hwc_vsync_period_change_timeline_t *out_timeline) {
+  return HWCSession::CallDisplayFunction(device, display,
+                                         &HWCDisplay::SetActiveConfigWithConstraints, config,
+                                         vsync_period_change_constraints, out_timeline);
 }
 
 static int32_t GetDisplayName(hwc2_device_t *device, hwc2_display_t display, uint32_t *out_size,
@@ -814,6 +829,7 @@ int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display
     if (power_on_pending_[display]) {
       status = HWC2::Error::None;
     } else {
+      hwc_session->hwc_display_[display]->ProcessActiveConfigChange();
       status = hwc_session->PresentDisplayInternal(display, out_retire_fence);
       if (status == HWC2::Error::None) {
         // Check if hwc's refresh trigger is getting exercised.
@@ -1163,6 +1179,7 @@ int32_t HWCSession::ValidateDisplay(hwc2_device_t *device, hwc2_display_t displa
     if (power_on_pending_[display]) {
       status = HWC2::Error::None;
     } else if (hwc_session->hwc_display_[display]) {
+      hwc_session->hwc_display_[display]->ProcessActiveConfigChange();
       hwc_session->hwc_display_[display]->SetFastPathComposition(false);
       status = hwc_session->ValidateDisplayInternal(display, out_num_types, out_num_requests);
     }
@@ -1393,6 +1410,10 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(HWCSession::GetDisplayBrightnessSupport);
     case HWC2::FunctionDescriptor::GetDisplayConnectionType:
       return AsFP<HWC2_PFN_GET_DISPLAY_CONNECTION_TYPE>(GetDisplayConnectionType);
+    case HWC2::FunctionDescriptor::GetDisplayVsyncPeriod:
+      return AsFP<HWC2_PFN_GET_DISPLAY_VSYNC_PERIOD>(GetDisplayVsyncPeriod);
+    case HWC2::FunctionDescriptor::SetActiveConfigWithConstraints:
+      return AsFP<HWC2_PFN_SET_ACTIVE_CONFIG_WITH_CONSTRAINTS>(SetActiveConfigWithConstraints);
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());

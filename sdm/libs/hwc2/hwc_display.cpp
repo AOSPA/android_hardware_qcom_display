@@ -52,6 +52,12 @@
 namespace sdm {
 
 uint32_t HWCDisplay::throttling_refresh_rate_ = 60;
+constexpr auto vsyncPeriodTag = "VsyncPeriod";
+constexpr uint32_t VSYNC_TIME_DRIFT_NS = 1000000;
+
+bool IsTimeAfterOrEqualVsyncTime(int64_t time, int64_t vsync_time) {
+  return (vsync_time != INT64_MAX && ((time) - (vsync_time - VSYNC_TIME_DRIFT_NS)) >= 0);
+}
 
 bool NeedsToneMap(const LayerStack &layer_stack) {
   for (Layer *layer : layer_stack.layers) {
@@ -855,7 +861,8 @@ HWC2::Error HWCDisplay::SetVsyncEnabled(HWC2::Vsync enabled) {
   ATRACE_INT("SetVsyncState ", enabled == HWC2::Vsync::Enable ? 1 : 0);
   DisplayError error = kErrorNone;
 
-  if (shutdown_pending_ || !callbacks_->VsyncCallbackRegistered()) {
+  if (shutdown_pending_ ||
+      (!callbacks_->VsyncCallbackRegistered() && !callbacks_->Vsync_2_4CallbackRegistered())) {
     return HWC2::Error::None;
   }
 
@@ -876,6 +883,10 @@ HWC2::Error HWCDisplay::SetVsyncEnabled(HWC2::Vsync enabled) {
     }
     DLOGE("Failed. enabled = %s, error = %d", to_string(enabled).c_str(), error);
     return HWC2::Error::BadDisplay;
+  }
+
+  if (callbacks_->Vsync_2_4CallbackRegistered()) {
+    ATRACE_INT(vsyncPeriodTag, 0);
   }
 
   return HWC2::Error::None;
@@ -1005,7 +1016,7 @@ HWC2::Error HWCDisplay::GetDisplayConfigs(uint32_t *out_num_configs, hwc2_config
 
   *out_num_configs = std::min(*out_num_configs, num_configs_);
 
-  // Expose all unique config ids to cleint.
+  // Expose all unique config ids to client.
   uint32_t i = 0;
   for (auto &info : variable_config_map_) {
     if (i == *out_num_configs) {
@@ -1015,6 +1026,199 @@ HWC2::Error HWCDisplay::GetDisplayConfigs(uint32_t *out_num_configs, hwc2_config
   }
 
   return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplay::GetDisplayVsyncPeriod(hwc2_vsync_period_t *out_vsync_period) {
+  if (out_vsync_period == nullptr) {
+    return HWC2::Error::BadParameter;
+  }
+
+  return GetCurrentVsyncPeriod(out_vsync_period);
+}
+
+HWC2::Error HWCDisplay::SetActiveConfigWithConstraints(
+    hwc2_config_t config, hwc_vsync_period_change_constraints_t *vsync_period_change_constraints,
+    hwc_vsync_period_change_timeline_t *out_timeline) {
+  DTRACE_SCOPED();
+  if (vsync_period_change_constraints == nullptr || out_timeline == nullptr) {
+    return HWC2::Error::BadParameter;
+  }
+
+  if (variable_config_map_.find(config) == variable_config_map_.end()) {
+    DLOGW("Invalid config");
+    return HWC2::Error::BadConfig;
+  }
+
+  if (vsync_period_change_constraints->seamlessRequired) {
+    if (!AllowSeamless(config)) {
+      DLOGW("Not allowed change to config %u seamlessly", config);
+      return HWC2::Error::SeamlessNotAllowed;
+    }
+  }
+
+  hwc2_vsync_period_t current_vsync_period;
+  if (GetCurrentVsyncPeriod(&current_vsync_period) != HWC2::Error::None) {
+    return HWC2::Error::BadConfig;
+  }
+
+  std::tie(out_timeline->refreshTimeNanos, out_timeline->newVsyncAppliedTimeNanos) =
+      RequestActiveConfigChange(config, current_vsync_period,
+                                vsync_period_change_constraints->desiredTimeNanos);
+  out_timeline->refreshRequired = true;
+
+  return HWC2::Error::None;
+}
+
+void HWCDisplay::ProcessActiveConfigChange(void) {
+  if (IsActiveConfigReadyToSubmit(systemTime(SYSTEM_TIME_MONOTONIC))) {
+    DTRACE_SCOPED();
+    hwc2_vsync_period_t vsync_period;
+    if (GetCurrentVsyncPeriodByConfig(&vsync_period) != HWC2::Error::None) {
+      return;
+    }
+    SubmitActiveConfigChange(vsync_period);
+  }
+}
+
+HWC2::Error HWCDisplay::GetCurrentVsyncPeriod(hwc2_vsync_period_t *period) {
+  if (GetTransientVsyncPeriod(period)) {
+    return HWC2::Error::None;
+  }
+
+  return GetCurrentVsyncPeriodByConfig(period);
+}
+
+HWC2::Error HWCDisplay::GetCurrentVsyncPeriodByConfig(hwc2_vsync_period_t *period) {
+  hwc2_config_t current_config;
+  if (auto error = GetActiveConfig(&current_config); error != HWC2::Error::None) {
+    DLOGE("Failed to get active config");
+    return error;
+  }
+
+  int32_t vsync_period;
+  if (auto error = GetDisplayAttribute(current_config, HWC2::Attribute::VsyncPeriod, &vsync_period);
+      error != HWC2::Error::None) {
+    DLOGE("Failed to get VsyncPeriod from config %d", current_config);
+    return error;
+  }
+  *period = static_cast<hwc2_vsync_period_t>(vsync_period);
+
+  return HWC2::Error::None;
+}
+
+bool HWCDisplay::GetTransientVsyncPeriod(hwc2_vsync_period_t *period) {
+  std::lock_guard<std::mutex> lock(transient_refresh_rate_lock_);
+  auto now = systemTime(SYSTEM_TIME_MONOTONIC);
+  while (!transient_refresh_rate_info_.empty()) {
+    if (IsActiveConfigApplied(now, transient_refresh_rate_info_.front().vsync_applied_time)) {
+      transient_refresh_rate_info_.pop_front();
+    } else {
+      *period = transient_refresh_rate_info_.front().transient_vsync_period;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+std::tuple<int64_t, int64_t> HWCDisplay::EstimateVsyncPeriodChangeTimeline(
+    uint32_t current_vsync_period, int64_t desired_time) {
+  const auto now = systemTime(SYSTEM_TIME_MONOTONIC);
+  const auto delta = desired_time - now;
+  const auto refresh_rate_activate_period = current_vsync_period * vsyncs_to_apply_rate_change_;
+
+  nsecs_t refresh_time;
+  if (delta < 0) {
+    refresh_time = now + (delta % current_vsync_period);
+  } else if (delta < refresh_rate_activate_period) {
+    refresh_time = now + (delta % current_vsync_period) - current_vsync_period;
+  } else {
+    refresh_time = desired_time - refresh_rate_activate_period;
+  }
+  const auto applied_time = refresh_time + refresh_rate_activate_period;
+
+  return std::make_tuple(refresh_time, applied_time);
+}
+
+bool HWCDisplay::IsActiveConfigReadyToSubmit(int64_t time) {
+  return (pending_refresh_rate_config_ != UINT_MAX &&
+          IsTimeAfterOrEqualVsyncTime(time, pending_refresh_rate_refresh_time_));
+}
+
+bool HWCDisplay::IsActiveConfigApplied(int64_t time, int64_t vsync_applied_time) {
+  return IsTimeAfterOrEqualVsyncTime(time, vsync_applied_time);
+}
+
+std::tuple<int64_t, int64_t> HWCDisplay::RequestActiveConfigChange(hwc2_config_t config,
+                                                                   uint32_t current_vsync_period,
+                                                                   int64_t desired_time) {
+  int64_t refresh_time, applied_time;
+  std::tie(refresh_time, applied_time) =
+      EstimateVsyncPeriodChangeTimeline(current_vsync_period, desired_time);
+
+  pending_refresh_rate_config_ = config;
+  pending_refresh_rate_refresh_time_ = refresh_time;
+  pending_refresh_rate_applied_time_ = applied_time;
+
+  return std::make_tuple(refresh_time, applied_time);
+}
+
+void HWCDisplay::SubmitActiveConfigChange(const uint32_t current_vsync_period) {
+  if (SetActiveConfig(pending_refresh_rate_config_) == HWC2::Error::None) {
+    hwc_vsync_period_change_timeline_t timeline;
+    {
+      std::lock_guard<std::mutex> lock(transient_refresh_rate_lock_);
+      std::tie(timeline.refreshTimeNanos, timeline.newVsyncAppliedTimeNanos) =
+          EstimateVsyncPeriodChangeTimeline(current_vsync_period, pending_refresh_rate_refresh_time_);
+
+      transient_refresh_rate_info_.push_back(
+          {current_vsync_period, timeline.newVsyncAppliedTimeNanos});
+    }
+    if (timeline.newVsyncAppliedTimeNanos != pending_refresh_rate_applied_time_) {
+      timeline.refreshRequired = false;
+      callbacks_->VsyncPeriodTimingChanged(id_, &timeline);
+    }
+    pending_refresh_rate_config_ = UINT_MAX;
+    pending_refresh_rate_refresh_time_ = INT64_MAX;
+    pending_refresh_rate_applied_time_ = INT64_MAX;
+  }
+}
+
+int32_t HWCDisplay::GetDisplayGroupConfig(DisplayConfigGroupInfo variable_config) {
+  for (auto &config : variable_config_map_) {
+    DisplayConfigGroupInfo const &group_info = config.second;
+    if (group_info == variable_config) {
+      return INT32(config.first);
+    }
+  }
+
+  return -1;
+}
+
+bool HWCDisplay::IsSameGroup(hwc2_config_t configId1, hwc2_config_t configId2) {
+  const auto &variable_config1 = variable_config_map_.find(configId1);
+  const auto &variable_config2 = variable_config_map_.find(configId2);
+
+  if (variable_config1 == variable_config_map_.end() ||
+      variable_config2 == variable_config_map_.end()) {
+    DLOGE("Invalid config %u, %u", configId1, configId2);
+    return false;
+  }
+
+  const DisplayConfigGroupInfo &config_group1 = variable_config1->second;
+  const DisplayConfigGroupInfo &config_group2 = variable_config2->second;
+
+  return (config_group1 == config_group2);
+}
+
+bool HWCDisplay::AllowSeamless(hwc2_config_t request_config) {
+  hwc2_config_t current_config;
+  auto error = GetActiveConfig(&current_config);
+  if (CC_UNLIKELY(error == HWC2::Error::BadConfig)) {
+    return true;
+  }
+
+  return (error == HWC2::Error::None && IsSameGroup(current_config, request_config));
 }
 
 HWC2::Error HWCDisplay::GetDisplayAttribute(hwc2_config_t config, HWC2::Attribute attribute,
@@ -1040,6 +1244,9 @@ HWC2::Error HWCDisplay::GetDisplayAttribute(hwc2_config_t config, HWC2::Attribut
       break;
     case HWC2::Attribute::DpiY:
       *out_value = INT32(variable_config.y_dpi * 1000.0f);
+      break;
+    case HWC2::Attribute::ConfigGroup:
+      *out_value = GetDisplayGroupConfig(variable_config);
       break;
     default:
       DLOGW("Spurious attribute type = %s", to_string(attribute).c_str());
@@ -1196,7 +1403,17 @@ HWC2::PowerMode HWCDisplay::GetCurrentPowerMode() {
 }
 
 DisplayError HWCDisplay::VSync(const DisplayEventVSync &vsync) {
-  callbacks_->Vsync(id_, vsync.timestamp);
+  if (callbacks_->Vsync_2_4CallbackRegistered()) {
+    hwc2_vsync_period_t vsync_period;
+    if (GetCurrentVsyncPeriod(&vsync_period) != HWC2::Error::None) {
+      vsync_period = 0;
+    }
+    ATRACE_INT(vsyncPeriodTag, INT32(vsync_period));
+    callbacks_->Vsync_2_4(id_, vsync.timestamp, vsync_period);
+  } else if (CC_LIKELY(callbacks_->VsyncCallbackRegistered())) {
+    callbacks_->Vsync(id_, vsync.timestamp);
+  }
+
   return kErrorNone;
 }
 

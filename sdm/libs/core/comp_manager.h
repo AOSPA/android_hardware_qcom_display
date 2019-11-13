@@ -30,6 +30,7 @@
 #include <utils/locker.h>
 #include <bitset>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "strategy.h"
@@ -92,7 +93,7 @@ class CompManager {
 
   void PrepareStrategyConstraints(Handle display_ctx, HWLayers *hw_layers);
   void UpdateStrategyConstraints(bool is_primary, bool disabled);
-  const char *StringDisplayList(const std::set<int32_t> &displays);
+  std::string StringDisplayList(const std::set<int32_t> &displays);
 
   struct DisplayCompositionContext {
     Strategy *strategy = NULL;

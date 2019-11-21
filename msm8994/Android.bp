@@ -36,6 +36,7 @@ cc_library_headers {
     name: "display_intf_headers",
     vendor_available: true,
     export_include_dirs: [
+	    "include",
         "libqdutils",
         "libgralloc",
     ],

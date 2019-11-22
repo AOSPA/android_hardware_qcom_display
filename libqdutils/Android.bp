@@ -9,6 +9,10 @@ cc_library_shared {
     ],
     cflags: [
         "-DDEBUG_CALC_FPS",
+		"-Wno-missing-field-initializers",
+		"-Wconversion",
+		"-Wall",
+		"-Werror",
         "-DLOG_TAG=\"qdutils\"",
         "-Wno-sign-conversion",
     ],

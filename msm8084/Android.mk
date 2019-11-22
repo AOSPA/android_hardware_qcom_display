@@ -1,5 +1,5 @@
-display-hals := libgralloc libcopybit libvirtual
-display-hals += libhwcomposer liboverlay libqdutils libexternal libqservice
+display-hals := include libhwcomposer libcopybit libvirtual
+display-hals += libgralloc liboverlay libexternal libqservice
 display-hals += libmemtrack
 ifneq ($(TARGET_PROVIDES_LIBLIGHT),true)
     display-hals += liblight

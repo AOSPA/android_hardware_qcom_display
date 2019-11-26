@@ -43,8 +43,8 @@ LOCAL_MODULE                  := libgralloccore
 LOCAL_VENDOR_MODULE           := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) \
-                                 system/core/libion/include \
-                                 system/core/libion/kernel-headers \
+                                 system/memory/libion/include \
+                                 system/memory/libion/kernel-headers \
                                  $(kernel_includes)
 
 LOCAL_HEADER_LIBRARIES        := display_headers

@@ -4,6 +4,7 @@ cc_library_shared {
     defaults: ["display_defaults"],
     header_libs: ["generated_kernel_headers", "libhardware_headers", "libutils_headers"],
     shared_libs: [
+        "libui",
         "libbinder",
         "libqservice",
     ],

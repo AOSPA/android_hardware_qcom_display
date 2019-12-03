@@ -85,7 +85,7 @@
 #include <utils/debug.h>
 #include <utils/formats.h>
 #include <utils/sys.h>
-#include <drm/sde_drm.h>
+#include <display/drm/sde_drm.h>
 #include <private/color_params.h>
 #include <utils/rect.h>
 #include <utils/utils.h>

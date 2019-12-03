@@ -72,7 +72,7 @@
 // version drm/drm.h
 #include <drm_logger.h>
 #include <drm/drm_fourcc.h>
-#include <drm/sde_drm.h>
+#include <display/drm/sde_drm.h>
 
 #include <cstring>
 #include <map>

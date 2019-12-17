@@ -770,9 +770,21 @@ static int32_t GetReleaseFences(hwc2_device_t *device, hwc2_display_t display,
 }
 
 static int32_t GetDisplayConnectionType(hwc2_device_t *device, hwc2_display_t display,
-                                        uint32_t /*hwc2_display_connection_type_t*/ *outType) {
+                                        uint32_t /*hwc2_display_connection_type_t*/ *out_type) {
+  if (!out_type) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
   return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetDisplayConnectionType,
-                                         outType);
+                                         out_type);
+}
+
+int32_t GetProtectedContentsSupport(hwc2_device_t *device, hwc2_display_t display,
+                                    bool *out_support) {
+  if (!out_support) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
+  return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetProtectedContentsSupport,
+                                         out_support);
 }
 
 int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display,
@@ -1183,15 +1195,27 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t
     return INT32(status);
   }
 
-  uint32_t count = 1  + static_cast<uint32_t>(doze_support) + (brightness_support ? 1 : 0);
+  bool protected_contents_support = false;
+  if (auto status = GetProtectedContentsSupport(device, display, &protected_contents_support);
+      status != HWC2_ERROR_NONE) {
+    DLOGE("Failed to get protected contents support Error = %d", status);
+    return INT32(status);
+  }
+
+  uint32_t count = 1 + static_cast<uint32_t>(doze_support) + (brightness_support ? 1 : 0) +
+                   (protected_contents_support ? 1 : 0);
   int index = 0;
   if (outCapabilities != nullptr && (*outNumCapabilities >= count)) {
-    outCapabilities[index++] = HWC2_DISPLAY_CAPABILITY_SKIP_CLIENT_COLOR_TRANSFORM;
+    outCapabilities[index++] =
+        uint32_t(IComposerClient::DisplayCapability::SKIP_CLIENT_COLOR_TRANSFORM);
     if (doze_support == 1) {
-      outCapabilities[index++] = HWC2_DISPLAY_CAPABILITY_DOZE;
+      outCapabilities[index++] = uint32_t(IComposerClient::DisplayCapability::DOZE);
     }
     if (brightness_support) {
-      outCapabilities[index++] = HWC2_DISPLAY_CAPABILITY_BRIGHTNESS;
+      outCapabilities[index++] = uint32_t(IComposerClient::DisplayCapability::BRIGHTNESS);
+    }
+    if (protected_contents_support) {
+      outCapabilities[index++] = uint32_t(IComposerClient::DisplayCapability::PROTECTED_CONTENTS);
     }
   }
 

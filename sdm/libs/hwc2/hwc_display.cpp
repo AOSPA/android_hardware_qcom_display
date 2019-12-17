@@ -2312,17 +2312,22 @@ HWC2::Error HWCDisplay::GetDisplayedContentSample(uint64_t max_frames,
   return HWC2::Error::Unsupported;
 }
 
-HWC2::Error HWCDisplay::GetDisplayConnectionType(uint32_t *outType) {
+HWC2::Error HWCDisplay::GetDisplayConnectionType(uint32_t *out_type) {
   switch (GetDisplayClass()) {
     case DISPLAY_CLASS_BUILTIN:
-      *outType = HWC2_DISPLAY_CONNECTION_TYPE_INTERNAL;
+      *out_type = HWC2_DISPLAY_CONNECTION_TYPE_INTERNAL;
       return HWC2::Error::None;
     case DISPLAY_CLASS_PLUGGABLE:
-      *outType = HWC2_DISPLAY_CONNECTION_TYPE_EXTERNAL;
+      *out_type = HWC2_DISPLAY_CONNECTION_TYPE_EXTERNAL;
       return HWC2::Error::None;
     default:
       return HWC2::Error::BadDisplay;
   }
+}
+
+HWC2::Error HWCDisplay::GetProtectedContentsSupport(bool *out_support) {
+  *out_support = false;
+  return HWC2::Error::None;
 }
 
 // Skip SDM prepare if all the layers in the current draw cycle are marked as Skip and

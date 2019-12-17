@@ -889,6 +889,11 @@ HWC2::Error HWCDisplayBuiltIn::GetDisplayedContentSample(uint64_t max_frames,
     return HWC2::Error::None;
 }
 
+HWC2::Error HWCDisplayBuiltIn::GetProtectedContentsSupport(bool *out_support) {
+  *out_support = true;
+  return HWC2::Error::None;
+}
+
 DisplayError HWCDisplayBuiltIn::SetMixerResolution(uint32_t width, uint32_t height) {
   DisplayError error = display_intf_->SetMixerResolution(width, height);
   validated_ = false;

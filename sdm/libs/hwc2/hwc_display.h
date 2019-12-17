@@ -333,7 +333,9 @@ class HWCDisplay : public DisplayEventHandler {
                                                 int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
                                                 uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]);
 
-  virtual HWC2::Error GetDisplayConnectionType(uint32_t *outType);
+  virtual HWC2::Error GetDisplayConnectionType(uint32_t *out_type);
+
+  virtual HWC2::Error GetProtectedContentsSupport(bool *out_support);
 
  protected:
   static uint32_t throttling_refresh_rate_;

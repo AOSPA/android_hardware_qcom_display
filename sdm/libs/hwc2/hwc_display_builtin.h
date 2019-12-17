@@ -107,6 +107,7 @@ class HWCDisplayBuiltIn : public HWCDisplay {
                                                 uint64_t timestamp, uint64_t* numFrames,
                                                 int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
                                                 uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) override;
+  virtual HWC2::Error GetProtectedContentsSupport(bool *out_support) override;
   std::string Dump() override;
 
  private:

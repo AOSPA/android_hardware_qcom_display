@@ -30,6 +30,7 @@ LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware li
                                  android.hardware.graphics.allocator@3.0 \
                                  android.hardware.graphics.composer@2.2 \
                                  android.hardware.graphics.composer@2.3 \
+                                 android.hardware.graphics.composer@2.4 \
                                  hardware.google.light@1.0 \
                                  libdrm \
 

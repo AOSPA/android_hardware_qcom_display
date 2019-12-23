@@ -236,6 +236,7 @@ class HWCDisplay : public DisplayEventHandler {
     return (color_mode_ ? color_mode_->GetCurrentColorMode() : ColorMode::SRGB);
   }
   bool HasClientComposition() { return has_client_composition_; }
+  bool HasForceClientComposition() { return has_force_client_composition_; }
   bool HWCClientNeedsValidate() {
     return (has_client_composition_ || layer_stack_.flags.single_buffered_layer_present);
   }
@@ -250,6 +251,9 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::Error AcceptDisplayChanges(void);
   virtual HWC2::Error GetActiveConfig(hwc2_config_t *out_config);
   virtual HWC2::Error SetActiveConfig(hwc2_config_t config);
+  virtual HWC2::Error SetPanelLuminanceAttributes(float min_lum, float max_lum) {
+    return HWC2::Error::Unsupported;
+  }
   virtual HWC2::Error SetClientTarget(buffer_handle_t target, int32_t acquire_fence,
                                       int32_t dataspace, hwc_region_t damage);
   virtual HWC2::Error SetColorMode(ColorMode mode) { return HWC2::Error::Unsupported; }
@@ -481,6 +485,7 @@ class HWCDisplay : public DisplayEventHandler {
   bool animating_ = false;
   int null_display_mode_ = 0;
   bool has_client_composition_ = false;
+  bool has_force_client_composition_ = false;
   DisplayValidateState validate_state_ = kNormalValidate;
   bool fast_path_enabled_ = true;
   bool first_cycle_ = true;  // false if a display commit has succeeded on the device.

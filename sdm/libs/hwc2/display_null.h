@@ -112,6 +112,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetSupportedDSIClock(vector<uint64_t> *bitclk_rates))
   MAKE_NO_OP(colorSamplingOn());
   MAKE_NO_OP(colorSamplingOff());
+  MAKE_NO_OP(SetPanelLuminanceAttributes(float min_lum, float max_lum))
 
  protected:
   DisplayConfigVariableInfo default_variable_config_ = {};

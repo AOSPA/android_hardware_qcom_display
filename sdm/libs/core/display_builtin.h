@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -55,13 +55,13 @@ struct DeferFpsConfig {
 
   bool IsDeferredState() { return (frames_to_defer != 0); }
 
-  bool IsReady() { return apply; }
+  bool CanApplyDeferredState() { return apply; }
 
   bool IsDirty() { return dirty; }
 
   void MarkDirty() { dirty = IsDeferredState(); }
 
-  void OnCommit() {
+  void UpdateDeferCount() {
     if (frames_to_defer > 0) {
       frames_to_defer--;
       apply = (frames_to_defer == 0);

@@ -47,6 +47,50 @@
 
 namespace sdm {
 
+DisplayError HWCDisplayBuiltIn::PMICInterface::Init() {
+  std::string str_lcd_bias("/sys/class/lcd_bias/secure_mode");
+  fd_lcd_bias_ = ::open(str_lcd_bias.c_str(), O_WRONLY);
+  if (fd_lcd_bias_ < 0) {
+    DLOGW("File '%s' could not be opened. errno = %d, desc = %s", str_lcd_bias.c_str(), errno,
+          strerror(errno));
+    return kErrorHardware;
+  }
+
+  std::string str_leds_wled("/sys/class/leds/wled/secure_mode");
+  fd_wled_ = ::open(str_leds_wled.c_str(), O_WRONLY);
+  if (fd_wled_ < 0) {
+    DLOGW("File '%s' could not be opened. errno = %d, desc = %s", str_leds_wled.c_str(), errno,
+          strerror(errno));
+    return kErrorHardware;
+  }
+
+  return kErrorNone;
+}
+
+void HWCDisplayBuiltIn::PMICInterface::Deinit() {
+  ::close(fd_lcd_bias_);
+  ::close(fd_wled_);
+}
+
+DisplayError HWCDisplayBuiltIn::PMICInterface::Notify(SecureEvent event) {
+  std::string str_event = (event == kSecureDisplayStart) ? std::to_string(1) : std::to_string(0);
+  ssize_t err = ::pwrite(fd_lcd_bias_, str_event.c_str(), str_event.length(), 0);
+  if (err <= 0) {
+    DLOGW("Write failed for lcd_bias, Error = %s", strerror(errno));
+    return kErrorHardware;
+  }
+
+  err = ::pwrite(fd_wled_, str_event.c_str(), str_event.length(), 0);
+  if (err <= 0) {
+    DLOGW("Write failed for wled, Error = %s", strerror(errno));
+    return kErrorHardware;
+  }
+
+  DLOGI("Successfully notifed about secure display %s to PMIC driver",
+        (event == kSecureDisplayStart) ? "start": "end");
+  return kErrorNone;
+}
+
 int HWCDisplayBuiltIn::Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
                               HWCCallbacks *callbacks, HWCDisplayEventHandler *event_handler,
                               qService::QService *qservice, hwc2_display_t id, int32_t sdm_id,
@@ -128,6 +172,8 @@ int HWCDisplayBuiltIn::Init() {
   if (enable_drop_refresh_) {
     DLOGI("Drop redundant drawcycles %d", id_);
   }
+  pmic_intf_ = new PMICInterface();
+  pmic_intf_->Init();
 
   if (int vsyncs;
       HWCDebugHandler::Get()->GetProperty(PRIMARY_VSYNCS_RATE_CHANGE, &vsyncs) == kErrorNone) {
@@ -140,8 +186,17 @@ int HWCDisplayBuiltIn::Init() {
 }
 
 int HWCDisplayBuiltIn::Deinit() {
+    int status = HWCDisplay::Deinit();
+
     histogram.stop();
-    return HWCDisplay::Deinit();
+
+    if (status) {
+      return status;
+    }
+    pmic_intf_->Deinit();
+    delete pmic_intf_;
+
+    return 0;
 }
 
 std::string HWCDisplayBuiltIn::Dump() {
@@ -253,7 +308,9 @@ HWC2::Error HWCDisplayBuiltIn::Present(int32_t *out_retire_fence) {
   ATRACE_INT("FastPath", layer_stack_.flags.fast_path);
   ATRACE_INT("GeometryChanged", layer_stack_.flags.geometry_changed);
   ATRACE_INT("NumLayers", static_cast <int32_t> (layer_stack_.layers.size()));
-  ATRACE_INT("HasClientComposition", HasClientComposition());
+  ATRACE_INT("SF_MarkedSkipLayer", HasForceClientComposition());
+  ATRACE_INT("HWC_MarkedSkipLayer", (HasClientComposition() &&
+             !HasForceClientComposition()));
 
   if (display_paused_) {
     DisplayError error = display_intf_->Flush(&layer_stack_);
@@ -266,7 +323,7 @@ HWC2::Error HWCDisplayBuiltIn::Present(int32_t *out_retire_fence) {
     if (status == HWC2::Error::None) {
       HandleFrameOutput();
       SolidFillCommit();
-      status = HWCDisplay::PostCommitLayerStack(out_retire_fence);
+      status = PostCommitLayerStack(out_retire_fence);
     }
   }
 
@@ -616,6 +673,11 @@ int HWCDisplayBuiltIn::HandleSecureSession(const std::bitset<kSecureMax> &secure
     if (err != kErrorNone) {
       DLOGE("Set secure event failed");
       return err;
+    }
+    if (secure_event == kSecureDisplayStart) {
+      pmic_intf_->Notify(kSecureDisplayStart);
+    } else {
+      pmic_notification_pending_ = true;
     }
 
     DLOGI("SecureDisplay state changed from %d to %d for display %d",
@@ -1014,6 +1076,21 @@ HWC2::Error HWCDisplayBuiltIn::GetPanelMaxBrightness(int32_t &max_brightness_lev
   }
 
   return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplayBuiltIn::PostCommitLayerStack(int32_t *out_retire_fence) {
+  if (pmic_notification_pending_) {
+    // Wait for current commit to complete
+    if (*out_retire_fence >= 0) {
+      int ret = sync_wait(*out_retire_fence, 1000);
+      if (ret < 0) {
+        DLOGE("sync_wait error errno = %d, desc = %s", errno, strerror(errno));
+      }
+    }
+    pmic_intf_->Notify(kSecureDisplayEnd);
+    pmic_notification_pending_ = false;
+  }
+  return HWCDisplay::PostCommitLayerStack(out_retire_fence);
 }
 
 }  // namespace sdm

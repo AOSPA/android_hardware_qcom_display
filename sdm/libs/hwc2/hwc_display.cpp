@@ -174,6 +174,10 @@ HWC2::Error HWCColorMode::CacheColorModeWithRenderIntent(ColorMode mode, RenderI
 }
 
 HWC2::Error HWCColorMode::ApplyCurrentColorModeWithRenderIntent(bool hdr_present) {
+  // If panel does not support color modes, do not set color mode.
+  if (color_mode_map_.size() <= 1) {
+    return HWC2::Error::None;
+  }
   if (!apply_mode_) {
     if ((hdr_present && curr_dynamic_range_ == kHdrType) ||
       (!hdr_present && curr_dynamic_range_ == kSdrType))
@@ -794,7 +798,7 @@ void HWCDisplay::BuildLayerStack() {
   bool enforce_geometry_change = (validate_state_ == kInternalValidate) && !validated_;
 
   // TODO(user): Set correctly when SDM supports geometry_changes as bitmask
-  layer_stack_.flags.geometry_changed = geometry_changes_ > 0 || enforce_geometry_change;
+  layer_stack_.flags.geometry_changed = UINT32(geometry_changes_ > 0) || enforce_geometry_change;
   layer_stack_.flags.config_changed = !validated_;
 
   // Append client target to the layer stack
@@ -1374,6 +1378,7 @@ HWC2::Error HWCDisplay::SetActiveConfig(hwc2_config_t config) {
   }
   DLOGI("Active configuration changed to: %d", config);
   validated_ = false;
+  geometry_changes_ |= kConfigChanged;
   return HWC2::Error::None;
 }
 
@@ -1478,6 +1483,7 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
   layer_changes_.clear();
   layer_requests_.clear();
   has_client_composition_ = false;
+  has_force_client_composition_ = false;
 
   DTRACE_SCOPED();
   if (shutdown_pending_) {
@@ -1523,12 +1529,21 @@ HWC2::Error HWCDisplay::PrepareLayerStack(uint32_t *out_num_types, uint32_t *out
     if (device_composition == HWC2::Composition::Client) {
       has_client_composition_ = true;
     }
+
+    if (requested_composition == HWC2::Composition::Client) {
+      has_force_client_composition_ = true;
+    }
+
     // Update the changes list only if the requested composition is different from SDM comp type
     // TODO(user): Take Care of other comptypes(BLIT)
     if (requested_composition != device_composition) {
       layer_changes_[hwc_layer->GetId()] = device_composition;
     }
     hwc_layer->ResetValidation();
+  }
+
+  if ((has_client_composition_) && (!has_force_client_composition_)) {
+    DLOGI_IF(kTagDisplay, "HWC marked skip layer present");
   }
 
   client_target_->ResetValidation();
@@ -2384,7 +2399,7 @@ std::string HWCDisplay::Dump() {
     os << "layer: " << std::setw(4) << layer->GetId();
     os << " z: " << layer->GetZ();
     os << " composition: " <<
-          to_string(layer->GetClientRequestedCompositionType()).c_str();
+          to_string(layer->GetOrigClientRequestedCompositionType()).c_str();
     os << "/" <<
           to_string(layer->GetDeviceSelectedCompositionType()).c_str();
     os << " alpha: " << std::to_string(sdm_layer->plane_alpha).c_str();

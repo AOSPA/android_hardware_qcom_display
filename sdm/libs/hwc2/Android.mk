@@ -88,6 +88,17 @@ LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.6
 LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.7
 LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.8
 endif
+ifeq ($(display_config_version), DISPLAY_CONFIG_1_9)
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.3
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.4
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.5
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.6
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.7
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.8
+LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.9
+endif
 
 # Allow implicit fallthroughs in hwc_display.cpp until they are fixed.
 LOCAL_CFLAGS                  += -Wno-error=implicit-fallthrough

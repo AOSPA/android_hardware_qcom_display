@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -253,11 +253,11 @@ DisplayError DisplayBuiltIn::Commit(LayerStack *layer_stack) {
     dpps_info_.DppsNotifyOps(kDppsCommitEvent, &display_type_, sizeof(display_type_));
   }
 
-  deferred_config_.OnCommit();
+  deferred_config_.UpdateDeferCount();
 
   ReconfigureDisplay();
 
-  if (deferred_config_.IsReady()) {
+  if (deferred_config_.CanApplyDeferredState()) {
     event_handler_->HandleEvent(kInvalidateDisplay);
     deferred_config_.Clear();
   }
@@ -939,8 +939,8 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
 }
 
 bool DisplayBuiltIn::CanDeferFpsConfig(uint32_t fps) {
-  if (deferred_config_.IsReady()) {
-    // Deferred Fps Config is ready to be applied.
+  if (deferred_config_.CanApplyDeferredState()) {
+    // Deferred Fps Config needs to be applied.
     return false;
   }
 

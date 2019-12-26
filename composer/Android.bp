@@ -15,20 +15,21 @@
 //
 
 cc_binary {
-    name: "android.hardware.graphics.composer@2.3-service-sm8150",
+    name: "android.hardware.graphics.composer@2.4-service-sm8150",
     defaults: ["hidl_defaults"],
     vendor: true,
     relative_install_path: "hw",
     srcs: ["service.cpp"],
-    init_rc: ["android.hardware.graphics.composer@2.3-service-sm8150.rc"],
+    init_rc: ["android.hardware.graphics.composer@2.4-service-sm8150.rc"],
     header_libs: [
-        "android.hardware.graphics.composer@2.3-passthrough",
+        "android.hardware.graphics.composer@2.4-passthrough",
     ],
     shared_libs: [
         "android.hardware.graphics.composer@2.1",
         "android.hardware.graphics.composer@2.1-resources",
         "android.hardware.graphics.composer@2.2",
         "android.hardware.graphics.composer@2.3",
+        "android.hardware.graphics.composer@2.4",
         "android.hardware.graphics.mapper@2.0",
         "android.hardware.graphics.mapper@3.0",
         "libbase",

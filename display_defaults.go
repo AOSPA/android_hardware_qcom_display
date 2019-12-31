@@ -1,8 +1,8 @@
 package display
 
 import (
-        "android/soong/android"
-        "android/soong/cc"
+	"android/soong/android"
+	"android/soong/cc"
 
 	"github.com/google/blueprint/proptools"
 )
@@ -11,7 +11,7 @@ func init() {
 	android.RegisterModuleType("display_go_defaults", display_DefaultsFactory)
 }
 
-func display_DefaultsFactory() (android.Module) {
+func display_DefaultsFactory() android.Module {
 	module := cc.DefaultsFactory()
 	android.AddLoadHook(module, display_Defaults)
 	return module
@@ -26,7 +26,7 @@ func display_Defaults(ctx android.LoadHookContext) {
 	ctx.AppendProperties(p)
 }
 
-func display_globalDefaults(ctx android.BaseContext) (*bool) {
+func display_globalDefaults(ctx android.LoadHookContext) *bool {
 	var module_enabled *bool
 
 	if android.ExistentPathForSource(ctx, "vendor/google_devices/coral/proprietary/device-vendor-coral.mk").Valid() == false {
@@ -35,4 +35,3 @@ func display_globalDefaults(ctx android.BaseContext) (*bool) {
 
 	return module_enabled
 }
-

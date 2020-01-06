@@ -1184,10 +1184,9 @@ void HWCDisplay::SubmitActiveConfigChange(const uint32_t current_vsync_period) {
   }
 }
 
-int32_t HWCDisplay::GetDisplayGroupConfig(DisplayConfigGroupInfo variable_config) {
+int32_t HWCDisplay::GetDisplayGroupConfig(DisplayConfigVariableInfo variable_config) {
   for (auto &config : variable_config_map_) {
-    DisplayConfigGroupInfo const &group_info = config.second;
-    if (group_info == variable_config) {
+    if (config.second.SameGroup(variable_config)) {
       return INT32(config.first);
     }
   }
@@ -1205,10 +1204,9 @@ bool HWCDisplay::IsSameGroup(hwc2_config_t configId1, hwc2_config_t configId2) {
     return false;
   }
 
-  const DisplayConfigGroupInfo &config_group1 = variable_config1->second;
-  const DisplayConfigGroupInfo &config_group2 = variable_config2->second;
-
-  return (config_group1 == config_group2);
+  const auto &config1 = variable_config1->second;
+  const auto &config2 = variable_config2->second;
+  return config1.SameGroup(config2);
 }
 
 bool HWCDisplay::AllowSeamless(hwc2_config_t request_config) {

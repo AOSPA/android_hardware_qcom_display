@@ -380,7 +380,7 @@ class HWCDisplay : public DisplayEventHandler {
                                                          uint32_t current_vsync_period,
                                                          int64_t desired_time);
   void SubmitActiveConfigChange(uint32_t current_vsync_period);
-  int32_t GetDisplayGroupConfig(DisplayConfigGroupInfo variable_config);
+  int32_t GetDisplayGroupConfig(DisplayConfigVariableInfo variable_config);
   bool IsSameGroup(hwc2_config_t configId1, hwc2_config_t configId2);
   bool AllowSeamless(hwc2_config_t request_config);
   void SetVsyncsApplyRateChange(uint32_t vsyncs) { vsyncs_to_apply_rate_change_ = vsyncs; }

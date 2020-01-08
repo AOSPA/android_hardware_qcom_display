@@ -94,6 +94,9 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   virtual DisplayError GetSupportedDSIClock(std::vector<uint64_t> *bitclk_rates);
   virtual HWC2::Error UpdateDisplayId(hwc2_display_t id);
   virtual HWC2::Error SetPendingRefresh();
+  virtual HWC2::Error SetPanelBrightness(int32_t level) override;
+  virtual HWC2::Error GetPanelBrightness(int32_t &level) const override;
+  virtual HWC2::Error GetPanelMaxBrightness(int32_t &max_brightness_level) const override;
   virtual DisplayError TeardownConcurrentWriteback(void);
   virtual void SetFastPathComposition(bool enable) {
     fast_path_composition_ = enable && !readback_buffer_queued_;
@@ -107,6 +110,7 @@ class HWCDisplayBuiltIn : public HWCDisplay {
                                                 uint64_t timestamp, uint64_t* numFrames,
                                                 int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
                                                 uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) override;
+  virtual HWC2::Error GetDisplayBrightnessSupport(bool *out_support) override;
   virtual HWC2::Error GetProtectedContentsSupport(bool *out_support) override;
   std::string Dump() override;
 

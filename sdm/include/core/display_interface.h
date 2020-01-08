@@ -542,7 +542,7 @@ class DisplayInterface {
 
     @return \link DisplayError \endlink
   */
-  virtual DisplayError SetPanelBrightness(int level) = 0;
+  virtual DisplayError SetPanelBrightness(int32_t level) = 0;
 
   /*! @brief Method to notify display about change in min HDCP encryption level.
 
@@ -649,7 +649,21 @@ class DisplayInterface {
 
     @return \link DisplayError \endlink
   */
-  virtual DisplayError GetPanelBrightness(int *level) = 0;
+  virtual DisplayError GetPanelBrightness(int32_t &level) const = 0;
+
+  /*! @brief Method to get the max brightness level of the display
+
+    @param[out] max_brightness level
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetPanelMaxBrightness(int32_t &max_brightness_level) const = 0;
+
+  /*! @brief Method to query whether it is support brightness control
+
+    @return true if support brightness control
+  */
+  virtual bool IsSupportPanelBrightnessControl() = 0;
 
   /*! @brief Method to set layer mixer resolution.
 

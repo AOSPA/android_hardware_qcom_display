@@ -283,7 +283,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   int32_t ControlPartialUpdate(int dpy, bool enable);
   int32_t DisplayBWTransactionPending(bool *status);
   int32_t SetSecondaryDisplayStatus(int disp_id, HWCDisplay::DisplayStatus status);
-  int32_t GetPanelBrightness(int *level);
+  int32_t GetPanelBrightness(int32_t &level) const;
+  int32_t GetPanelMaxBrightness(int32_t &max_brightness_level) const;
   int32_t MinHdcpEncryptionLevelChanged(int disp_id, uint32_t min_enc_level);
   int32_t IsWbUbwcSupported(int *value);
   int32_t SetDynamicDSIClock(int64_t disp_id, uint32_t bitrate);
@@ -436,7 +437,6 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   Locker pluggable_handler_lock_;
   bool destroy_virtual_disp_pending_ = false;
   uint32_t idle_pc_ref_cnt_ = 0;
-  int brightness_fd_ = -1;
   int32_t disable_hotplug_bwcheck_ = 0;
   int32_t disable_mask_layer_hint_ = 0;
   std::bitset<HWCCallbacks::kNumDisplays> pending_refresh_;

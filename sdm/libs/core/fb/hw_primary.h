@@ -57,7 +57,10 @@ class HWPrimary : public HWDevice {
   virtual DisplayError SetPanelBrightness(int level);
   virtual DisplayError GetPPFeaturesVersion(PPFeatureVersion *vers);
   virtual DisplayError SetPPFeatures(PPFeaturesConfig *feature_list);
-  virtual DisplayError GetPanelBrightness(int *level);
+  virtual DisplayError GetPanelBrightness(int &level) const;
+  virtual void GetHWPanelMaxBrightnessFromNode(HWPanelInfo *panel_info);
+  virtual bool IsSupportPanelBrightnessControl() override;
+  virtual void InitializePanelBrightnessFileDescriptor() override;
   virtual DisplayError SetAutoRefresh(bool enable);
   virtual DisplayError SetMixerAttributes(const HWMixerAttributes &mixer_attributes);
 
@@ -83,6 +86,7 @@ class HWPrimary : public HWDevice {
   std::vector<std::string> display_config_strings_;
   uint32_t active_config_index_ = 0;
   const char *kBrightnessNode = "/sys/class/leds/lcd-backlight/brightness";
+  const char *kMaxBrightnessNode = "/sys/class/leds/lcd-backlight/max_brightness";
   const char *kAutoRefreshNode = "/sys/devices/virtual/graphics/fb0/msm_cmd_autorefresh_en";
   bool auto_refresh_ = false;
   bool avr_prop_disabled_ = false;

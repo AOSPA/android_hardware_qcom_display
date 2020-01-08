@@ -896,6 +896,16 @@ HWC2::Error HWCDisplayBuiltIn::GetDisplayedContentSample(uint64_t max_frames,
     return HWC2::Error::None;
 }
 
+HWC2::Error HWCDisplayBuiltIn::GetDisplayBrightnessSupport(bool *out_support) {
+  if (display_intf_->IsSupportPanelBrightnessControl()) {
+    *out_support = true;
+  } else {
+    *out_support = false;
+  }
+
+  return HWC2::Error::None;
+}
+
 HWC2::Error HWCDisplayBuiltIn::GetProtectedContentsSupport(bool *out_support) {
   *out_support = true;
   return HWC2::Error::None;
@@ -976,6 +986,33 @@ HWC2::Error HWCDisplayBuiltIn::UpdateDisplayId(hwc2_display_t id) {
 
 HWC2::Error HWCDisplayBuiltIn::SetPendingRefresh() {
   pending_refresh_ = true;
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplayBuiltIn::SetPanelBrightness(int32_t level) {
+  DisplayError ret = display_intf_->SetPanelBrightness(level);
+  if (ret != kErrorNone) {
+    return HWC2::Error::NoResources;
+  }
+
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplayBuiltIn::GetPanelBrightness(int32_t &level) const {
+  DisplayError ret = display_intf_->GetPanelBrightness(level);
+  if (ret != kErrorNone) {
+    return HWC2::Error::NoResources;
+  }
+
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplayBuiltIn::GetPanelMaxBrightness(int32_t &max_brightness_level) const {
+  DisplayError ret = display_intf_->GetPanelMaxBrightness(max_brightness_level);
+  if (ret != kErrorNone) {
+    return HWC2::Error::NoResources;
+  }
+
   return HWC2::Error::None;
 }
 

@@ -2167,22 +2167,6 @@ void HWCDisplay::MarkLayersForClientComposition() {
 void HWCDisplay::ApplyScanAdjustment(hwc_rect_t *display_frame) {
 }
 
-int HWCDisplay::SetPanelBrightness(int level) {
-  int ret = 0;
-  if (display_intf_) {
-    ret = display_intf_->SetPanelBrightness(level);
-    validated_ = false;
-  } else {
-    ret = -EINVAL;
-  }
-
-  return ret;
-}
-
-int HWCDisplay::GetPanelBrightness(int *level) {
-  return display_intf_->GetPanelBrightness(level);
-}
-
 int HWCDisplay::ToggleScreenUpdates(bool enable) {
   display_paused_ = enable ? false : true;
   callbacks_->Refresh(id_);
@@ -2538,6 +2522,11 @@ HWC2::Error HWCDisplay::GetDisplayConnectionType(uint32_t *out_type) {
     default:
       return HWC2::Error::BadDisplay;
   }
+}
+
+HWC2::Error HWCDisplay::GetDisplayBrightnessSupport(bool *out_support) {
+  *out_support = false;
+  return HWC2::Error::None;
 }
 
 HWC2::Error HWCDisplay::GetProtectedContentsSupport(bool *out_support) {

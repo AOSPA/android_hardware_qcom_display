@@ -51,10 +51,6 @@
 #define HWC_UEVENT_SWITCH_HDMI "change@/devices/virtual/switch/hdmi"
 #define HWC_UEVENT_DRM_EXT_HOTPLUG "mdss_mdp/drm/card"
 
-#define MAX_BRIGHTNESS 255
-#define BRIGHTNESS_FILE1 "/sys/class/leds/lcd-backlight/brightness"
-#define BRIGHTNESS_FILE2 "/sys/class/backlight/panel0-backlight/brightness"
-
 static sdm::HWCSession::HWCModuleMethods g_hwc_module_methods;
 
 hwc_module_t HAL_MODULE_INFO_SYM = {
@@ -228,17 +224,6 @@ int HWCSession::Init() {
 
   is_composer_up_ = true;
 
-  char const *brightness_file;
-  if (access(BRIGHTNESS_FILE1, F_OK) == 0) {
-    brightness_file = BRIGHTNESS_FILE1;
-  } else {
-    brightness_file = BRIGHTNESS_FILE2;
-  }
-  brightness_fd_ = open(brightness_file, O_WRONLY);
-  if (brightness_fd_ == -1) {
-    DLOGW("Unable to open brightness file: [%d] %s", errno, strerror(errno));
-  }
-
   return 0;
 }
 
@@ -270,8 +255,6 @@ int HWCSession::Deinit() {
       DLOGE("Display core de-initialization failed. Error = %d", error);
     }
   }
-
-  close(brightness_fd_);
 
   return 0;
 }
@@ -457,9 +440,16 @@ void HWCSession::GetCapabilities(struct hwc2_device *device, uint32_t *outCount,
 
 int32_t HWCSession::GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_display_t display,
                                                 bool *out_support) {
-  HWCSession *hwc_session = static_cast<HWCSession *>(device);
-  *out_support = display == HWC_DISPLAY_PRIMARY && hwc_session->brightness_fd_ != -1;
-  return INT32(HWC2::Error::None);
+  if (!device || (display >= HWCCallbacks::kNumDisplays)) {
+    return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  if (!out_support) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
+
+  return CallDisplayFunction(device, display, &HWCDisplay::GetDisplayBrightnessSupport,
+                             out_support);
 }
 
 template <typename PFN, typename T>
@@ -1298,47 +1288,35 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t
 
 int32_t HWCSession::SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t display,
                                          float brightness) {
-  bool brightness_support = false;
-  auto status = GetDisplayBrightnessSupport(device, display, &brightness_support);
-  if (status != HWC2_ERROR_NONE) {
-    return INT32(status);
+  if (!device || (display >= HWCCallbacks::kNumDisplays)) {
+    return HWC2_ERROR_BAD_DISPLAY;
   }
-  if (!brightness_support) {
-    return INT32(HWC2::Error::Unsupported);
+
+  if (brightness != -1.0f && (brightness < 0.0f || brightness > 1.0f)) {
+    return HWC2_ERROR_BAD_PARAMETER;
   }
-  int backlight = -1;
+
+  auto *hwc_session = static_cast<HWCSession *>(device);
+  if (!hwc_session->hwc_display_[display]) {
+    return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  int32_t max_brightness_level = 0;
+  auto err = INT32(hwc_session->hwc_display_[display]->GetPanelMaxBrightness(max_brightness_level));
+  if (err) {
+    return err;
+  }
+
+  int32_t level;
   if (brightness == -1.0f) {
-    backlight = 0;
-  } else if (brightness < 0.0f || brightness > 1.0f) {
-    return INT32(HWC2::Error::BadParameter);
+    level = 0;
   } else {
-    // 0 is reserved for "backlight off", so we scale the brightness from 1 to MAX_BRIGHTNESS.
-    backlight = (int) ((MAX_BRIGHTNESS - 1.0f) * brightness + 1.0f);
-  }
-  char buff[20];
-  int n = snprintf(buff, sizeof(buff), "%d\n", backlight);
-  if (n < 0 || n >= sizeof(buff)) {
-    return INT32(HWC2::Error::BadParameter);
+    level = INT32(brightness * (max_brightness_level - 1) + 1);
   }
 
-  HWCSession *hwc_session = static_cast<HWCSession *>(device);
-  long error = lseek(hwc_session->brightness_fd_, 0, SEEK_SET);
-  if (error == -1) {
-    DLOGW("Failed to rewind brightness file: [%d] %s", errno, strerror(errno));
-    return INT32(HWC2::Error::NoResources);
-  }
-  error = write(hwc_session->brightness_fd_, buff, (size_t) n);
-  if (error == -1) {
-    DLOGW("Failed to write to brightness file: [%d] %s", errno, strerror(errno));
-    return INT32(HWC2::Error::NoResources);
-  }
-  error = fsync(hwc_session->brightness_fd_);
-  if (error == -1) {
-    DLOGW("Failed to flush brightness file: [%d] %s", errno, strerror(errno));
-    return INT32(HWC2::Error::NoResources);
-  }
+  DLOGI_IF(kTagDisplay, "Setting brightness to level %d (%f percent)", level, brightness);
 
-  return INT32(HWC2::Error::None);
+  return INT32(hwc_session->hwc_display_[display]->SetPanelBrightness(level));
 }
 
 hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
@@ -1744,8 +1722,8 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
           DLOGE("QService command = %d: output_parcel needed.", command);
           break;
         }
-        int level = 0;
-        status = GetPanelBrightness(&level);
+        int32_t level = 0;
+        status = GetPanelBrightness(level);
         output_parcel->writeInt32(level);
       }
       break;
@@ -2421,7 +2399,7 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
             DLOGE("Brightness value is Null");
             ret = -EINVAL;
           } else {
-            ret = hwc_display_[display_id]->SetPanelBrightness(*brightness_value);
+            ret = INT(hwc_display_[display_id]->SetPanelBrightness(*brightness_value));
           }
           break;
         case kEnableFrameCapture:

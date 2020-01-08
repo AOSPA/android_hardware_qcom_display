@@ -382,9 +382,14 @@ DisplayError DisplayBuiltIn::SetDisplayMode(uint32_t mode) {
   return error;
 }
 
-DisplayError DisplayBuiltIn::SetPanelBrightness(int level) {
-  lock_guard<recursive_mutex> obj(recursive_mutex_);
-  return hw_intf_->SetPanelBrightness(level);
+DisplayError DisplayBuiltIn::SetPanelBrightness(int32_t level) {
+  lock_guard<std::mutex> lock(brightness_lock_);
+
+  DisplayError err = hw_intf_->SetPanelBrightness(level);
+
+  DLOGI_IF(kTagDisplay, "Setting brightness to level %d, error %d", level, err);
+
+  return err;
 }
 
 DisplayError DisplayBuiltIn::GetRefreshRateRange(uint32_t *min_refresh_rate,
@@ -496,9 +501,29 @@ void DisplayBuiltIn::Histogram(int histogram_fd, uint32_t blob_id) {
     event_handler_->HistogramEvent(histogram_fd, blob_id);
 }
 
-DisplayError DisplayBuiltIn::GetPanelBrightness(int *level) {
+DisplayError DisplayBuiltIn::GetPanelBrightness(int32_t &level) const {
+  lock_guard<std::mutex> lock(brightness_lock_);
+
+  DisplayError err = hw_intf_->GetPanelBrightness(level);
+
+  DLOGI_IF(kTagDisplay, "Getting brightness level %d, error %d", level, err);
+
+  return err;
+}
+
+DisplayError DisplayBuiltIn::GetPanelMaxBrightness(int32_t &max_brightness_level) const {
+  lock_guard<std::mutex> lock(brightness_lock_);
+
+  max_brightness_level = static_cast<int32_t>(hw_panel_info_.panel_max_brightness);
+
+  DLOGI_IF(kTagDisplay, "Get panel max brightness %u", max_brightness_level);
+  return kErrorNone;
+}
+
+bool DisplayBuiltIn::IsSupportPanelBrightnessControl() {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
-  return hw_intf_->GetPanelBrightness(level);
+
+  return hw_intf_->IsSupportPanelBrightnessControl();
 }
 
 DisplayError DisplayBuiltIn::ControlPartialUpdate(bool enable, uint32_t *pending) {

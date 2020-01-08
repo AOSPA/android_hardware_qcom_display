@@ -92,7 +92,10 @@ class HWDevice : public HWInterface {
   virtual DisplayError GetMaxCEAFormat(uint32_t *max_cea_format);
   virtual DisplayError SetCursorPosition(HWLayers *hw_layers, int x, int y);
   virtual DisplayError OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level);
-  virtual DisplayError GetPanelBrightness(int *level);
+  virtual DisplayError GetPanelBrightness(int &level) const;
+  virtual void GetHWPanelMaxBrightnessFromNode(HWPanelInfo *panel_info);
+  virtual bool IsSupportPanelBrightnessControl() override { return false; };
+  virtual void InitializePanelBrightnessFileDescriptor() { return; }
   virtual DisplayError SetAutoRefresh(bool enable) { return kErrorNone; }
   virtual DisplayError SetS3DMode(HWS3DMode s3d_mode);
   virtual DisplayError SetScaleLutConfig(HWScaleLutInfo *lut_info);
@@ -123,11 +126,12 @@ class HWDevice : public HWInterface {
     kHWEventBlank,
   };
 
-  static const int kMaxStringLength = 1024;
-  static const int kNumPhysicalDisplays = 2;
+  static constexpr int kMaxStringLength = 1024;
+  static constexpr int kNumPhysicalDisplays = 2;
   // This indicates the number of fb devices created in the driver for all interfaces. Any addition
   // of new fb devices should be added here.
   static const int kFBNodeMax = 4;
+  static constexpr int kDefaultMaxBrightness = 255;
 
   void DumpLayerCommit(const mdp_layer_commit &layer_commit);
   DisplayError SetFormat(const LayerBufferFormat &source, uint32_t *target);
@@ -145,7 +149,6 @@ class HWDevice : public HWInterface {
   void GetHWPanelNameByNode(int device_node, HWPanelInfo *panel_info);
   void GetHWDisplayPortAndMode(int device_node, HWPanelInfo *panel_info);
   void GetSplitInfo(int device_node, HWPanelInfo *panel_info);
-  void GetHWPanelMaxBrightnessFromNode(HWPanelInfo *panel_info);
   int ParseLine(const char *input, char *tokens[], const uint32_t max_token, uint32_t *count);
   int ParseLine(const char *input, const char *delim, char *tokens[],
                 const uint32_t max_token, uint32_t *count);
@@ -164,6 +167,8 @@ class HWDevice : public HWInterface {
   const char *fb_path_;
   BufferSyncHandler *buffer_sync_handler_;
   int device_fd_ = -1;
+  int brightness_fd_ = -1;
+  int max_brightness_fd_ = -1;
   int stored_retire_fence = -1;
   HWDeviceType device_type_;
   mdp_layer_commit mdp_disp_commit_;

@@ -295,7 +295,7 @@ Return<int32_t> HWCSession::setPanelBrightness(uint32_t level) {
   int32_t error = -EINVAL;
 
   if (hwc_display_[HWC_DISPLAY_PRIMARY]) {
-    error = hwc_display_[HWC_DISPLAY_PRIMARY]->SetPanelBrightness(INT(level));
+    error = INT32(hwc_display_[HWC_DISPLAY_PRIMARY]->SetPanelBrightness(INT32(level)));
     if (error) {
       DLOGE("Failed to set the panel brightness = %d. Error = %d", level, error);
     }
@@ -304,12 +304,12 @@ Return<int32_t> HWCSession::setPanelBrightness(uint32_t level) {
   return error;
 }
 
-int32_t HWCSession::GetPanelBrightness(int *level) {
+int32_t HWCSession::GetPanelBrightness(int32_t &level) const {
   SEQUENCE_WAIT_SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);
   int32_t error = -EINVAL;
 
   if (hwc_display_[HWC_DISPLAY_PRIMARY]) {
-    error = hwc_display_[HWC_DISPLAY_PRIMARY]->GetPanelBrightness(level);
+    error = INT32(hwc_display_[HWC_DISPLAY_PRIMARY]->GetPanelBrightness(level));
     if (error) {
       DLOGE("Failed to get the panel brightness. Error = %d", error);
     }
@@ -318,9 +318,23 @@ int32_t HWCSession::GetPanelBrightness(int *level) {
   return error;
 }
 
+int32_t HWCSession::GetPanelMaxBrightness(int32_t &max_brightness_level) const {
+  SEQUENCE_WAIT_SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);
+  int32_t error = -EINVAL;
+
+  if (hwc_display_[HWC_DISPLAY_PRIMARY]) {
+    error = INT32(hwc_display_[HWC_DISPLAY_PRIMARY]->GetPanelMaxBrightness(max_brightness_level));
+    if (error) {
+      DLOGE("Failed to get the panel max brightness. Error = %d", error);
+    }
+  }
+
+  return error;
+}
+
 Return<void> HWCSession::getPanelBrightness(getPanelBrightness_cb _hidl_cb) {
-  int level = 0;
-  int32_t error = GetPanelBrightness(&level);
+  int32_t level = 0;
+  int32_t error = GetPanelBrightness(level);
 
   _hidl_cb(error, static_cast<uint32_t>(level));
 

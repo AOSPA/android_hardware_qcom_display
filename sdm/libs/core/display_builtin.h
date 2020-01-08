@@ -111,8 +111,10 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   virtual DisplayError SetDisplayMode(uint32_t mode);
   virtual DisplayError GetRefreshRateRange(uint32_t *min_refresh_rate, uint32_t *max_refresh_rate);
   virtual DisplayError SetRefreshRate(uint32_t refresh_rate, bool final_rate);
-  virtual DisplayError SetPanelBrightness(int level);
-  virtual DisplayError GetPanelBrightness(int *level);
+  virtual DisplayError SetPanelBrightness(int32_t level) override;
+  virtual DisplayError GetPanelBrightness(int32_t &level) const override;
+  virtual DisplayError GetPanelMaxBrightness(int32_t &max_brightness_level) const override;
+  virtual bool IsSupportPanelBrightnessControl() override;
   virtual DisplayError HandleSecureEvent(SecureEvent secure_event, LayerStack *layer_stack);
   virtual DisplayError SetDisplayDppsAdROI(void *payload);
   virtual DisplayError SetQSyncMode(QSyncMode qsync_mode);
@@ -171,6 +173,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
 
   uint32_t pendingActiveConfig = UINT_MAX;
   DeferFpsConfig deferred_config_ = {};
+
+  std::mutex mutable brightness_lock_;
 };
 
 }  // namespace sdm

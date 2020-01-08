@@ -211,8 +211,11 @@ class HWCDisplay : public DisplayEventHandler {
   }
 
   uint32_t GetMaxRefreshRate() { return max_refresh_rate_; }
-  int SetPanelBrightness(int level);
-  int GetPanelBrightness(int *level);
+  virtual HWC2::Error SetPanelBrightness(int32_t level) { return HWC2::Error::Unsupported; }
+  virtual HWC2::Error GetPanelBrightness(int32_t &level) const { return HWC2::Error::Unsupported; }
+  virtual HWC2::Error GetPanelMaxBrightness(int32_t &max_brightness_level) const {
+    return HWC2::Error::Unsupported;
+  }
   int ToggleScreenUpdates(bool enable);
   int ColorSVCRequestRoute(const PPDisplayAPIPayload &in_payload, PPDisplayAPIPayload *out_payload,
                            PPPendingParams *pending_action);
@@ -345,6 +348,7 @@ class HWCDisplay : public DisplayEventHandler {
 
   virtual HWC2::Error GetDisplayConnectionType(uint32_t *out_type);
 
+  virtual HWC2::Error GetDisplayBrightnessSupport(bool *out_support);
   virtual HWC2::Error GetProtectedContentsSupport(bool *out_support);
 
   virtual HWC2::Error GetAutoLowLatencyModeSupport(bool *out_support);

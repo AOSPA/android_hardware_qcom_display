@@ -28,6 +28,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <utils/debug.h>
+#include <utils/sys.h>
 #include <vector>
 #include <cstring>
 
@@ -478,6 +479,80 @@ DisplayError HWPeripheralDRM::SetDisplayDppsAdROI(void *payload) {
   }
 
   return err;
+}
+
+DisplayError HWPeripheralDRM::SetPanelBrightness(int32_t level) {
+  DisplayError err = kErrorNone;
+  char buffer[kMaxSysfsCommandLength] = {0};
+
+  DLOGV_IF(kTagDriverConfig, "Set brightness level to %d", level);
+  if (brightness_fd_ < 0) {
+    DLOGW("Unable to access brightness node = %s", kBrightnessNode);
+    return kErrorFileDescriptor;
+  }
+
+  int32_t bytes = snprintf(buffer, kMaxSysfsCommandLength, "%d\n", level);
+  ssize_t ret = Sys::pwrite_(brightness_fd_, buffer, static_cast<size_t>(bytes), 0);
+  if (ret <= 0) {
+    DLOGW("Failed to write to node = %s, error = %s ", kBrightnessNode, strerror(errno));
+    err = kErrorHardware;
+  }
+
+  return err;
+}
+
+DisplayError HWPeripheralDRM::GetPanelBrightness(int32_t &level) const {
+  DisplayError err = kErrorNone;
+  char brightness[kMaxStringLength] = {0};
+
+  if (brightness_fd_ < 0) {
+    DLOGW("Unable to access brightness node = %s", kBrightnessNode);
+    return kErrorFileDescriptor;
+  }
+
+  if (Sys::pread_(brightness_fd_, brightness, sizeof(brightness), 0) > 0) {
+    level = atoi(brightness);
+    DLOGV_IF(kTagDriverConfig, "Brightness level = %d", level);
+  } else {
+    DLOGW("Failed to read panel brightness");
+    err = kErrorHardware;
+  }
+
+  return err;
+}
+
+void HWPeripheralDRM::GetHWPanelMaxBrightness() {
+  char brightness[kMaxStringLength] = {0};
+
+  hw_panel_info_.panel_max_brightness = kDefaultMaxBrightness;
+  if (max_brightness_fd_ < 0) {
+    DLOGW("Unable to access max brightness node = %s", kMaxBrightnessNode);
+    return;
+  }
+
+  if (Sys::pread_(max_brightness_fd_, brightness, sizeof(brightness), 0) > 0) {
+    hw_panel_info_.panel_max_brightness = atoi(brightness);
+    DLOGI_IF(kTagDisplay, "Max brightness level = %d", hw_panel_info_.panel_max_brightness);
+  } else {
+    DLOGW("Failed to read max brightness level. error = %s", strerror(errno));
+  }
+}
+
+bool HWPeripheralDRM::IsSupportPanelBrightnessControl() {
+  return (brightness_fd_ >= 0);
+}
+
+void HWPeripheralDRM::InitializePanelBrightnessFileDescriptor() {
+  brightness_fd_ = Sys::open_(kBrightnessNode, O_RDWR);
+  if (brightness_fd_ < 0) {
+    DLOGW("Unable to open brightness node = %s, error = %s", kBrightnessNode, strerror(errno));
+  }
+
+  max_brightness_fd_ = Sys::open_(kMaxBrightnessNode, O_RDONLY);
+  if (max_brightness_fd_ < 0) {
+    DLOGW("Unable to open max brightness node = %s, error =  %s", kMaxBrightnessNode,
+          strerror(errno));
+  }
 }
 
 }  // namespace sdm

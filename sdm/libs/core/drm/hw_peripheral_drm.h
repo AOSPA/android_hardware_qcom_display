@@ -61,6 +61,15 @@ class HWPeripheralDRM : public HWDeviceDRM {
   virtual DisplayError GetDynamicDSIClock(uint64_t *bit_clk_rate);
   virtual DisplayError SetDisplayAttributes(uint32_t index);
   virtual DisplayError TeardownConcurrentWriteback(void);
+  virtual DisplayError SetPanelBrightness(int32_t level) override;
+  virtual DisplayError GetPanelBrightness(int32_t &level) const override;
+  virtual void GetHWPanelMaxBrightness() override;
+  virtual bool IsSupportPanelBrightnessControl() override;
+  virtual void InitializePanelBrightnessFileDescriptor() override;
+
+  static constexpr const char *kBrightnessNode = "/sys/class/backlight/panel0-backlight/brightness";
+  static constexpr const char *kMaxBrightnessNode =
+      "/sys/class/backlight/panel0-backlight/max_brightness";
 
  private:
   void SetDestScalarData(HWLayersInfo hw_layer_info, bool validate);

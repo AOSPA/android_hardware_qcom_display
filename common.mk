@@ -1,13 +1,13 @@
 #Common headers
 display_top := $(call my-dir)
 display_config_version := $(shell \
-    if [ -d "$(QC_OPEN_PATH)/interfaces/vendor/display/config/1.1" ];\
+    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/config/1.1" ];\
     then echo DISPLAY_CONFIG_1_1; fi)
 display_config_version := $(shell \
-    if [ -d "$(QC_OPEN_PATH)/interfaces/vendor/display/config/1.2" ];\
+    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/config/1.2" ];\
     then echo DISPLAY_CONFIG_1_2; fi)
 display_config_version := $(shell \
-    if [ -d "$(QC_OPEN_PATH)/interfaces/vendor/display/config/1.3" ];\
+    if [ -d "$(TOP)/vendor/qcom/opensource/interfaces/display/config/1.3" ];\
     then echo DISPLAY_CONFIG_1_3; fi)
 
 #Common C flags

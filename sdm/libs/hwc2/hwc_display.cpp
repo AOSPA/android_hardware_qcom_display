@@ -2545,6 +2545,24 @@ HWC2::Error HWCDisplay::GetProtectedContentsSupport(bool *out_support) {
   return HWC2::Error::None;
 }
 
+HWC2::Error HWCDisplay::GetAutoLowLatencyModeSupport(bool *out_support) {
+  *out_support = false;
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplay::GetSupportedContentTypes(uint32_t *out_num_types, uint32_t *out_types) {
+  *out_num_types = 0;
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplay::SetContentType(int32_t content_type) {
+  if (content_type == HWC2_CONTENT_TYPE_NONE) {
+    return HWC2::Error::None;
+  }
+
+  return HWC2::Error::Unsupported;
+}
+
 // Skip SDM prepare if all the layers in the current draw cycle are marked as Skip and
 // previous draw cycle had GPU Composition, as the resources for GPU Target layer have
 // already been validated and configured to the driver.

@@ -802,6 +802,51 @@ int32_t GetProtectedContentsSupport(hwc2_device_t *device, hwc2_display_t displa
                                          out_support);
 }
 
+int32_t GetAutoLowLatencyModeSupport(hwc2_device_t *device, hwc2_display_t display,
+                                     bool *out_support) {
+  if (!out_support) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
+  return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetAutoLowLatencyModeSupport,
+                                         out_support);
+}
+
+static int32_t SetAutoLowLatencyMode(hwc2_device_t *device, hwc2_display_t display, bool on) {
+  if (!device || display >= HWCCallbacks::kNumDisplays) {
+    return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::SetAutoLowLatencyMode, on);
+}
+
+static int32_t GetSupportedContentTypes(hwc2_device_t *device, hwc2_display_t display,
+                                        uint32_t *out_num_types, uint32_t *out_types) {
+  if (!device || display >= HWCCallbacks::kNumDisplays) {
+    return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  if (!out_num_types) {
+    return INT32(HWC2::Error::None);
+  }
+
+  return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::GetSupportedContentTypes,
+                                         out_num_types, out_types);
+}
+
+static int32_t SetContentType(hwc2_device_t *device, hwc2_display_t display,
+                              int32_t /* hwc2_content_type_t */ content_type) {
+  if (!device || display >= HWCCallbacks::kNumDisplays) {
+    return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  if (content_type < HWC2_CONTENT_TYPE_NONE || content_type > HWC2_CONTENT_TYPE_GAME) {
+    return HWC2_ERROR_BAD_PARAMETER;
+  }
+
+  return HWCSession::CallDisplayFunction(device, display, &HWCDisplay::SetContentType,
+                                         content_type);
+}
+
 int32_t HWCSession::PresentDisplay(hwc2_device_t *device, hwc2_display_t display,
                                    int32_t *out_retire_fence) {
   HWCSession *hwc_session = static_cast<HWCSession *>(device);
@@ -1219,8 +1264,15 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t
     return INT32(status);
   }
 
+  bool auto_low_latency_mode_support = false;
+  if (auto status = GetAutoLowLatencyModeSupport(device, display, &auto_low_latency_mode_support);
+      status != HWC2_ERROR_NONE) {
+    DLOGE("Failed to get auto low latency mode support Error = %d", status);
+    return INT32(status);
+  }
+
   uint32_t count = 1 + static_cast<uint32_t>(doze_support) + (brightness_support ? 1 : 0) +
-                   (protected_contents_support ? 1 : 0);
+                   (protected_contents_support ? 1 : 0) + (auto_low_latency_mode_support ? 1 : 0);
   int index = 0;
   if (outCapabilities != nullptr && (*outNumCapabilities >= count)) {
     outCapabilities[index++] =
@@ -1233,6 +1285,10 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t
     }
     if (protected_contents_support) {
       outCapabilities[index++] = uint32_t(IComposerClient::DisplayCapability::PROTECTED_CONTENTS);
+    }
+    if (auto_low_latency_mode_support) {
+      outCapabilities[index++] =
+          uint32_t(IComposerClient::DisplayCapability::AUTO_LOW_LATENCY_MODE);
     }
   }
 
@@ -1414,6 +1470,12 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_GET_DISPLAY_VSYNC_PERIOD>(GetDisplayVsyncPeriod);
     case HWC2::FunctionDescriptor::SetActiveConfigWithConstraints:
       return AsFP<HWC2_PFN_SET_ACTIVE_CONFIG_WITH_CONSTRAINTS>(SetActiveConfigWithConstraints);
+    case HWC2::FunctionDescriptor::SetAutoLowLatencyMode:
+      return AsFP<HWC2_PFN_SET_AUTO_LOW_LATENCY_MODE>(SetAutoLowLatencyMode);
+    case HWC2::FunctionDescriptor::GetSupportedContentTypes:
+      return AsFP<HWC2_PFN_GET_SUPPORTED_CONTENT_TYPES>(GetSupportedContentTypes);
+    case HWC2::FunctionDescriptor::SetContentType:
+      return AsFP<HWC2_PFN_SET_CONTENT_TYPE>(SetContentType);
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());

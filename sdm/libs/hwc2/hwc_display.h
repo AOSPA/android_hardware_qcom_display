@@ -347,6 +347,11 @@ class HWCDisplay : public DisplayEventHandler {
 
   virtual HWC2::Error GetProtectedContentsSupport(bool *out_support);
 
+  virtual HWC2::Error GetAutoLowLatencyModeSupport(bool *out_support);
+  virtual HWC2::Error SetAutoLowLatencyMode(bool on) { return HWC2::Error::Unsupported; };
+  virtual HWC2::Error GetSupportedContentTypes(uint32_t *out_num_types, uint32_t *out_types);
+  virtual HWC2::Error SetContentType(int32_t content_type);
+
  protected:
   static uint32_t throttling_refresh_rate_;
   // Maximum number of layers supported by display manager.

@@ -552,12 +552,16 @@ DisplayError HWInfoDRM::GetHWRotatorInfo(HWResourceInfo *hw_resource) {
         while (Sys::getline_(caps_fs, caps)) {
           const string downscale_compression = "downscale_compression=";
           const string min_downscale = "min_downscale=";
+          const string max_line_width = "max_line_width=";
           if (caps.find(downscale_compression) != string::npos) {
             hw_resource->hw_rot_info.downscale_compression =
               std::stoi(string(caps, downscale_compression.length()));
           } else if (caps.find(min_downscale) != string::npos) {
             hw_resource->hw_rot_info.min_downscale =
               std::stof(string(caps, min_downscale.length()));
+          } else if (caps.find(max_line_width) != string::npos) {
+            hw_resource->hw_rot_info.max_line_width =
+              std::stoul(string(caps, max_line_width.length()));
           }
         }
       }
@@ -567,9 +571,10 @@ DisplayError HWInfoDRM::GetHWRotatorInfo(HWResourceInfo *hw_resource) {
     }
   }
 
-  DLOGI("V4L2 Rotator: Count = %d, Downscale = %d, Min_downscale = %f, Downscale_compression = %d",
-        hw_resource->hw_rot_info.num_rotator, hw_resource->hw_rot_info.has_downscale,
-        hw_resource->hw_rot_info.min_downscale, hw_resource->hw_rot_info.downscale_compression);
+  DLOGI("V4L2 Rotator: Count = %d, Downscale = %d, Min_downscale = %f," \
+        "Downscale_compression = %d, Max_line_width = %d", hw_resource->hw_rot_info.num_rotator,
+        hw_resource->hw_rot_info.has_downscale, hw_resource->hw_rot_info.min_downscale,
+        hw_resource->hw_rot_info.downscale_compression, hw_resource->hw_rot_info.max_line_width);
 
   return kErrorNone;
 }
@@ -671,10 +676,26 @@ void HWInfoDRM::GetSDMFormat(uint32_t drm_format, uint64_t drm_format_modifier,
 }
 
 DisplayError HWInfoDRM::GetFirstDisplayInterfaceType(HWDisplayInterfaceInfo *hw_disp_info) {
-  hw_disp_info->type = kPrimary;
+
+  HWDisplaysInfo hw_displays_info;
+  DisplayError error = kErrorNone;
+
+  hw_disp_info->type = kBuiltIn;
   hw_disp_info->is_connected = true;
 
-  return kErrorNone;
+  error = GetDisplaysStatus(&hw_displays_info);
+  if (error == kErrorNone) {
+    for (auto &iter : hw_displays_info) {
+      auto &info = iter.second;
+      if (info.is_primary) {
+        hw_disp_info->type = info.display_type;
+        hw_disp_info->is_connected = info.is_connected;
+        break;
+      }
+    }
+  }
+
+  return error;
 }
 
 DisplayError HWInfoDRM::GetDisplaysStatus(HWDisplaysInfo *hw_displays_info) {

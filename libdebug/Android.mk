@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE                  := libdisplaydebug
-LOCAL_VENDOR_MODULE           := true
+LOCAL_VENDOR_OVERLAY_MODULE   := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_SHARED_LIBRARIES        := libdl
 LOCAL_CFLAGS                  := -DLOG_TAG=\"SDM\" -Wall -std=c++11 -Werror -fno-operator-names

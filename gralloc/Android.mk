@@ -4,7 +4,7 @@ include $(LOCAL_PATH)/../common.mk
 include $(CLEAR_VARS)
 
 LOCAL_MODULE                  := gralloc.$(TARGET_BOARD_PLATFORM)
-LOCAL_VENDOR_MODULE           := true
+LOCAL_VENDOR_OVERLAY_MODULE   := true
 LOCAL_MODULE_RELATIVE_PATH    := hw
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes)
@@ -23,7 +23,7 @@ include $(BUILD_SHARED_LIBRARY)
 #libgrallocutils
 include $(CLEAR_VARS)
 LOCAL_MODULE                  := libgrallocutils
-LOCAL_VENDOR_MODULE           := true
+LOCAL_VENDOR_OVERLAY_MODULE   := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) $(kernel_includes)
 LOCAL_HEADER_LIBRARIES        := display_headers
@@ -38,7 +38,7 @@ include $(BUILD_SHARED_LIBRARY)
 #libgralloccore
 include $(CLEAR_VARS)
 LOCAL_MODULE                  := libgralloccore
-LOCAL_VENDOR_MODULE           := true
+LOCAL_VENDOR_OVERLAY_MODULE   := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) $(kernel_includes)
 LOCAL_HEADER_LIBRARIES        := display_headers
@@ -63,7 +63,7 @@ qti_allocator_version := $(shell \
 #mapper
 include $(CLEAR_VARS)
 LOCAL_MODULE                  := android.hardware.graphics.mapper@2.0-impl-qti-display
-LOCAL_VENDOR_MODULE           := true
+LOCAL_VENDOR_OVERLAY_MODULE   := true
 LOCAL_MODULE_RELATIVE_PATH    := hw
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) $(kernel_includes)
@@ -84,7 +84,7 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE                  := vendor.qti.hardware.display.allocator@1.0-service
-LOCAL_VENDOR_MODULE           := true
+LOCAL_VENDOR_OVERLAY_MODULE   := true
 LOCAL_MODULE_RELATIVE_PATH    := hw
 LOCAL_MODULE_TAGS             := optional
 LOCAL_HEADER_LIBRARIES        := display_headers

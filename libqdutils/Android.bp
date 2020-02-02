@@ -1,6 +1,6 @@
 cc_library_shared {
     name: "libqdutils",
-    vendor: true,
+    vendor_overlay: true,
     defaults: ["display_defaults"],
     header_libs: ["libhardware_headers", "libutils_headers"],
     shared_libs: [

@@ -1,6 +1,6 @@
 cc_library_shared {
     name: "libqservice",
-    vendor: true,
+    vendor_overlay: true,
     defaults: ["display_defaults"],
     shared_libs: ["libbinder"],
     cflags: [

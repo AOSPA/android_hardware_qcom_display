@@ -1175,9 +1175,6 @@ HWC2::Error HWCDisplay::AcceptDisplayChanges() {
   if (layer_set_.empty()) {
     return HWC2::Error::None;
   }
-  if (display_null_.IsActive()) {
-    return HWC2::Error::None;
-  }
 
   if (!validated_) {
     return HWC2::Error::NotValidated;
@@ -1198,10 +1195,6 @@ HWC2::Error HWCDisplay::AcceptDisplayChanges() {
 HWC2::Error HWCDisplay::GetChangedCompositionTypes(uint32_t *out_num_elements,
                                                    hwc2_layer_t *out_layers, int32_t *out_types) {
   if (layer_set_.empty()) {
-    return HWC2::Error::None;
-  }
-
-  if (display_null_.IsActive()) {
     return HWC2::Error::None;
   }
 
@@ -1247,9 +1240,6 @@ HWC2::Error HWCDisplay::GetDisplayRequests(int32_t *out_display_requests,
                                            uint32_t *out_num_elements, hwc2_layer_t *out_layers,
                                            int32_t *out_layer_requests) {
   if (layer_set_.empty()) {
-    return HWC2::Error::None;
-  }
-  if (display_null_.IsActive()) {
     return HWC2::Error::None;
   }
 

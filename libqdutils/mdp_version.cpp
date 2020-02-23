@@ -97,7 +97,7 @@ int MDPVersion::tokenizeParams(char *inputParams, const char *delim,
                                 char* tokenStr[], int *idx) {
     char *tmp_token = NULL;
     char *temp_ptr;
-    int ret = 0, index = 0;
+    int index = 0;
     if (!inputParams) {
         return -1;
     }
@@ -115,7 +115,6 @@ void  MDPVersion::updatePanelInfo() {
     FILE *displayDeviceFP = NULL;
     FILE *panelInfoNodeFP = NULL;
     char fbType[MAX_FRAME_BUFFER_NAME_SIZE];
-    char panelInfo[MAX_FRAME_BUFFER_NAME_SIZE];
     const char *strCmdPanel = "mipi dsi cmd panel";
     const char *strVideoPanel = "mipi dsi video panel";
     const char *strLVDSPanel = "lvds panel";
@@ -238,13 +237,13 @@ bool MDPVersion::updateSysFsInfo() {
                     mMdpRev = atoi(tokens[1]);
                 }
                 else if(!strncmp(tokens[0], "rgb_pipes", strlen("rgb_pipes"))) {
-                    mRGBPipes = atoi(tokens[1]);
+                    mRGBPipes = (uint8_t)atoi(tokens[1]);
                 }
                 else if(!strncmp(tokens[0], "vig_pipes", strlen("vig_pipes"))) {
-                    mVGPipes = atoi(tokens[1]);
+                    mVGPipes = (uint8_t)atoi(tokens[1]);
                 }
                 else if(!strncmp(tokens[0], "dma_pipes", strlen("dma_pipes"))) {
-                    mDMAPipes = atoi(tokens[1]);
+                    mDMAPipes = (uint8_t)atoi(tokens[1]);
                 }
                 else if(!strncmp(tokens[0], "max_downscale_ratio",
                                 strlen("max_downscale_ratio"))) {

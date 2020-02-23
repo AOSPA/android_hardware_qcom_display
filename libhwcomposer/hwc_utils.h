@@ -231,10 +231,10 @@ inline hwc_rect_t integerizeSourceCrop(const hwc_frect_t& cropF) {
 }
 
 inline bool isNonIntegralSourceCrop(const hwc_frect_t& cropF) {
-    if(cropF.left - roundf(cropF.left)     ||
-       cropF.top - roundf(cropF.top)       ||
-       cropF.right - roundf(cropF.right)   ||
-       cropF.bottom - roundf(cropF.bottom))
+    if(int(cropF.left - roundf(cropF.left))     ||
+       int(cropF.top - roundf(cropF.top))       ||
+       int(cropF.right - roundf(cropF.right))   ||
+       int(cropF.bottom - roundf(cropF.bottom)))
         return true;
     else
         return false;

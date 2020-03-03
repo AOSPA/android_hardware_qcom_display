@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018, 2020 The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -321,6 +321,7 @@ class HWCDisplay : public DisplayEventHandler {
   bool animating_ = false;
   bool fbt_valid_ = false;
   bool is_primary_ = false;
+  uint32_t min_enc_level_ = UINT32_MAX;
 };
 
 inline int HWCDisplay::Perform(uint32_t operation, ...) {

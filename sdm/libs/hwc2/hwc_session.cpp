@@ -48,7 +48,14 @@
 
 #define __CLASS__ "HWCSession"
 
+#ifdef TARGET_KERNEL_4_14
+#define HWC_UEVENT_SWITCH_HDMI "change@/devices/virtual/graphics/fb2"
+#define CONN_STATE "STATUS="
+#else
 #define HWC_UEVENT_SWITCH_HDMI "change@/devices/virtual/switch/hdmi"
+#define CONN_STATE "SWITCH_STATE="
+#endif
+
 #define HWC_UEVENT_GRAPHICS_FB0 "change@/devices/virtual/graphics/fb0"
 
 static sdm::HWCSession::HWCModuleMethods g_hwc_module_methods;
@@ -583,6 +590,7 @@ int32_t HWCSession::RegisterCallback(hwc2_device_t *device, int32_t descriptor,
     }
   }
   hwc_session->need_invalidate_ = false;
+  hwc_session->callback_reg_ = true;
   return INT32(error);
 }
 
@@ -1493,7 +1501,7 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
 void HWCSession::UEventHandler(const char *uevent_data, int length) {
   if (!strcasecmp(uevent_data, HWC_UEVENT_SWITCH_HDMI)) {
     DLOGI("Uevent HDMI = %s", uevent_data);
-    int connected = GetEventValue(uevent_data, length, "SWITCH_STATE=");
+    int connected = GetEventValue(uevent_data, length, CONN_STATE);
     if (connected >= 0) {
       DLOGI("HDMI = %s", connected ? "connected" : "disconnected");
       if (HotPlugHandler(connected) == -1) {
@@ -1550,8 +1558,12 @@ void HWCSession::ResetPanel() {
 int HWCSession::HotPlugHandler(bool connected) {
   int status = 0;
   bool notify_hotplug = false;
-  if (!first_commit_ && !connected && hdmi_is_primary_) {
+  if (!first_commit_ && !connected && hdmi_is_primary_ && !null_display_active_) {
+    SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);
     DLOGI("Disconnect event before first commit");
+    HWCDisplayExternal::Destroy(hwc_display_[HWC_DISPLAY_PRIMARY]);
+    CreateNullDisplay();
+    null_display_active_ = true;
     return 0;
   }
 

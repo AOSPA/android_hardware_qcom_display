@@ -3185,7 +3185,7 @@ int32_t HWCSession::GetReadbackBufferAttributes(hwc2_device_t *device, hwc2_disp
   }
 
   if (display != HWC_DISPLAY_PRIMARY) {
-    return HWC2_ERROR_BAD_DISPLAY;
+    return HWC2_ERROR_UNSUPPORTED;
   }
 
   HWCSession *hwc_session = static_cast<HWCSession *>(device);
@@ -3210,7 +3210,7 @@ int32_t HWCSession::SetReadbackBuffer(hwc2_device_t *device, hwc2_display_t disp
   }
 
   if (display != HWC_DISPLAY_PRIMARY) {
-    return HWC2_ERROR_BAD_DISPLAY;
+    return HWC2_ERROR_UNSUPPORTED;
   }
 
   HWCSession *hwc_session = static_cast<HWCSession *>(device);
@@ -3236,7 +3236,7 @@ int32_t HWCSession::GetReadbackBufferFence(hwc2_device_t *device, hwc2_display_t
   }
 
   if (display != HWC_DISPLAY_PRIMARY) {
-    return HWC2_ERROR_BAD_DISPLAY;
+    return HWC2_ERROR_UNSUPPORTED;
   }
 
   return CallDisplayFunction(device, display, &HWCDisplay::GetReadbackBufferFence, release_fence);

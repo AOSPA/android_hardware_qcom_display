@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -1297,8 +1297,6 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_GET_DISPLAY_CAPABILITIES>(HWCSession::GetDisplayCapabilities);
     case HWC2::FunctionDescriptor::GetDisplayBrightnessSupport:
       return AsFP<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(HWCSession::GetDisplayBrightnessSupport);
-    case HWC2::FunctionDescriptor::SetDisplayBrightness:
-      return AsFP<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(HWCSession::SetDisplayBrightness);
     default:
       DLOGD("Unknown/Unimplemented function descriptor: %d (%s)", int_descriptor,
             to_string(descriptor).c_str());
@@ -1568,14 +1566,9 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
           DLOGE("QService command = %d: output_parcel needed.", command);
           break;
         }
-        float brightness = -1.0f;
-        uint32_t display = input_parcel->readUint32();
-        status = getDisplayBrightness(display, &brightness);
-        if (brightness == -1.0f) {
-          output_parcel->writeInt32(0);
-        } else {
-          output_parcel->writeInt32(INT32(brightness*254 + 1));
-        }
+        int level = 0;
+        status = GetPanelBrightness(&level);
+        output_parcel->writeInt32(level);
       }
       break;
 
@@ -1584,13 +1577,8 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
           DLOGE("QService command = %d: input_parcel and output_parcel needed.", command);
           break;
         }
-        int level = input_parcel->readInt32();
-        hwc2_device_t *device = static_cast<hwc2_device_t *>(this);
-        if (level == 0) {
-          status = SetDisplayBrightness(device, HWC_DISPLAY_PRIMARY, -1.0f);
-        } else {
-          status = SetDisplayBrightness(device, HWC_DISPLAY_PRIMARY, (level - 1)/254.0f);
-        }
+        uint32_t level = UINT32(input_parcel->readInt32());
+        status = setPanelBrightness(level);
         output_parcel->writeInt32(status);
       }
       break;
@@ -2117,7 +2105,7 @@ android::status_t HWCSession::QdcmCMDDispatch(uint32_t display_id,
 android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel,
                                              android::Parcel *output_parcel) {
   int ret = 0;
-  float *brightness = NULL;
+  int32_t *brightness_value = NULL;
   uint32_t display_id(0);
   PPPendingParams pending_action;
   PPDisplayAPIPayload resp_payload, req_payload;
@@ -2190,13 +2178,12 @@ android::status_t HWCSession::QdcmCMDHandler(const android::Parcel *input_parcel
           usleep(kSolidFillDelay);
           break;
         case kSetPanelBrightness:
-          ret = -EINVAL;
-          brightness = reinterpret_cast<float *>(resp_payload.payload);
-          if (brightness == NULL) {
-            DLOGE("Brightness payload is Null");
+          brightness_value = reinterpret_cast<int32_t *>(resp_payload.payload);
+          if (brightness_value == NULL) {
+            DLOGE("Brightness value is Null");
+            ret = -EINVAL;
           } else {
-            ret = INT(SetDisplayBrightness(static_cast<hwc2_device_t *>(this),
-                      static_cast<hwc2_display_t>(display_id), *brightness));
+            ret = hwc_display_[display_id]->SetPanelBrightness(*brightness_value);
           }
           break;
         case kEnableFrameCapture:
@@ -3278,7 +3265,7 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t *device, hwc2_display_t
   if (!outCapabilities) {
     *outNumCapabilities = 0;
     if (isBuiltin) {
-      *outNumCapabilities = 3;
+      *outNumCapabilities = 2;
     }
     return HWC2_ERROR_NONE;
   } else {
@@ -3286,8 +3273,7 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t *device, hwc2_display_t
       // TODO(user): Handle SKIP_CLIENT_COLOR_TRANSFORM based on DSPP availability
       outCapabilities[0] = HWC2_DISPLAY_CAPABILITY_SKIP_CLIENT_COLOR_TRANSFORM;
       outCapabilities[1] = HWC2_DISPLAY_CAPABILITY_DOZE;
-      outCapabilities[2] = HWC2_DISPLAY_CAPABILITY_BRIGHTNESS;
-      *outNumCapabilities = 3;
+      *outNumCapabilities = 2;
     }
     return HWC2_ERROR_NONE;
   }
@@ -3309,13 +3295,10 @@ int32_t HWCSession::GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_disp
     DLOGE("Expected valid hwc_display");
     return HWC2_ERROR_BAD_PARAMETER;
   }
-  *outSupport = (hwc_display->GetDisplayClass() == DISPLAY_CLASS_BUILTIN);
+  // This function isn't actually used in the framework
+  // The capability is used instead
+  *outSupport = false;
   return HWC2_ERROR_NONE;
-}
-
-int32_t HWCSession::SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t display,
-                                         float brightness) {
-  return CallDisplayFunction(device, display, &HWCDisplay::SetPanelBrightness, brightness);
 }
 
 android::status_t HWCSession::SetQSyncMode(const android::Parcel *input_parcel) {

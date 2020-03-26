@@ -176,7 +176,7 @@ int HWCDisplayBuiltIn::Init() {
   pmic_intf_->Init();
 
   if (int vsyncs;
-      HWCDebugHandler::Get()->GetProperty(PRIMARY_VSYNCS_RATE_CHANGE, &vsyncs) == kErrorNone) {
+      HWCDebugHandler::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &vsyncs) == kErrorNone) {
     if (vsyncs > 0) {
       HWCDisplay::SetVsyncsApplyRateChange(UINT32(vsyncs));
     }

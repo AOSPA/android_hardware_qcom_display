@@ -190,9 +190,11 @@ error = CreatePanelfeatures();
 }
 
 DisplayError DisplayBuiltIn::Deinit() {
-  lock_guard<recursive_mutex> obj(recursive_mutex_);
+  {
+    lock_guard<recursive_mutex> obj(recursive_mutex_);
 
-  dpps_info_.Deinit();
+    dpps_info_.Deinit();
+  }
   return DisplayBase::Deinit();
 }
 

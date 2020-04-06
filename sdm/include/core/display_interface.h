@@ -159,9 +159,10 @@ enum SecureEvent {
 
 /*! @brief This enum represents the QSync modes supported by the hardware. */
 enum QSyncMode {
-  kQSyncModeNone,        // This is set by the client to disable qsync
-  kQSyncModeContinuous,  // This is set by the client to enable qsync forever
-  kQsyncModeOneShot,     // This is set by client to enable qsync only for current frame.
+  kQSyncModeNone,               // This is set by the client to disable qsync
+  kQSyncModeContinuous,         // This is set by the client to enable qsync forever
+  kQsyncModeOneShot,            // This is set by client to enable qsync only for current frame.
+  kQsyncModeOneShotContinuous,  // This is set by client to enable qsync only for every commit.
 };
 
 /*! @brief This structure defines configuration for display dpps ad4 region of interest. */
@@ -530,6 +531,14 @@ class DisplayInterface {
   */
   virtual DisplayError SetRefreshRate(uint32_t refresh_rate, bool final_rate) = 0;
 
+  /*! @brief Method to get the refresh rate of a display.
+
+    @param[in] refresh_rate refresh rate of the display.
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetRefreshRate(uint32_t *refresh_rate) = 0;
+
   /*! @brief Method to query whether scanning is support for the HDMI display.
 
     @return \link DisplayError \endlink
@@ -873,6 +882,12 @@ class DisplayInterface {
     @return \link DisplayError \endlink
   */
   virtual DisplayError SetPanelLuminanceAttributes(float min_lum, float max_lum) = 0;
+
+  /*! @brief Method to query if there is a need to validate.
+
+      @return \link boolean \endlink
+  */
+  virtual bool CanSkipValidate() = 0;
 
  protected:
   virtual ~DisplayInterface() { }

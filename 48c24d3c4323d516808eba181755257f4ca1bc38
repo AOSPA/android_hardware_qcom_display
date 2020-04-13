@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1ce21d26_b7ff959f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2020-04-13T19:23:34Z",
+      "side": 1,
+      "message": "This is not true. https://source.codeaurora.org/quic/la/platform/vendor/qcom-opensource/display-commonsys-intf/tree/libqdmetadata/Android.bp?h\u003dLA.UM.8.1.r1-14700-sm8150.0#n18",
+      "revId": "48c24d3c4323d516808eba181755257f4ca1bc38",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad",
+      "unresolved": true
+    }
+  ]
+}

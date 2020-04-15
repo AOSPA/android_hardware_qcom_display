@@ -274,16 +274,11 @@ uint32_t DisplayHDMI::GetBestConfigFromFile(std::ifstream &res_file) {
     hw_intf_->GetVideoFormat(index, &vics[index]);
   }
   try {
-<<<<<<< HEAD
-    char cr = '\r';
-    while (std::getline(res_file, line, cr)) {
-=======
     while (std::getline(res_file, line)) {
       char cr = '\r';
       if (!line.empty() && *line.rbegin() == cr) {
         line.erase(line.length() - 1, 1);
       }
->>>>>>> 1c563ade83c1b435deb01b76a1b73954f42d6eb3
       char hash = '#';
       std::size_t found = 0;
       found = line.find(hash);

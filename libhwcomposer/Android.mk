@@ -14,10 +14,6 @@ LOCAL_SHARED_LIBRARIES        := $(common_libs) libEGL liboverlay \
                                  libdl libmemalloc libqservice libsync \
                                  libbinder libmedia
 
-ifeq ($(TARGET_USES_QCOM_BSP),true)
-LOCAL_SHARED_LIBRARIES += libskia
-endif #TARGET_USES_QCOM_BSP
-
 LOCAL_CFLAGS                  := $(common_flags) -DLOG_TAG=\"qdhwcomposer\" \
                                  -std=c++11 -Wno-sign-conversion -Wno-float-conversion -Wno-sizeof-array-argument -Wno-pointer-bool-conversion
 #Enable Dynamic FPS if PHASE_OFFSET is not set

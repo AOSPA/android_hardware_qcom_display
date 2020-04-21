@@ -183,7 +183,8 @@ Return<void> QtiMapper::lock(void *buffer, uint64_t cpu_usage,
 
   auto hnd = PRIV_HANDLE_CONST(buffer);
   auto *out_data = reinterpret_cast<void *>(hnd->base);
-  hidl_cb(err, out_data, gralloc::GetBpp(hnd->format), hnd->width);
+  auto bytes_per_pixel = gralloc::GetBpp(hnd->format);
+  hidl_cb(err, out_data, bytes_per_pixel, hnd->width * bytes_per_pixel);
   return Void();
 }
 

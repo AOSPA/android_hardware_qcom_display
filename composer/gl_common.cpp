@@ -27,6 +27,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #include <vector>
 #include <string>
 
@@ -90,7 +97,7 @@ void GLCommon::DeleteProgram(uint32_t id) {
   GL(glDeleteProgram(id));
 }
 
-void GLCommon::SetSourceBuffer(const private_handle_t *src_hnd) {
+void GLCommon::SetSourceBuffer(const native_handle_t *src_hnd) {
   DTRACE_SCOPED();
   EGLImageBuffer *src_buffer = image_wrapper_.wrap(reinterpret_cast<const void *>(src_hnd));
 
@@ -100,7 +107,7 @@ void GLCommon::SetSourceBuffer(const private_handle_t *src_hnd) {
   }
 }
 
-void GLCommon::SetDestinationBuffer(const private_handle_t *dst_hnd) {
+void GLCommon::SetDestinationBuffer(const native_handle_t *dst_hnd) {
   DTRACE_SCOPED();
   EGLImageBuffer *dst_buffer = image_wrapper_.wrap(reinterpret_cast<const void *>(dst_hnd));
 

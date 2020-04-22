@@ -27,6 +27,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #include <hwc_display_virtual_dpu.h>
 
 #define __CLASS__ "HWCDisplayVirtualDPU"
@@ -95,9 +102,11 @@ HWC2::Error HWCDisplayVirtualDPU::SetOutputBuffer(buffer_handle_t buf,
     return error;
   }
 
-  const private_handle_t *output_handle = static_cast<const private_handle_t *>(buf);
+  const native_handle_t *output_handle = static_cast<const native_handle_t *>(buf);
   if (output_handle) {
-    int output_handle_format = output_handle->format;
+    int output_handle_format;
+    buffer_allocator_->GetFormat(const_cast<native_handle_t *>(output_handle),
+                                 output_handle_format);
     int active_aligned_w, active_aligned_h;
     int new_width, new_height;
     int new_aligned_w, new_aligned_h;

@@ -17,11 +17,17 @@
  * limitations under the License.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __QTICOMPOSERHANDLEIMPORTER_H__
 #define __QTICOMPOSERHANDLEIMPORTER_H__
 
-#include <android/hardware/graphics/mapper/2.0/IMapper.h>
-#include <android/hardware/graphics/mapper/3.0/IMapper.h>
+#include <android/hardware/graphics/mapper/4.0/IMapper.h>
 #include <utils/Mutex.h>
 
 namespace vendor {
@@ -31,11 +37,10 @@ namespace display {
 namespace composer {
 namespace V3_0 {
 
-using IMapperV2 = ::android::hardware::graphics::mapper::V2_0::IMapper;
-using IMapperV3 = ::android::hardware::graphics::mapper::V3_0::IMapper;
-using ::android::sp;
 using ::android::Mutex;
+using ::android::sp;
 using ::android::hardware::hidl_handle;
+using ::android::hardware::graphics::mapper::V4_0::IMapper;
 
 class ComposerHandleImporter {
  public:
@@ -52,8 +57,7 @@ class ComposerHandleImporter {
  private:
   Mutex mLock;
   bool mInitialized = false;
-  sp<IMapperV2> mMapper_V2;
-  sp<IMapperV3> mMapper_V3;
+  sp<IMapper> mMapper;
 };
 
 }  // namespace V3_0

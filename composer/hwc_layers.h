@@ -17,14 +17,20 @@
  * limitations under the License.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __HWC_LAYERS_H__
 #define __HWC_LAYERS_H__
 
 /* This class translates HWC2 Layer functions to the SDM LayerStack
  */
 
-#include <gralloc_priv.h>
-#include <qdMetaData.h>
+#include <QtiGralloc.h>
 #include <core/layer_stack.h>
 #include <core/layer_buffer.h>
 #include <utils/utils.h>
@@ -50,7 +56,7 @@ using android::hardware::graphics::common::V1_2::Dataspace;
 
 namespace sdm {
 
-DisplayError SetCSC(const private_handle_t *pvt_handle, ColorMetaData *color_metadata);
+DisplayError SetCSC(const native_handle_t *pvt_handle, ColorMetaData *color_metadata);
 bool GetColorPrimary(const int32_t &dataspace, ColorPrimaries *color_primary);
 bool GetTransfer(const int32_t &dataspace, GammaTransfer *gamma_transfer);
 bool GetRange(const int32_t &dataspace, ColorRange *color_range);
@@ -169,9 +175,9 @@ class HWCLayer {
   void SetRect(const hwc_frect_t &source, LayerRect *target);
   uint32_t GetUint32Color(const hwc_color_t &source);
   void GetUBWCStatsFromMetaData(UBWCStats *cr_stats, UbwcCrStatsVector *cr_vec);
-  DisplayError SetMetaData(const private_handle_t *pvt_handle, Layer *layer);
+  DisplayError SetMetaData(const native_handle_t *pvt_handle, Layer *layer);
   uint32_t RoundToStandardFPS(float fps);
-  void ValidateAndSetCSC(const private_handle_t *handle);
+  void ValidateAndSetCSC(const native_handle_t *handle);
   void SetDirtyRegions(hwc_region_t surface_damage);
 };
 

@@ -27,10 +27,16 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #include "hwc_display_virtual_gpu.h"
 #include "hwc_session.h"
-
-#include <qdMetaData.h>
+#include "QtiGralloc.h"
 
 #define __CLASS__ "HWCDisplayVirtualGPU"
 
@@ -118,18 +124,20 @@ HWC2::Error HWCDisplayVirtualGPU::SetOutputBuffer(buffer_handle_t buf,
     return error;
   }
 
-  const private_handle_t *hnd = static_cast<const private_handle_t *>(buf);
-  output_buffer_.width = hnd->width;
-  output_buffer_.height = hnd->height;
-  output_buffer_.unaligned_width = width_;
-  output_buffer_.unaligned_height = height_;
+  native_handle_t *hnd = const_cast<native_handle_t *>(buf);
+  buffer_allocator_->GetWidth(hnd, output_buffer_.width);
+  buffer_allocator_->GetHeight(hnd, output_buffer_.height);
+  buffer_allocator_->GetUnalignedWidth(hnd, output_buffer_.unaligned_width);
+  buffer_allocator_->GetUnalignedHeight(hnd, output_buffer_.unaligned_height);
 
   // Update active dimensions.
-  BufferDim_t buffer_dim;
-  if (getMetaData(const_cast<private_handle_t *>(hnd), GET_BUFFER_GEOMETRY, &buffer_dim) == 0) {
-    output_buffer_.unaligned_width = buffer_dim.sliceWidth;
-    output_buffer_.unaligned_height = buffer_dim.sliceHeight;
-    color_convert_task_.PerformTask(ColorConvertTaskCode::kCodeReset, nullptr);
+  if (qtigralloc::getMetadataState(hnd, android::gralloc4::MetadataType_Crop.value)) {
+    int32_t slice_width, slice_height;
+    if (!buffer_allocator_->GetBufferGeometry(hnd, slice_width, slice_height)) {
+      output_buffer_.unaligned_width = slice_width;
+      output_buffer_.unaligned_height = slice_height;
+      color_convert_task_.PerformTask(ColorConvertTaskCode::kCodeReset, nullptr);
+    }
   }
 
   return HWC2::Error::None;
@@ -174,8 +182,8 @@ HWC2::Error HWCDisplayVirtualGPU::Present(shared_ptr<Fence> *out_retire_fence) {
 
   Layer *sdm_layer = client_target_->GetSDMLayer();
   LayerBuffer &input_buffer = sdm_layer->input_buffer;
-  ctx.src_hnd = reinterpret_cast<const private_handle_t *>(input_buffer.buffer_id);
-  ctx.dst_hnd = reinterpret_cast<const private_handle_t *>(output_handle_);
+  ctx.src_hnd = reinterpret_cast<const native_handle_t *>(input_buffer.buffer_id);
+  ctx.dst_hnd = reinterpret_cast<const native_handle_t *>(output_handle_);
   ctx.dst_rect = {0, 0, FLOAT(output_buffer_.unaligned_width),
                   FLOAT(output_buffer_.unaligned_height)};
   ctx.src_acquire_fence = input_buffer.acquire_fence;

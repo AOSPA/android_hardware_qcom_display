@@ -27,6 +27,13 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 /*! @file buffer_allocator.h
   @brief Interface file for platform specific buffer allocator.
 
@@ -143,9 +150,14 @@ class BufferAllocator {
                                               AllocatedBufferInfo *allocated_buffer_info) = 0;
 
   /*
-   * Retuns a buffer's layout in terms of number of planes, stride and offset of each plane
-   * Input: AllocatedBufferInfo with a valid aligned width, aligned height, SDM format
-   * Output: stride for each plane, offset of each plane from base, number of planes
+     @brief  Retuns a buffer's layout in terms of number of planes, stride and offset of each plane
+
+     @details This method returns the layout of the given buffer based on its number of planes,
+     stride, and offset of each plane.
+
+     @param[in] AllocatedBufferInfo with a valid aligned width, aligned height, SDM format
+
+     @param[out] stride for each plane, offset of each plane from base, number of planes
    */
   virtual DisplayError GetBufferLayout(const AllocatedBufferInfo &buf_info,
                                        uint32_t stride[4], uint32_t offset[4],
@@ -155,6 +167,115 @@ class BufferAllocator {
     (void) offset;
     (void) num_planes;
     return kErrorNotSupported; }
+
+  /*! @brief Method to get the aligned height of the buffer
+
+    @details This method retrieves the aligned height of the given buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] height \link aligned height \endlink
+
+    @return \link int \endlink
+  */
+  virtual DisplayError GetHeight(void *buf, uint32_t &height) = 0;
+
+  /*! @brief Method to get the aligned width of the buffer
+
+    @details This method retrieves the aligned width of the given buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] width \link aligned width \endlink
+
+    @return \link int \endlink
+  */
+  virtual DisplayError GetWidth(void *buf, uint32_t &width) = 0;
+
+  /*! @brief Method to get the unaligned height of the buffer
+
+    @details This method retrieves the unaligned height of the given buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] height \link unaligned height \endlink
+
+    @return \link int \endlink
+  */
+  virtual int GetUnalignedHeight(void *buf, uint32_t &height) = 0;
+
+  /*! @brief Method to get the unaligned width of the buffer
+
+    @details This method retrieves the unaligned width of the given buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] width \link unaligned width \endlink
+
+    @return \link int \endlink
+  */
+  virtual int GetUnalignedWidth(void *buf, uint32_t &width) = 0;
+
+  /*! @brief Method to Get the AllocatedBufferInfo only.
+
+    @details This method populates the AllocatedBufferInfo as per the configuration in BufferInfo,
+    but fd will be invalid.
+
+    @param[in] buffer_info \link BufferInfo \endlink
+
+    @param[out] allocated_buffer_info \link AllocatedBufferInfo \endlink
+
+    @return \link int \endlink
+  */
+  virtual DisplayError GetFd(void *buf, int &fd) = 0;
+
+  /*! @brief Method to get the allocation size of the buffer
+
+    @details This method retrieves the allocation size of the given buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] alloc_size \link allocation size \endlink
+
+    @return \link int \endlink
+  */
+  virtual DisplayError GetAllocationSize(void *buf, uint32_t &alloc_size) = 0;
+
+  /*! @brief Method to get the ID of the buffer
+
+    @details This method retrieves the ID of thegiven buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] id \link buffer id \endlink
+
+    @return \link int \endlink
+  */
+  virtual DisplayError GetBufferId(void *buf, uint64_t &id) = 0;
+
+  /*! @brief Method to get the format of the buffer
+
+    @details This method retrieves the format of the given buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] format \link buffer format \endlink
+
+    @return \link int \endlink
+  */
+  virtual int GetFormat(void *buf, int32_t &format) = 0;
+
+  /*! @brief Method to get the private flags of the buffer
+
+    @details This method retrieves the priivate flags of the given buffer.
+
+    @param[in] buf \link pointer to the buffer \endlink
+
+    @param[out] flags \link private flags \endlink
+
+    @return \link int \endlink
+  */
+  virtual int GetPrivateFlags(void *buf, int32_t &flags) = 0;
 
  protected:
   virtual ~BufferAllocator() { }

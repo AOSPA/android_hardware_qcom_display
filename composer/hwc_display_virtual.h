@@ -27,11 +27,16 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __HWC_DISPLAY_VIRTUAL_H__
 #define __HWC_DISPLAY_VIRTUAL_H__
 
-#include <qdMetaData.h>
-#include <gralloc_priv.h>
 #include "hwc_display.h"
 #include "hwc_display_event_handler.h"
 
@@ -58,7 +63,7 @@ class HWCDisplayVirtual : public HWCDisplay {
   uint32_t width_ = 0;
   uint32_t height_ = 0;
   LayerBuffer output_buffer_ = {};
-  const private_handle_t *output_handle_ = nullptr;
+  const native_handle_t *output_handle_ = nullptr;
 
  private:
   bool dump_output_layer_ = false;

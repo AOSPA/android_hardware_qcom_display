@@ -27,12 +27,20 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #include <core/buffer_allocator.h>
 #include <utils/debug.h>
 #include <utils/constants.h>
 #include <sync/sync.h>
 #include <vector>
 #include <string>
+#include <QtiGralloc.h>
 
 #include "hwc_buffer_sync_handler.h"
 #include "hwc_session.h"
@@ -1241,7 +1249,7 @@ int HWCSession::DisplayConfigImpl::IsRotatorSupportedFormat(int hal_format, bool
     *supported = false;
     return -EINVAL;
   }
-  int flag = ubwc ? private_handle_t::PRIV_FLAGS_UBWC_ALIGNED : 0;
+  int flag = ubwc ? qtigralloc::PRIV_FLAGS_UBWC_ALIGNED : 0;
 
   LayerBufferFormat sdm_format = HWCLayer::GetSDMFormat(hal_format, flag);
 

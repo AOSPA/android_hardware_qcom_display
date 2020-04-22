@@ -27,6 +27,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __HWC_DISPLAY_VIRTUAL_GPU_H__
 #define __HWC_DISPLAY_VIRTUAL_GPU_H__
 
@@ -48,8 +55,8 @@ struct ColorConvertGetInstanceContext : public SyncTask<ColorConvertTaskCode>::T
 };
 
 struct ColorConvertBlitContext : public SyncTask<ColorConvertTaskCode>::TaskContext {
-  const private_handle_t* src_hnd = nullptr;
-  const private_handle_t* dst_hnd = nullptr;
+  const native_handle_t *src_hnd = nullptr;
+  const native_handle_t *dst_hnd = nullptr;
   GLRect src_rect = {};
   GLRect dst_rect = {};
   shared_ptr<Fence> src_acquire_fence = nullptr;

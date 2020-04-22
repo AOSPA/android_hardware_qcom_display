@@ -26,22 +26,28 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __HWC_BUFFER_ALLOCATOR_H__
 #define __HWC_BUFFER_ALLOCATOR_H__
 
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#include <android/hardware/graphics/allocator/2.0/IAllocator.h>
-#include <android/hardware/graphics/allocator/3.0/IAllocator.h>
-#include <android/hardware/graphics/mapper/2.1/IMapper.h>
-#include <android/hardware/graphics/mapper/3.0/IMapper.h>
-#include "gralloc_priv.h"
+#include <android/hardware/graphics/allocator/4.0/IAllocator.h>
+#include <android/hardware/graphics/mapper/4.0/IMapper.h>
+#include <vendor/qti/hardware/display/mapper/4.0/IQtiMapper.h>
 
-using IAllocatorV3 = android::hardware::graphics::allocator::V3_0::IAllocator;
-using IAllocatorV2 = android::hardware::graphics::allocator::V2_0::IAllocator;
-using IMapperV3 = android::hardware::graphics::mapper::V3_0::IMapper;
-using IMapperV2 = android::hardware::graphics::mapper::V2_0::IMapper;
+using android::hardware::graphics::allocator::V4_0::IAllocator;
+using android::hardware::graphics::mapper::V4_0::IMapper;
+using vendor::qti::hardware::display::mapperextensions::V1_0::IQtiMapperExtensions;
+
 namespace sdm {
 
 template <class Type>
@@ -55,7 +61,7 @@ class HWCBufferAllocator : public BufferAllocator {
   DisplayError FreeBuffer(BufferInfo *buffer_info);
   uint32_t GetBufferSize(BufferInfo *buffer_info);
 
-  void GetCustomWidthAndHeight(const private_handle_t *handle, int *width, int *height);
+  void GetCustomWidthAndHeight(const native_handle_t *handle, int *width, int *height);
   void GetAlignedWidthAndHeight(int width, int height, int format, uint32_t alloc_type,
                                 int *aligned_width, int *aligned_height);
   DisplayError GetAllocatedBufferInfo(const BufferConfig &buffer_config,
@@ -63,15 +69,26 @@ class HWCBufferAllocator : public BufferAllocator {
   DisplayError GetBufferLayout(const AllocatedBufferInfo &buf_info, uint32_t stride[4],
                                uint32_t offset[4], uint32_t *num_planes);
   int SetBufferInfo(LayerBufferFormat format, int *target, uint64_t *flags);
-  DisplayError MapBuffer(const private_handle_t *handle, shared_ptr<Fence> acquire_fence);
-  DisplayError UnmapBuffer(const private_handle_t *handle, int *release_fence);
+  DisplayError MapBuffer(const native_handle_t *handle, shared_ptr<Fence> acquire_fence, void *base_ptr);
+  DisplayError UnmapBuffer(const native_handle_t *handle, int *release_fence);
+  DisplayError GetHeight(void *buf, uint32_t &height);
+  DisplayError GetWidth(void *buf, uint32_t &width);
+  int GetUnalignedHeight(void *buf, uint32_t &height);
+  int GetUnalignedWidth(void *buf, uint32_t &width);
+  DisplayError GetFd(void *buf, int &fd);
+  DisplayError GetAllocationSize(void *buf, uint32_t &alloc_size);
+  DisplayError GetBufferId(void *buf, uint64_t &id);
+  int GetFormat(void *buf, int32_t &format);
+  int GetPrivateFlags(void *buf, int32_t &flags);
+  DisplayError GetSDMFormat(void *buf, LayerBufferFormat &sdm_format);
+  int GetBufferType(void *buf, uint32_t &buffer_type);
+  int GetBufferGeometry(void *buf, int32_t &slice_width, int32_t &slice_height);
 
  private:
   DisplayError GetGrallocInstance();
-  android::sp<IMapperV2> mapper_V2_;
-  android::sp<IMapperV3> mapper_V3_;
-  android::sp<IAllocatorV2> allocator_V2_;
-  android::sp<IAllocatorV3> allocator_V3_;
+  android::sp<IMapper> mapper_;
+  android::sp<IAllocator> allocator_;
+  android::sp<IQtiMapperExtensions> mapper_ext_;
 };
 
 }  // namespace sdm

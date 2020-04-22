@@ -27,6 +27,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #include <vector>
 
 #include "gl_color_convert_impl.h"
@@ -155,7 +162,7 @@ int GLColorConvertImpl::CreateContext(GLRenderTarget target, bool secure) {
   return 0;
 }
 
-int GLColorConvertImpl::Blit(const private_handle_t *src_hnd, const private_handle_t *dst_hnd,
+int GLColorConvertImpl::Blit(const native_handle_t *src_hnd, const native_handle_t *dst_hnd,
                              const GLRect &src_rect, const GLRect &dst_rect,
                              const shared_ptr<Fence> &src_acquire_fence,
                              const shared_ptr<Fence> &dst_acquire_fence,

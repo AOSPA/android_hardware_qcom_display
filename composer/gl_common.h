@@ -27,6 +27,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __GL_COMMON_H__
 #define __GL_COMMON_H__
 
@@ -61,8 +68,8 @@ class GLCommon {
   virtual void DumpShaderLog(int shader);
   virtual void MakeCurrent(const GLContext *ctx);
   virtual void SetProgram(uint32_t id);
-  virtual void SetDestinationBuffer(const private_handle_t *dst_hnd);
-  virtual void SetSourceBuffer(const private_handle_t *src_hnd);
+  virtual void SetDestinationBuffer(const native_handle_t *dst_hnd);
+  virtual void SetSourceBuffer(const native_handle_t *src_hnd);
   virtual void DestroyContext(GLContext *ctx);
   virtual void DeleteProgram(uint32_t id);
   virtual int WaitOnInputFence(const std::vector<shared_ptr<Fence>> &in_fences);

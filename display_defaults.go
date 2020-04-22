@@ -29,7 +29,7 @@ func display_Defaults(ctx android.LoadHookContext) {
 func display_globalDefaults(ctx android.LoadHookContext) *bool {
 	var module_enabled *bool
 
-	if android.ExistentPathForSource(ctx, "vendor/google_devices/coral/proprietary/device-vendor-coral.mk").Valid() == false {
+	if android.ExistentPathForSource(ctx, "vendor").Valid() == false {
 		module_enabled = proptools.BoolPtr(false)
 	}
 

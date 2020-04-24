@@ -42,8 +42,10 @@ typedef bool (*CreateFrameExtnInterface)(FrameExtnIntf **interface);
 typedef bool (*DestroyFrameExtnInterface)(FrameExtnIntf *interface);
 
 /*! @brief This structure defines extension version.
+
     @details It is used to avoid any mismatch of versions between frameextension library
     implementation and its clients usage (like SurfaceFlinger).
+
   @sa FrameInfo
 */
 struct Version {
@@ -52,6 +54,7 @@ struct Version {
 };
 
 /*! @brief This structure defines the Frame info required by FrameExtnIntf.
+
   @sa FrameExtnIntf::SetFrameInfo
 */
 struct FrameInfo {
@@ -73,15 +76,19 @@ struct FrameInfo {
 
 
 /*! @brief This interface shall be implemented by frameextension library.
+
   @details This class declares prototype for frameextension public interfaces which must be
   implemented by frameextension library.
 */
 class FrameExtnIntf {
  public:
   /*! @brief Set the FrameInfo used by frameextension.
+
     @details This function is called once per refresh cycle so that required frame info are
     feed to frameextension.
+
     @param[in] frameInfo \link FrameInfo \endlink
+
     @return \link int \endlink
   */
   virtual int SetFrameInfo(FrameInfo &frameInfo) = 0;

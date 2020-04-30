@@ -31,6 +31,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <utils/sys.h>
 #include <vector>
 #include <cstring>
+#include <algorithm>
 
 #include "hw_peripheral_drm.h"
 
@@ -85,8 +86,11 @@ void HWPeripheralDRM::PopulateBitClkRates() {
   for (auto &mode_info : connector_info_.modes) {
     auto &mode = mode_info.mode;
     if (mode.hdisplay == width && mode.vdisplay == height) {
-      bitclk_rates_.push_back(mode_info.bit_clk_rate);
-      DLOGI("Possible bit_clk_rates %d", mode_info.bit_clk_rate);
+      if (std::find(bitclk_rates_.begin(), bitclk_rates_.end(), mode_info.bit_clk_rate) ==
+            bitclk_rates_.end()) {
+        bitclk_rates_.push_back(mode_info.bit_clk_rate);
+        DLOGI("Possible bit_clk_rates %d", mode_info.bit_clk_rate);
+      }
     }
   }
 
@@ -95,6 +99,10 @@ void HWPeripheralDRM::PopulateBitClkRates() {
 }
 
 DisplayError HWPeripheralDRM::SetDynamicDSIClock(uint64_t bit_clk_rate) {
+  if (last_power_mode_ == DRMPowerMode::DOZE_SUSPEND || last_power_mode_ == DRMPowerMode::OFF) {
+    return kErrorNotSupported;
+  }
+
   bit_clk_rate_ = bit_clk_rate;
   update_mode_ = true;
 

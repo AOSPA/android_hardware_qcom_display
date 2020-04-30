@@ -24,6 +24,9 @@ PRODUCT_PACKAGES += \
     vendor.display.config@1.7.vendor \
     vendor.display.config@1.8.vendor \
     vendor.display.config@1.9.vendor \
+    vendor.display.config@1.10.vendor \
+    vendor.qti.hardware.display.mapper@2.0.vendor \
+    vendor.qti.hardware.display.mapper@3.0.vendor \
     modetest
 
 #QDCM calibration xml file for 2k panel
@@ -70,6 +73,10 @@ PRODUCT_COPY_FILES += hardware/qcom/sm8150/display/config/qdcm_calib_data_defaul
 #QDCM calibration xml file base on nt36672
 PRODUCT_COPY_FILES += hardware/qcom/sm8150/display/config/qdcm_calib_data_trinket_default.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_nt36672_truly_fhd_video_mode_dsi_panel.xml
 
+#QDCM calibration xml file base on Rennell FHD+ visionox panel
+PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_rm69299_amoled_fhd+_video_mode_dsi_visionox_panel.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_rm69299_amoled_fhd+_video_mode_dsi_visionox_panel.xml
+PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_rm69299_amoled_fhd+_video_mode_dsi_visionox_panel.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_rm69299_amoled_fhd+_cmd_mode_dsi_visionox_panel.xml
+
 PRODUCT_PROPERTY_OVERRIDES += \
     persist.demo.hdmirotationlock=false \
     persist.sys.sf.color_saturation=1.0 \
@@ -85,13 +92,17 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.disable_excl_rect=0 \
     vendor.display.comp_mask=0 \
     vendor.display.enable_default_color_mode=1 \
+    vendor.display.enable_optimize_refresh=1 \
     vendor.display.disable_ui_3d_tonemap=1
 
 #Set WCG properties
+ifeq ($(TARGET_BOARD_PLATFORM), sm8150)
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.has_wide_color_display=true
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.has_HDR_display=true
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.use_color_management=true
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.wcg_composition_dataspace=143261696
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.protected_contents=true
+endif
 
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
 # Recovery is enabled, logging is enabled
@@ -112,3 +123,14 @@ endif
 #  0.0   0.0   1.0
 PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.dataspace_saturation_matrix=1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+
+ifneq ($(TARGET_HAS_LOW_RAM),true)
+PRODUCT_PACKAGES += vendor.display.color@1.0.vendor \
+                    vendor.display.color@1.1.vendor \
+                    vendor.display.color@1.2.vendor \
+                    vendor.display.color@1.3.vendor \
+                    vendor.display.postproc@1.0.vendor \
+                    vendor.display.color@1.0-service \
+                    vendor.display.color@1.0-service.rc \
+                    ppd
+endif

@@ -128,7 +128,7 @@ HWC2::Error HWCDisplayPluggable::Validate(uint32_t *out_num_types, uint32_t *out
   BuildLayerStack();
 
   if (layer_set_.empty()) {
-    flush_ = true;
+    flush_ = !client_connected_;
     validated_ = true;
     return status;
   }
@@ -326,6 +326,12 @@ HWC2::Error HWCDisplayPluggable::SetColorModeWithRenderIntent(ColorMode mode, Re
   validated_ = false;
 
   return status;
+}
+
+HWC2::Error HWCDisplayPluggable::UpdatePowerMode(HWC2::PowerMode mode) {
+  current_power_mode_ = mode;
+  validated_ = false;
+  return HWC2::Error::None;
 }
 
 }  // namespace sdm

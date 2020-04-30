@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -90,6 +90,7 @@ class HWCColorMode {
   ColorMode GetCurrentColorMode() { return current_color_mode_; }
   HWC2::Error ApplyCurrentColorModeWithRenderIntent(bool hdr_present);
   HWC2::Error CacheColorModeWithRenderIntent(ColorMode mode, RenderIntent intent);
+  RenderIntent GetCurrentRenderIntent() { return current_render_intent_; }
 
  private:
   static const uint32_t kColorTransformMatrixCount = 16;
@@ -134,6 +135,12 @@ class HWCDisplay : public DisplayEventHandler {
     kNormalValidate,
     kInternalValidate,
     kSkipValidate,
+  };
+
+  struct HWCLayerStack {
+    HWCLayer *client_target = nullptr;                   // Also known as framebuffer target
+    std::map<hwc2_layer_t, HWCLayer *> layer_map;        // Look up by Id - TODO
+    std::multiset<HWCLayer *, SortLayersByZ> layer_set;  // Maintain a set sorted by Z
   };
 
   virtual ~HWCDisplay() {}
@@ -235,6 +242,9 @@ class HWCDisplay : public DisplayEventHandler {
   ColorMode GetCurrentColorMode() {
     return (color_mode_ ? color_mode_->GetCurrentColorMode() : ColorMode::SRGB);
   }
+  RenderIntent GetCurrentRenderIntent() {
+    return (color_mode_ ? color_mode_->GetCurrentRenderIntent() : RenderIntent::COLORIMETRIC);
+  }
   bool HasClientComposition() { return has_client_composition_; }
   bool HasForceClientComposition() { return has_force_client_composition_; }
   bool HWCClientNeedsValidate() {
@@ -310,6 +320,9 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::Error SetCursorPosition(hwc2_layer_t layer, int x, int y);
   virtual HWC2::Error SetVsyncEnabled(HWC2::Vsync enabled);
   virtual HWC2::Error SetPowerMode(HWC2::PowerMode mode, bool teardown);
+  virtual HWC2::Error UpdatePowerMode(HWC2::PowerMode mode) {
+    return HWC2::Error::None;
+  }
   virtual HWC2::Error CreateLayer(hwc2_layer_t *out_layer_id);
   virtual HWC2::Error DestroyLayer(hwc2_layer_t layer_id);
   virtual HWC2::Error SetLayerZOrder(hwc2_layer_t layer_id, uint32_t z);
@@ -338,6 +351,10 @@ class HWCDisplay : public DisplayEventHandler {
   }
   virtual HWC2::Error GetDisplayIdentificationData(uint8_t *out_port, uint32_t *out_data_size,
                                                    uint8_t *out_data);
+  virtual void GetLayerStack(HWCLayerStack *stack);
+  virtual void SetLayerStack(HWCLayerStack *stack);
+  virtual void PostPowerMode();
+  virtual void NotifyClientStatus(bool connected) { client_connected_ = connected; }
 
   virtual HWC2::Error SetDisplayedContentSamplingEnabledVndService(bool enabled);
   virtual HWC2::Error SetDisplayedContentSamplingEnabled(int32_t enabled, uint8_t component_mask, uint64_t max_frames);
@@ -473,15 +490,19 @@ class HWCDisplay : public DisplayEventHandler {
   int64_t pending_refresh_rate_applied_time_ = INT64_MAX;
   std::deque<TransientRefreshRateInfo> transient_refresh_rate_info_;
   std::mutex transient_refresh_rate_lock_;
+  bool client_connected_ = true;
+  bool pending_config_ = false;
 
  private:
   void DumpInputBuffers(void);
   bool CanSkipSdmPrepare(uint32_t *num_types, uint32_t *num_requests);
   void UpdateRefreshRate();
   void WaitOnPreviousFence();
+  void UpdateActiveConfig();
   qService::QService *qservice_ = NULL;
   DisplayClass display_class_;
   uint32_t geometry_changes_ = GeometryChanges::kNone;
+  uint32_t geometry_changes_on_doze_suspend_ = GeometryChanges::kNone;
   bool animating_ = false;
   int null_display_mode_ = 0;
   bool has_client_composition_ = false;
@@ -490,6 +511,9 @@ class HWCDisplay : public DisplayEventHandler {
   bool fast_path_enabled_ = true;
   bool first_cycle_ = true;  // false if a display commit has succeeded on the device.
   int fbt_release_fence_ = -1;
+  int release_fence_ = -1;
+  hwc2_config_t pending_config_index_ = 0;
+  int async_power_mode_ = 0;
 };
 
 inline int HWCDisplay::Perform(uint32_t operation, ...) {

@@ -97,6 +97,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayBuiltIn(int32_t display_id, DisplayEventHandler *event_handler,
                  HWInfoInterface *hw_info_intf, BufferSyncHandler *buffer_sync_handler,
                  BufferAllocator *buffer_allocator, CompManager *comp_manager);
+  virtual ~DisplayBuiltIn();
+
   virtual DisplayError Init();
   virtual DisplayError Deinit();
   virtual DisplayError Prepare(LayerStack *layer_stack);
@@ -115,6 +117,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   virtual DisplayError GetPanelBrightness(int32_t &level) const override;
   virtual DisplayError GetPanelMaxBrightness(int32_t &max_brightness_level) const override;
   virtual bool IsSupportPanelBrightnessControl() override;
+  virtual DisplayError GetRefreshRate(uint32_t *refresh_rate);
   virtual DisplayError HandleSecureEvent(SecureEvent secure_event, LayerStack *layer_stack);
   virtual DisplayError SetDisplayDppsAdROI(void *payload);
   virtual DisplayError SetQSyncMode(QSyncMode qsync_mode);
@@ -143,12 +146,12 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   virtual DisplayError ReconfigureDisplay();
 
  private:
-  bool NeedsAVREnable();
   bool CanCompareFrameROI(LayerStack *layer_stack);
   bool CanSkipDisplayPrepare(LayerStack *layer_stack);
   bool CanDeferFpsConfig(uint32_t fps);
   void SetDeferredFpsConfig();
   void GetFpsConfig(HWDisplayAttributes *display_attributes, HWPanelInfo *panel_info);
+  HWAVRModes GetAvrMode(QSyncMode mode);
 
   std::vector<HWEvent> event_list_;
   bool avr_prop_disabled_ = false;
@@ -156,7 +159,6 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool handle_idle_timeout_ = false;
   bool commit_event_enabled_ = false;
   DppsInfo dpps_info_ = {};
-  QSyncMode qsync_mode_ = kQSyncModeNone;
   LayerRect left_frame_roi_ = {};
   LayerRect right_frame_roi_ = {};
 
@@ -175,6 +177,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DeferFpsConfig deferred_config_ = {};
 
   std::mutex mutable brightness_lock_;
+  bool first_cycle_ = true;
+  int previous_retire_fence_ = -1;
 };
 
 }  // namespace sdm

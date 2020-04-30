@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -20,27 +20,7 @@
 #ifndef __HWC_SESSION_H__
 #define __HWC_SESSION_H__
 
-#ifdef DISPLAY_CONFIG_1_9
-#include <vendor/display/config/1.9/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_8
-#include <vendor/display/config/1.8/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_7
-#include <vendor/display/config/1.7/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_6
-#include <vendor/display/config/1.6/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_5
-#include <vendor/display/config/1.5/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_4
-#include <vendor/display/config/1.4/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_3
-#include <vendor/display/config/1.3/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_2
-#include <vendor/display/config/1.2/IDisplayConfig.h>
-#elif DISPLAY_CONFIG_1_1
-#include <vendor/display/config/1.1/IDisplayConfig.h>
-#else
-#include <vendor/display/config/1.0/IDisplayConfig.h>
-#endif
+#include <vendor/display/config/1.11/IDisplayConfig.h>
 
 #include <android/hardware/graphics/composer/2.4/IComposerClient.h>
 #include <core/core_interface.h>
@@ -49,12 +29,14 @@
 #include <display_config.h>
 #include <vector>
 #include <utility>
+#include <map>
 
 #include "hwc_callbacks.h"
 #include "hwc_layers.h"
 #include "hwc_display.h"
 #include "hwc_display_builtin.h"
 #include "hwc_display_pluggable.h"
+#include "hwc_display_dummy.h"
 #include "hwc_display_virtual.h"
 #include "hwc_display_pluggable_test.h"
 #include "hwc_color_manager.h"
@@ -64,30 +46,14 @@
 
 namespace sdm {
 
-#ifdef DISPLAY_CONFIG_1_9
-using vendor::display::config::V1_9::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_8
-using vendor::display::config::V1_8::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_7
-using vendor::display::config::V1_7::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_6
-using vendor::display::config::V1_6::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_5
-using vendor::display::config::V1_5::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_4
-using vendor::display::config::V1_4::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_3
-using vendor::display::config::V1_3::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_2
-using vendor::display::config::V1_2::IDisplayConfig;
-#elif DISPLAY_CONFIG_1_1
-using vendor::display::config::V1_1::IDisplayConfig;
-#else
-using vendor::display::config::V1_0::IDisplayConfig;
-#endif
+using vendor::display::config::V1_11::IDisplayConfig;
+using vendor::display::config::V1_10::IDisplayCWBCallback;
+
 using ::android::hardware::Return;
 using ::android::hardware::hidl_string;
 using ::android::hardware::graphics::composer::V2_4::IComposerClient;
+using android::hardware::hidl_handle;
+using ::android::hardware::hidl_vec;
 
 int32_t GetDataspaceFromColorMode(ColorMode mode);
 
@@ -149,8 +115,16 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
       return HWC2_ERROR_BAD_DISPLAY;
     }
 
-    SCOPE_LOCK(locker_[display]);
     HWCSession *hwc_session = static_cast<HWCSession *>(device);
+    {
+      // Power state transition start.
+      SCOPE_LOCK(power_state_[display]);
+      if (hwc_session->power_state_transition_[display]) {
+        display = hwc_session->map_hwc_display_.find(display)->second;
+      }
+    }
+
+    SCOPE_LOCK(locker_[display]);
     auto status = HWC2::Error::BadDisplay;
     if (hwc_session->hwc_display_[display]) {
       auto hwc_display = hwc_session->hwc_display_[display];
@@ -171,8 +145,16 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
       return HWC2_ERROR_BAD_DISPLAY;
     }
 
-    SCOPE_LOCK(locker_[display]);
     HWCSession *hwc_session = static_cast<HWCSession *>(device);
+    {
+      // Power state transition start.
+      SCOPE_LOCK(power_state_[display]);
+      if (hwc_session->power_state_transition_[display]) {
+        display = hwc_session->map_hwc_display_.find(display)->second;
+      }
+    }
+
+    SCOPE_LOCK(locker_[display]);
     auto status = HWC2::Error::BadDisplay;
     if (hwc_session->hwc_display_[display]) {
       status = HWC2::Error::BadLayer;
@@ -238,6 +220,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                 int32_t *out_support);
 
   static Locker locker_[HWCCallbacks::kNumDisplays];
+  static Locker power_state_[HWCCallbacks::kNumDisplays];
+  static Locker display_config_locker_;
 
  private:
   struct DisplayMapInfo {
@@ -273,6 +257,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   void InitSupportedDisplaySlots();
   int GetDisplayIndex(int dpy);
   int CreatePrimaryDisplay();
+  void CreateDummyDisplay(hwc2_display_t client_id);
   int HandleBuiltInDisplays();
   int HandlePluggableDisplays(bool delay_hotplug);
   int HandleConnectedDisplays(HWDisplaysInfo *hw_displays_info, bool delay_hotplug);
@@ -323,30 +308,16 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
                                   getHDRCapabilities_cb _hidl_cb) override;
   Return<int32_t> setCameraLaunchStatus(uint32_t on) override;
   Return<void> displayBWTransactionPending(displayBWTransactionPending_cb _hidl_cb) override;
-#ifdef DISPLAY_CONFIG_1_1
   Return<int32_t> setDisplayAnimating(uint64_t display_id, bool animating) override;
-#endif
-  // Methods from ::android::hardware::display::config::V1_2::IDisplayConfig follow.
-#ifdef DISPLAY_CONFIG_1_2
   Return<int32_t> setDisplayIndex(IDisplayConfig::DisplayTypeExt disp_type,
                                   uint32_t base, uint32_t count) override;
-#endif
-#ifdef DISPLAY_CONFIG_1_3
   Return<int32_t> controlIdlePowerCollapse(bool enable, bool synchronous) override;
-#endif
-#ifdef DISPLAY_CONFIG_1_4
   Return<void> getWriteBackCapabilities(getWriteBackCapabilities_cb _hidl_cb) override;
-#endif
-#ifdef DISPLAY_CONFIG_1_5
   Return<int32_t> SetDisplayDppsAdROI(uint32_t dispaly_id, uint32_t h_start, uint32_t h_end,
                                       uint32_t v_start, uint32_t v_end, uint32_t factor_in,
                                       uint32_t factor_out) override;
-#endif
-#ifdef DISPLAY_CONFIG_1_6
   Return<int32_t> updateVSyncSourceOnPowerModeOff() override;
   Return<int32_t> updateVSyncSourceOnPowerModeDoze() override;
-#endif
-#ifdef DISPLAY_CONFIG_1_7
   Return<int32_t> setPowerMode(uint32_t disp_id, PowerMode power_mode) override;
   Return<bool> isPowerModeOverrideSupported(uint32_t disp_id) override;
   Return<bool> isHDRSupported(uint32_t disp_id) override;
@@ -354,17 +325,18 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   Return<int32_t> setLayerAsMask(uint32_t disp_id, uint64_t layer_id) override;
   Return<void> getDebugProperty(const hidl_string &prop_name,
                                 getDebugProperty_cb _hidl_cb) override;
-#endif
-
-#ifdef DISPLAY_CONFIG_1_8
   Return<void> getActiveBuiltinDisplayAttributes(getDisplayAttributes_cb _hidl_cb) override;
-#endif
-
-#ifdef DISPLAY_CONFIG_1_9
   Return<int32_t> setPanelLuminanceAttributes(uint32_t disp_id, float min_lum,
                                               float max_lum) override;
   Return<bool> isBuiltInDisplay(uint32_t disp_id) override;
-#endif
+  Return<void> getSupportedDSIBitClks(uint32_t disp_id,
+                                      getSupportedDSIBitClks_cb _hidl_cb) override;
+  Return<uint64_t> getDSIClk(uint32_t disp_id) override;
+  Return<int32_t> setDSIClk(uint32_t disp_id, uint64_t bit_clk) override;
+  Return<int32_t> setCWBOutputBuffer(const ::android::sp<IDisplayCWBCallback> &callback,
+                                     uint32_t disp_id, const Rect &rect, bool post_processed,
+                                     const hidl_handle& buffer) override;
+  Return<int32_t> setQsyncMode(uint32_t disp_id, IDisplayConfig::QsyncMode mode) override;
 
   // QClient methods
   virtual android::status_t notifyCallback(uint32_t command, const android::Parcel *input_parcel,
@@ -418,6 +390,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   bool IsPluggableDisplayConnected();
   hwc2_display_t GetActiveBuiltinDisplay();
   void HandlePendingRefresh();
+  void NotifyClientStatus(bool connected);
 
   CoreInterface *core_intf_ = nullptr;
   HWCDisplay *hwc_display_[HWCCallbacks::kNumDisplays] = {nullptr};
@@ -430,6 +403,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   std::vector<DisplayMapInfo> map_info_pluggable_;  // Pluggable displays excluding primary
   std::vector<DisplayMapInfo> map_info_virtual_;    // Virtual displays
   std::vector<bool> is_hdr_display_;    // info on HDR supported
+  std::map <hwc2_display_t, hwc2_display_t> map_hwc_display_;  // Real and dummy display pairs.
   bool reset_panel_ = false;
   bool client_connected_ = false;
   bool new_bw_mode_ = false;
@@ -454,6 +428,9 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   float set_max_lum_ = -1.0;
   float set_min_lum_ = -1.0;
   std::bitset<HWCCallbacks::kNumDisplays> pending_refresh_;
+  bool async_powermode_ = false;
+  bool power_state_transition_[HWCCallbacks::kNumDisplays] = {};  // +1 to account for primary.
+  std::bitset<HWCCallbacks::kNumDisplays> display_ready_;
 };
 
 }  // namespace sdm

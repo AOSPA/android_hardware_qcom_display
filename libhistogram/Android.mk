@@ -15,7 +15,7 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_HEADER_LIBRARIES := display_headers
+LOCAL_HEADER_LIBRARIES := display_headers generated_kernel_headers
 LOCAL_MODULE := libhistogram
 LOCAL_SRC_FILES := histogram_collector.cpp ringbuffer.cpp
 LOCAL_SHARED_LIBRARIES := libdrm.vendor liblog libcutils libutils
@@ -29,7 +29,7 @@ include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 
-LOCAL_HEADER_LIBRARIES := display_headers
+LOCAL_HEADER_LIBRARIES := display_headers generated_kernel_headers
 LOCAL_MODULE := color_sampling_tool
 LOCAL_SRC_FILES := color_sampling_tool.cpp
 
@@ -44,7 +44,7 @@ include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
-LOCAL_HEADER_LIBRARIES := display_headers
+LOCAL_HEADER_LIBRARIES := display_headers generated_kernel_headers
 LOCAL_MODULE := color_sampling_test
 LOCAL_SRC_FILES := ringbuffer_test.cpp
 

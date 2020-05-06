@@ -724,6 +724,16 @@ static int32_t GetDisplayedContentSample(
                                     max_frames, timestamp, numFrames, samples_size, samples);
 }
 
+static int32_t SetLayerPerFrameMetadataBlobs(hwc2_device_t *device, hwc2_display_t display,
+                                             hwc2_layer_t layer, uint32_t num_elements,
+                                             const int32_t *int_keys, const uint32_t *sizes,
+                                             const uint8_t *metadata) {
+  auto keys = reinterpret_cast<const PerFrameMetadataKey *>(int_keys);
+  return HWCSession::CallLayerFunction(device, display, layer,
+                                       &HWCLayer::SetLayerPerFrameMetadataBlobs,
+                                       num_elements, keys, sizes, metadata);
+}
+
 static int32_t GetDisplayAttribute(hwc2_device_t *device, hwc2_display_t display,
                                    hwc2_config_t config, int32_t int_attribute,
                                    int32_t *out_value) {
@@ -1526,6 +1536,8 @@ hwc2_function_pointer_t HWCSession::GetFunction(struct hwc2_device *device,
       return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLING_ATTRIBUTES>(GetDisplayedContentSamplingAttributes);
     case HWC2::FunctionDescriptor::GetDisplayedContentSample:
       return AsFP<HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLE>(GetDisplayedContentSample);
+    case HWC2::FunctionDescriptor::SetLayerPerFrameMetadataBlobs:
+      return AsFP<HWC2_PFN_SET_LAYER_PER_FRAME_METADATA_BLOBS>(SetLayerPerFrameMetadataBlobs);
     case HWC2::FunctionDescriptor::GetDisplayIdentificationData:
       return AsFP<HWC2_PFN_GET_DISPLAY_IDENTIFICATION_DATA>
              (HWCSession::GetDisplayIdentificationData);

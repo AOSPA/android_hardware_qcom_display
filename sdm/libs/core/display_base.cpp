@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -809,8 +809,8 @@ std::string DisplayBase::Dump() {
       char flags[16] = { 0 };
       char z_order[8] = { 0 };
       const char *color_primary = "";
-      const char *transfer = "";
       const char *range = "";
+      const char *transfer = "";
       char row[1024] = { 0 };
 
       snprintf(z_order, sizeof(z_order), "%d", layer_config.hw_solidfill_stage.z_order);
@@ -853,6 +853,7 @@ std::string DisplayBase::Dump() {
       snprintf(color_primary, sizeof(color_primary), "%d", color_metadata.colorPrimaries);
       snprintf(transfer, sizeof(transfer), "%d", color_metadata.transfer);
       snprintf(range, sizeof(range), "%d", color_metadata.range);
+      snprintf(transfer, sizeof(transfer), "%d", color_metadata.transfer);
 
       char row[1024];
       snprintf(row, sizeof(row), format, idx, comp_type, pipe_split[count],
@@ -1504,6 +1505,7 @@ void DisplayBase::CommitLayerParams(LayerStack *layer_stack) {
     hw_layer.input_buffer.size = sdm_layer->input_buffer.size;
     hw_layer.input_buffer.acquire_fence_fd = sdm_layer->input_buffer.acquire_fence_fd;
     hw_layer.input_buffer.handle_id = sdm_layer->input_buffer.handle_id;
+    hw_layer.input_buffer.buffer_id = sdm_layer->input_buffer.buffer_id;
     // TODO(user): Other FBT layer attributes like surface damage, dataspace, secure camera and
     // secure display flags are also updated during SetClientTarget() called between validate and
     // commit. Need to revist this and update it accordingly for FBT layer.

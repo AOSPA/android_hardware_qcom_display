@@ -49,6 +49,7 @@ namespace composer_V2_2 = ::android::hardware::graphics::composer::V2_2;
 namespace composer_V2_3 = ::android::hardware::graphics::composer::V2_3;
 namespace composer_V2_4 = ::android::hardware::graphics::composer::V2_4;
 
+using DisplayCapability_V2_3 = composer_V2_3::IComposerClient::DisplayCapability;
 using PerFrameMetadataKey_V2 = composer_V2_2::IComposerClient::PerFrameMetadataKey;
 using PerFrameMetadataKey = composer_V2_3::IComposerClient::PerFrameMetadataKey;
 
@@ -224,7 +225,7 @@ class QtiComposerClient : public IQtiComposerClient {
                           int64_t timestamp, VsyncPeriodNanos vsyncPeriodNanos);
   static void onVsyncPeriodTimingChanged(hwc2_callback_data_t callbackData,
                                            hwc2_display_t display,
-                                           const VsyncPeriodChangeTimeline& updatedTimeline);
+                                           hwc_vsync_period_change_timeline_t* updatedTimeline);
   static void onSeamlessPossible(hwc2_callback_data_t callbackData, hwc2_display_t display);
 
   // Methods for ConcurrentWriteBack

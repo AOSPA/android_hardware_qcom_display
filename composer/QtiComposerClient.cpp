@@ -170,11 +170,16 @@ void QtiComposerClient::onVsync_2_4(hwc2_callback_data_t callbackData, hwc2_disp
 }
 
 void QtiComposerClient::onVsyncPeriodTimingChanged(hwc2_callback_data_t callbackData,
-      hwc2_display_t display, const VsyncPeriodChangeTimeline& updatedTimeline) {
+      hwc2_display_t display, hwc_vsync_period_change_timeline_t *updatedTimeline) {
+   VsyncPeriodChangeTimeline timeline =
+                                   {updatedTimeline->newVsyncAppliedTimeNanos,
+                                    static_cast<bool>(updatedTimeline->refreshRequired),
+                                    updatedTimeline->refreshTimeNanos};
+
   auto client = reinterpret_cast<QtiComposerClient*>(callbackData);
-  auto ret = client->callback24_->onVsyncPeriodTimingChanged(display, updatedTimeline);
+  auto ret = client->callback24_->onVsyncPeriodTimingChanged(display, timeline);
   ALOGW_IF(!ret.isOk(), "failed to send onVsyncPeriodTimingChanged: %s. SF likely unavailable.",
-           ret.description().c_str());
+          ret.description().c_str());
 }
 
 void QtiComposerClient::onSeamlessPossible(hwc2_callback_data_t callbackData,
@@ -961,7 +966,28 @@ Return<void> QtiComposerClient::getDisplayCapabilities(uint64_t display,
                                                        getDisplayCapabilities_cb _hidl_cb) {
   // We only care about passing VTS for older composer versions
   // Not returning any capabilities that are optional
-  return Void();
+
+  hidl_vec<DisplayCapability_V2_3> capabilities;
+
+  uint32_t count = 0;
+  auto error = hwc_session_->GetDisplayCapabilities2_3(display, &count, nullptr);
+  if (error != HWC2_ERROR_NONE) {
+    _hidl_cb(static_cast<Error>(error), capabilities);
+    return Void();
+  }
+
+  capabilities.resize(count);
+  error = hwc_session_->GetDisplayCapabilities2_3(display, &count,
+                 reinterpret_cast<std::underlying_type<DisplayCapability_V2_3>::type*>(
+                 capabilities.data()));
+   if (error != HWC2_ERROR_NONE) {
+     capabilities = hidl_vec<DisplayCapability_V2_3>();
+     _hidl_cb(static_cast<Error>(error), capabilities);
+     return Void();
+   }
+
+   _hidl_cb(static_cast<Error>(error), capabilities);
+   return Void();
 }
 
 Return<void> QtiComposerClient::getPerFrameMetadataKeys_2_3(uint64_t display,

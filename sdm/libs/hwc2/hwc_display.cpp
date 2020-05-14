@@ -482,6 +482,9 @@ void HWCDisplay::BuildLayerStack() {
   uint32_t color_mode_count = 0;
   display_intf_->GetColorModeCount(&color_mode_count);
 
+  if (is_primary_ && color_mode_count == 0) {
+    color_mode_count = 1;
+  }
   // Add one layer for fb target
   // TODO(user): Add blit target layers
   for (auto hwc_layer : layer_set_) {

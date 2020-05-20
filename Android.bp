@@ -7,6 +7,7 @@ soong_config_module_type {
         "headless",
         "llvmsa",
         "gralloc4",
+        "udfps",
         "default",
         "var3",
         "llvmcov",
@@ -145,6 +146,9 @@ qtidisplay_cc_defaults {
         },
         ubwcp_headers: {
             cflags: ["-DTARGET_USES_UBWCP"],
+        },
+        udfps: {
+            cflags: ["-DUDFPS_ZPOS"],
         },
         var3 : {
             enabled: false,

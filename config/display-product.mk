@@ -194,6 +194,7 @@ SOONG_CONFIG_qtidisplay := drmpp headless llvmsa \
                            default var1 var2 var3 llvmcov  \
                            composer_version smmu_proxy \
                            ubwcp_headers sixzone_version
+SOONG_CONFIG_qtidisplay += udfps
 
 # Soong Values
 SOONG_CONFIG_qtidisplay_drmpp := true
@@ -210,6 +211,7 @@ SOONG_CONFIG_qtidisplay_smmu_proxy := false
 SOONG_CONFIG_qtidisplay_ubwcp_headers := true
 SOONG_CONFIG_qtidisplay_composer_version := v2
 SOONG_CONFIG_qtidisplay_sixzone_version := v2
+SOONG_CONFIG_qtidisplay_udfps := false
 ifeq ($(TARGET_USES_COMPOSER3),true)
     SOONG_CONFIG_qtidisplay_composer_version := v3
     $(warning "Using composer3")

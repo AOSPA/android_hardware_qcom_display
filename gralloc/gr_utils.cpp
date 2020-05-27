@@ -705,6 +705,7 @@ int GetRawPlaneInfo(int32_t format, int32_t width, int32_t height, PlaneLayoutIn
       break;
     case HAL_PIXEL_FORMAT_RAW12:
     case HAL_PIXEL_FORMAT_RAW10:
+    case HAL_PIXEL_FORMAT_BLOB:
       step = 0;
       break;
     default:
@@ -1540,6 +1541,7 @@ int GetYUVPlaneInfo(const BufferInfo &info, int32_t format, int32_t width, int32
     case HAL_PIXEL_FORMAT_RAW12:
     case HAL_PIXEL_FORMAT_RAW10:
     case HAL_PIXEL_FORMAT_RAW8:
+    case HAL_PIXEL_FORMAT_BLOB:
       *plane_count = 1;
       GetRawPlaneInfo(format, info.width, info.height, plane_info);
       break;

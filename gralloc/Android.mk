@@ -1,6 +1,9 @@
 # Gralloc module
 LOCAL_PATH := $(call my-dir)
+LIBION_HEADER_PATH_WRAPPER := $(QC_OPEN_PATH)/core-utils/build/libion_header_paths/libion_path.mk
+
 include $(LOCAL_PATH)/../common.mk
+include $(LIBION_HEADER_PATH_WRAPPER)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE                  := gralloc.$(TARGET_BOARD_PLATFORM)
@@ -43,8 +46,7 @@ LOCAL_MODULE                  := libgralloccore
 LOCAL_VENDOR_MODULE           := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) \
-                                 system/memory/libion/include \
-                                 system/memory/libion/kernel-headers \
+                                 $(LIBION_HEADER_PATHS) \
                                  $(kernel_includes)
 
 LOCAL_HEADER_LIBRARIES        := display_headers
@@ -93,7 +95,6 @@ LOCAL_MODULE_TAGS             := optional
 LOCAL_HEADER_LIBRARIES        := display_headers
 LOCAL_SHARED_LIBRARIES        := $(common_libs) \
                                  libhidlbase \
-                                 libhidltransport\
                                  libqdMetaData \
                                  libgrallocutils \
                                  libgralloccore \

@@ -128,14 +128,13 @@ DisplayError DisplayBuiltIn::Init() {
 
   initColorSamplingState();
 
+  Debug::GetProperty(DISABLE_DEFER_POWER_STATE, &disable_defer_power_state);
+  defer_power_state_ = !disable_defer_power_state;
+  DLOGI("defer_power_state %d", defer_power_state_);
+
   int value = 0;
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
-
-  Debug::GetProperty(DISABLE_DEFER_POWER_STATE, &disable_defer_power_state);
-  defer_power_state_ = !disable_defer_power_state;
-
-  DLOGI("defer_power_state %d", defer_power_state_);
 
   return error;
 }
@@ -436,6 +435,10 @@ DisplayError DisplayBuiltIn::SetDisplayMode(uint32_t mode) {
 
 DisplayError DisplayBuiltIn::SetPanelBrightness(int32_t level) {
   lock_guard<std::mutex> lock(brightness_lock_);
+
+  if (state_ == kStateOff) {
+    return kErrorNone;
+  }
 
   DisplayError err = hw_intf_->SetPanelBrightness(level);
 

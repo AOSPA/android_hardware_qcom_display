@@ -545,6 +545,12 @@ HWC2::Error HWCLayer::SetLayerZOrder(uint32_t z) {
   return HWC2::Error::None;
 }
 
+HWC2::Error HWCLayer::SetLayerColorTransform(const float *matrix) {
+  color_transform_matrix_set_ =
+      (std::memcmp(matrix, kIdentityMatrix, sizeof(kIdentityMatrix)) != 0);
+  return HWC2::Error::None;
+}
+
 HWC2::Error HWCLayer::SetLayerPerFrameMetadata(uint32_t num_elements,
                                                const PerFrameMetadataKey *keys,
                                                const float *metadata) {

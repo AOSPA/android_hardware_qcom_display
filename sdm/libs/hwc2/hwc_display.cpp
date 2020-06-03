@@ -669,6 +669,10 @@ void HWCDisplay::BuildLayerStack() {
       layer->flags.skip = true;
     }
 
+    if (hwc_layer->IsColorTransformSet()) {
+      layer->flags.skip = true;
+    }
+
     // set default composition as GPU for SDM
     layer->composition = kCompositionGPU;
 

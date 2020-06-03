@@ -1,4 +1,11 @@
 LOCAL_PATH := $(call my-dir)
+
+ifeq ($(shell if [ "$(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX)" = bengal_32 -o \
+                   "$(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX)" = bengal_32go ] ; \
+                    then printf "true" ; else printf "false" ; fi),true)
+  DISPLAY_CONFIG_VERSION := DISPLAY_CONFIG_VERSION_OPTIMAL
+endif
+
 include $(LOCAL_PATH)/../common.mk
 include $(CLEAR_VARS)
 
@@ -10,7 +17,7 @@ LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes)
 LOCAL_C_INCLUDES              += $(kernel_includes)
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
-LOCAL_HEADER_LIBRARIES        := display_headers
+LOCAL_HEADER_LIBRARIES        := display_headers libThermal_headers
 
 LOCAL_CFLAGS                  := -Wno-missing-field-initializers -Wno-unused-parameter \
                                  -DLOG_TAG=\"SDM\" $(common_flags) -fcolor-diagnostics
@@ -33,7 +40,7 @@ LOCAL_SHARED_LIBRARIES        := libhistogram libbinder libhardware libutils lib
                                  android.hardware.graphics.allocator@2.0 \
                                  android.hardware.graphics.allocator@3.0 \
                                  libdisplayconfig.qti \
-                                 libdrm
+                                 libdrm libthermalclient
 
 LOCAL_SRC_FILES               := QtiComposer.cpp QtiComposerClient.cpp service.cpp \
                                  QtiComposerHandleImporter.cpp \
@@ -66,7 +73,11 @@ LOCAL_SRC_FILES               := QtiComposer.cpp QtiComposerClient.cpp service.c
 
 LOCAL_INIT_RC                 := vendor.qti.hardware.display.composer-service.rc
 ifneq ($(TARGET_HAS_LOW_RAM),true)
-LOCAL_VINTF_FRAGMENTS         := vendor.qti.hardware.display.composer-service.xml
+  ifeq ($(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX),bengal_32)
+    LOCAL_VINTF_FRAGMENTS         := vendor.qti.hardware.display.composer-service-32bit.xml
+  else
+    LOCAL_VINTF_FRAGMENTS         := vendor.qti.hardware.display.composer-service.xml
+  endif
 else
 LOCAL_VINTF_FRAGMENTS         := vendor.qti.hardware.display.composer-service-low-ram.xml
 endif

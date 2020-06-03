@@ -193,9 +193,9 @@ class HWDeviceDRM : public HWInterface {
     // Called on display disconnect to clear output buffer map and remove fb_ids.
     void Clear();
     // Create the fd_id for the given buffer.
-    int CreateFbId(LayerBuffer *buffer, uint32_t *fb_id);
+    int CreateFbId(const LayerBuffer &buffer, uint32_t *fb_id);
     // Find handle_id in the layer map. Else create fb_id and add <handle_id,fb_id> in map.
-    void MapBufferToFbId(Layer* layer, LayerBuffer* buffer);
+    void MapBufferToFbId(Layer* layer, const LayerBuffer &buffer);
     // Find handle_id in output buffer map. Else create fb_id and add <handle_id,fb_id> in map.
     void MapOutputBufferToFbId(LayerBuffer* buffer);
     // Find fb_id for given handle_id in the layer map.
@@ -240,6 +240,12 @@ class HWDeviceDRM : public HWInterface {
   uint64_t bit_clk_rate_ = 0;
   bool update_mode_ = false;
   bool pending_doze_ = false;
+  uint32_t video_mode_index_ = 0;
+  uint32_t cmd_mode_index_ = 0;
+  bool switch_mode_valid_ = false;
+  bool doze_poms_switch_done_ = false;
+  bool pending_poms_switch_ = false;
+  bool active_ = false;
   PrimariesTransfer blend_space_ = {};
   DRMPowerMode last_power_mode_ = DRMPowerMode::OFF;
   uint32_t dest_scaler_blocks_used_ = 0;  // Dest scaler blocks in use by this HWDeviceDRM instance.
@@ -247,6 +253,8 @@ class HWDeviceDRM : public HWInterface {
   static std::atomic<uint32_t> hw_dest_scaler_blocks_used_;
 
  private:
+  void SetDisplaySwitchMode(uint32_t index);
+
   std::string interface_str_ = "DSI";
   bool resolution_switch_enabled_ = false;
   bool autorefresh_ = false;

@@ -127,11 +127,11 @@ int HWCDisplayBuiltIn::Init() {
   color_mode_ = new HWCColorMode(display_intf_);
   color_mode_->Init();
 
-  int optimize_refresh = 0;
-  HWCDebugHandler::Get()->GetProperty(ENABLE_OPTIMIZE_REFRESH, &optimize_refresh);
-  enable_optimize_refresh_ = (optimize_refresh == 1);
+  int value = 0;
+  HWCDebugHandler::Get()->GetProperty(ENABLE_OPTIMIZE_REFRESH, &value);
+  enable_optimize_refresh_ = (value == 1);
   if (enable_optimize_refresh_) {
-    DLOGI("Drop redundant drawcycles %d", id_);
+    DLOGI("Drop redundant drawcycles %" PRIu64 , id_);
   }
 
   int vsyncs = 0;
@@ -143,11 +143,33 @@ int HWCDisplayBuiltIn::Init() {
   is_primary_ = display_intf_->IsPrimaryDisplay();
 
   if (is_primary_) {
-    Debug::GetWindowRect(&window_rect_.left, &window_rect_.top,
-                                 &window_rect_.right, &window_rect_.bottom);
+    int enable_bw_limits = 0;
+    HWCDebugHandler::Get()->GetProperty(ENABLE_BW_LIMITS, &enable_bw_limits);
+    enable_bw_limits_ = (enable_bw_limits == 1);
+    if (enable_bw_limits_) {
+      DLOGI("Enable BW Limits %" PRIu64, id_);
+    }
+    windowed_display_ = Debug::GetWindowRect(&window_rect_.left, &window_rect_.top,
+                      &window_rect_.right, &window_rect_.bottom) != kErrorUndefined;
     DLOGI("Window rect : [%f %f %f %f]", window_rect_.left, window_rect_.top,
-           window_rect_.right, window_rect_.bottom);
+          window_rect_.right, window_rect_.bottom);
+
+    value = 0;
+    HWCDebugHandler::Get()->GetProperty(ENABLE_POMS_DURING_DOZE, &value);
+    enable_poms_during_doze_ = (value == 1);
+    if (enable_poms_during_doze_) {
+      DLOGI("Enable POMS during Doze mode %" PRIu64 , id_);
+    }
   }
+
+  uint32_t config_index = 0;
+  GetActiveDisplayConfig(&config_index);
+  DisplayConfigVariableInfo attr = {};
+  GetDisplayAttributesForConfig(INT(config_index), &attr);
+  active_refresh_rate_ = attr.fps;
+
+  DLOGI("active_refresh_rate: %d", active_refresh_rate_);
+
   return status;
 }
 
@@ -292,7 +314,8 @@ HWC2::Error HWCDisplayBuiltIn::CommitStitchLayers() {
     Layer *stitch_layer = stitch_target_->GetSDMLayer();
     LayerBuffer &output_buffer = stitch_layer->input_buffer;
     ctx.dst_hnd = reinterpret_cast<const private_handle_t *>(output_buffer.buffer_id);
-    SetRect(layer->stitch_dst_rect, &ctx.dst_rect);
+    SetRect(layer->stitch_info.dst_rect, &ctx.dst_rect);
+    SetRect(layer->stitch_info.slice_rect, &ctx.scissor_rect);
     ctx.src_acquire_fence = input_buffer.acquire_fence;
 
     layer_stitch_task_.PerformTask(LayerStitchTaskCode::kCodeStitch, &ctx);
@@ -342,6 +365,78 @@ bool HWCDisplayBuiltIn::IsQsyncCallbackNeeded(bool *qsync_enabled, int32_t *refr
   return true;
 }
 
+int HWCDisplayBuiltIn::GetBwCode(const DisplayConfigVariableInfo &attr) {
+  uint32_t min_refresh_rate = 0, max_refresh_rate = 0;
+  display_intf_->GetRefreshRateRange(&min_refresh_rate, &max_refresh_rate);
+  uint32_t fps = attr.smart_panel ? attr.fps : max_refresh_rate;
+
+  if (fps <= 60) {
+    return kBwLow;
+  } else if (fps <= 90) {
+    return kBwMedium;
+  } else {
+    return kBwHigh;
+  }
+}
+
+void HWCDisplayBuiltIn::SetBwLimitHint(bool enable) {
+  if (!enable_bw_limits_) {
+    return;
+  }
+
+  if (!enable) {
+    thermal_bandwidth_client_cancel_request(const_cast<char*>(kDisplayBwName));
+    curr_refresh_rate_ = 0;
+    return;
+  }
+
+  uint32_t config_index = 0;
+  DisplayConfigVariableInfo attr = {};
+  GetActiveDisplayConfig(&config_index);
+  GetDisplayAttributesForConfig(INT(config_index), &attr);
+  if (attr.fps != curr_refresh_rate_ || attr.smart_panel != is_smart_panel_) {
+    int bw_code = GetBwCode(attr);
+    int req_data = thermal_bandwidth_client_merge_input_info(bw_code, 0);
+    int error = thermal_bandwidth_client_request(const_cast<char*>(kDisplayBwName), req_data);
+    if (error) {
+      DLOGE("Thermal bandwidth request failed %d", error);
+    }
+    curr_refresh_rate_ = attr.fps;
+    is_smart_panel_ = attr.smart_panel;
+  }
+}
+
+void HWCDisplayBuiltIn::SetPartialUpdate(DisplayConfigFixedInfo fixed_info) {
+  partial_update_enabled_ = fixed_info.partial_update || (!fixed_info.is_cmdmode);
+  for (auto hwc_layer : layer_set_) {
+    hwc_layer->SetPartialUpdate(partial_update_enabled_);
+  }
+  client_target_->SetPartialUpdate(partial_update_enabled_);
+}
+
+HWC2::Error HWCDisplayBuiltIn::SetPowerMode(HWC2::PowerMode mode, bool teardown) {
+  DisplayConfigFixedInfo fixed_info = {};
+  display_intf_->GetConfig(&fixed_info);
+  bool command_mode = fixed_info.is_cmdmode;
+
+  auto status = HWCDisplay::SetPowerMode(mode, teardown);
+  if (status != HWC2::Error::None) {
+    return status;
+  }
+
+  display_intf_->GetConfig(&fixed_info);
+  is_cmd_mode_ = fixed_info.is_cmdmode;
+  if (is_cmd_mode_ != command_mode) {
+    SetPartialUpdate(fixed_info);
+  }
+
+  if (mode == HWC2::PowerMode::Off) {
+    SetBwLimitHint(false);
+  }
+
+  return HWC2::Error::None;
+}
+
 HWC2::Error HWCDisplayBuiltIn::Present(shared_ptr<Fence> *out_retire_fence) {
   auto status = HWC2::Error::None;
 
@@ -357,6 +452,9 @@ HWC2::Error HWCDisplayBuiltIn::Present(shared_ptr<Fence> *out_retire_fence) {
     }
   } else {
     CacheAvrStatus();
+    DisplayConfigFixedInfo fixed_info = {};
+    display_intf_->GetConfig(&fixed_info);
+    bool command_mode = fixed_info.is_cmdmode;
 
     status = CommitStitchLayers();
     if (status != HWC2::Error::None) {
@@ -369,6 +467,12 @@ HWC2::Error HWCDisplayBuiltIn::Present(shared_ptr<Fence> *out_retire_fence) {
       HandleFrameOutput();
       PostCommitStitchLayers();
       status = HWCDisplay::PostCommitLayerStack(out_retire_fence);
+      SetBwLimitHint(true);
+      display_intf_->GetConfig(&fixed_info);
+      is_cmd_mode_ = fixed_info.is_cmdmode;
+      if (is_cmd_mode_ != command_mode) {
+        SetPartialUpdate(fixed_info);
+      }
     }
   }
 
@@ -731,7 +835,7 @@ int HWCDisplayBuiltIn::HandleSecureSession(const std::bitset<kSecureMax> &secure
       return err;
     }
 
-    DLOGI("SecureDisplay state changed from %d to %d for display %d-%d",
+    DLOGI("SecureDisplay state changed from %d to %d for display %" PRIu64 "-%d",
           active_secure_sessions_.test(kSecureDisplay), secure_sessions.test(kSecureDisplay),
           id_, type_);
   }
@@ -761,7 +865,8 @@ uint32_t HWCDisplayBuiltIn::GetOptimalRefreshRate(bool one_updating_layer) {
     return metadata_refresh_rate_;
   }
 
-  return max_refresh_rate_;
+  DLOGV_IF(kTagClient, "active_refresh_rate_: %d", active_refresh_rate_);
+  return active_refresh_rate_;
 }
 
 void HWCDisplayBuiltIn::SetIdleTimeoutMs(uint32_t timeout_ms) {
@@ -837,8 +942,7 @@ HWC2::Error HWCDisplayBuiltIn::SetFrameDumpConfig(uint32_t count, uint32_t bit_m
 
   if (dump_output_to_file_) {
     if (cwb_client_ != kCWBClientNone) {
-      DLOGE("CWB is in use with client = %d", cwb_client_);
-      dump_output_to_file_ = false;
+      DLOGW("CWB is in use with client = %d", cwb_client_);
       return HWC2::Error::NoResources;
     }
   }
@@ -1051,7 +1155,7 @@ DisplayError HWCDisplayBuiltIn::SetDynamicDSIClock(uint64_t bitclk) {
   DisablePartialUpdateOneFrame();
   DisplayError error = display_intf_->SetDynamicDSIClock(bitclk);
   if (error != kErrorNone) {
-    DLOGE(" failed: Clk: %llu Error: %d", bitclk, error);
+    DLOGE(" failed: Clk: %" PRIu64 " Error: %d", bitclk, error);
     return error;
   }
 
@@ -1136,6 +1240,11 @@ HWC2::Error HWCDisplayBuiltIn::SetClientTarget(buffer_handle_t target,
     return error;
   }
 
+  // windowed_display and dynamic scaling are not supported.
+  if (windowed_display_) {
+    return HWC2::Error::None;
+  }
+
   Layer *sdm_layer = client_target_->GetSDMLayer();
   uint32_t fb_width = 0, fb_height = 0;
 
@@ -1156,6 +1265,22 @@ bool HWCDisplayBuiltIn::IsSmartPanelConfig(uint32_t config_id) {
   if (config_id < hwc_config_map_.size()) {
     uint32_t index = hwc_config_map_.at(config_id);
     return variable_config_map_.at(index).smart_panel;
+  }
+
+  return false;
+}
+
+bool HWCDisplayBuiltIn::HasSmartPanelConfig(void) {
+  if (!enable_poms_during_doze_) {
+    uint32_t config = 0;
+    GetActiveDisplayConfig(&config);
+    return IsSmartPanelConfig(config);
+  }
+
+  for (auto &config : variable_config_map_) {
+    if (config.second.smart_panel) {
+      return true;
+    }
   }
 
   return false;
@@ -1182,8 +1307,8 @@ void HWCDisplayBuiltIn::OnTask(const LayerStitchTaskCode &task_code,
         DTRACE_SCOPED();
         LayerStitchContext* ctx = reinterpret_cast<LayerStitchContext*>(task_context);
         gl_layer_stitch_->Blit(ctx->src_hnd, ctx->dst_hnd, ctx->src_rect, ctx->dst_rect,
-                               ctx->src_acquire_fence, ctx->dst_acquire_fence,
-                               &(ctx->release_fence));
+                               ctx->scissor_rect, ctx->src_acquire_fence,
+                               ctx->dst_acquire_fence, &(ctx->release_fence));
       }
       break;
     case LayerStitchTaskCode::kCodeDestroyInstance: {

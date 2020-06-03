@@ -98,6 +98,7 @@ class HWCColorMode {
   HWC2::Error Init();
   HWC2::Error DeInit();
   void Dump(std::ostringstream* os);
+  void SetApplyMode(bool enable);
   uint32_t GetColorModeCount();
   uint32_t GetRenderIntentCount(ColorMode mode);
   HWC2::Error GetColorModes(uint32_t *out_num_modes, ColorMode *out_modes);
@@ -225,6 +226,10 @@ class HWCDisplay : public DisplayEventHandler {
   }
 
   virtual bool IsSmartPanelConfig(uint32_t config_id) {
+    return false;
+  }
+
+  virtual bool HasSmartPanelConfig(void) {
     return false;
   }
 
@@ -459,6 +464,9 @@ class HWCDisplay : public DisplayEventHandler {
   bool AllowSeamless(hwc2_config_t request_config);
   void SetVsyncsApplyRateChange(uint32_t vsyncs) { vsyncs_to_apply_rate_change_ = vsyncs; }
   HWC2::Error SubmitDisplayConfig(hwc2_config_t config);
+  HWC2::Error GetCachedActiveConfig(hwc2_config_t *config);
+  void SetActiveConfigIndex(int active_config_index);
+  int GetActiveConfigIndex();
 
   bool validated_ = false;
   bool layer_stack_invalid_ = true;
@@ -520,8 +528,11 @@ class HWCDisplay : public DisplayEventHandler {
   int64_t pending_refresh_rate_applied_time_ = INT64_MAX;
   std::deque<TransientRefreshRateInfo> transient_refresh_rate_info_;
   std::mutex transient_refresh_rate_lock_;
+  std::mutex active_config_lock_;
+  int active_config_index_ = -1;
   LayerRect window_rect_ = {};
-  bool windowed_display_ = true;
+  bool windowed_display_ = false;
+  uint32_t active_refresh_rate_ = 0;
 
  private:
   void DumpInputBuffers(void);

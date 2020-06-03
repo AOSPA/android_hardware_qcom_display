@@ -26,6 +26,7 @@
 #include <gralloctypes/Gralloc4.h>
 #include <sys/mman.h>
 
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -506,7 +507,6 @@ static void getComponentSizeAndOffset(int32_t format, PlaneLayoutComponent &comp
       }
       break;
     default:
-      ALOGE("Offset and size in bits unknown for format %d", format);
       break;
   }
 }
@@ -1104,7 +1104,7 @@ Error BufferManager::GetMetadata(private_handle_t *handle, int64_t metadatatype_
       break;
     }
     case (int64_t)StandardMetadataType::CHROMA_SITING:
-      android::gralloc4::encodeChromaSiting(android::gralloc4::ChromaSiting_Unknown, out);
+      android::gralloc4::encodeChromaSiting(android::gralloc4::ChromaSiting_None, out);
       break;
     case (int64_t)StandardMetadataType::DATASPACE:
       Dataspace dataspace;
@@ -1112,7 +1112,11 @@ Error BufferManager::GetMetadata(private_handle_t *handle, int64_t metadatatype_
       android::gralloc4::encodeDataspace(dataspace, out);
       break;
     case (int64_t)StandardMetadataType::INTERLACED:
-      android::gralloc4::encodeInterlaced(qtigralloc::Interlaced_Qti, out);
+      if (metadata->interlaced > 0) {
+        android::gralloc4::encodeInterlaced(qtigralloc::Interlaced_Qti, out);
+      } else {
+        android::gralloc4::encodeInterlaced(android::gralloc4::Interlaced_None, out);
+      }
       break;
     case (int64_t)StandardMetadataType::COMPRESSION:
       if (handle->flags & qtigralloc::PRIV_FLAGS_UBWC_ALIGNED ||

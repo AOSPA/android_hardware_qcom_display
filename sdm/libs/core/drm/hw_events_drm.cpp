@@ -270,13 +270,19 @@ DisplayError HWEventsDRM::Deinit() {
 }
 
 DisplayError HWEventsDRM::SetEventState(HWEvent event, bool enable, void *arg) {
+  DisplayError error = kErrorNone;
   switch (event) {
     case HWEvent::VSYNC: {
       std::lock_guard<std::mutex> lock(vsync_mutex_);
       vsync_enabled_ = enable;
       if (vsync_enabled_ && !vsync_registered_) {
-        RegisterVSync();
+        error = RegisterVSync();
+        if (error != kErrorNone) {
+          return error;
+        }
         vsync_registered_ = true;
+      } else if (!vsync_enabled_) {
+        vsync_registered_ = false;
       }
     } break;
     default:
@@ -548,12 +554,14 @@ DisplayError HWEventsDRM::RegisterHwRecovery(bool enable) {
 }
 
 void HWEventsDRM::HandleVSync(char *data) {
+  DisplayError ret = kErrorNone;
+  vsync_handler_count_ = 0;  //  reset vsync handler count. lock not needed
   {
     std::lock_guard<std::mutex> lock(vsync_mutex_);
     vsync_registered_ = false;
     if (vsync_enabled_) {
-      RegisterVSync();
-      vsync_registered_ = true;
+      ret = RegisterVSync();
+      vsync_registered_ = (ret == kErrorNone);
     }
   }
 
@@ -563,6 +571,16 @@ void HWEventsDRM::HandleVSync(char *data) {
   int error = drmHandleEvent(poll_fds_[vsync_index_].fd, &event);
   if (error != 0) {
     DLOGE("drmHandleEvent failed: %i", error);
+  }
+
+  if (vsync_handler_count_ > 1) {
+    //  probable thread preemption caused > 1 vsync handling. Re-enable vsync before polling
+    std::lock_guard<std::mutex> lock(vsync_mutex_);
+    vsync_registered_ = false;
+    if (vsync_enabled_) {
+      ret = RegisterVSync();
+      vsync_registered_ = (ret == kErrorNone);
+    }
   }
 }
 
@@ -609,9 +627,11 @@ void HWEventsDRM::HandlePanelDead(char *data) {
 
 void HWEventsDRM::VSyncHandlerCallback(int fd, unsigned int sequence, unsigned int tv_sec,
                                        unsigned int tv_usec, void *data) {
+  HWEventsDRM *ev_data = reinterpret_cast<HWEventsDRM *>(data);
+  ev_data->vsync_handler_count_++;
   int64_t timestamp = (int64_t)(tv_sec)*1000000000 + (int64_t)(tv_usec)*1000;
   DTRACE_SCOPED();
-  reinterpret_cast<HWEventsDRM *>(data)->event_handler_->VSync(timestamp);
+  ev_data->event_handler_->VSync(timestamp);
 }
 
 void HWEventsDRM::HandleIdleTimeout(char *data) {

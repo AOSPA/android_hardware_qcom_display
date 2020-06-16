@@ -4,6 +4,8 @@
  *
  * Copyright 2015 The Android Open Source Project
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -144,9 +146,7 @@ static EGLImageBuffer* L_wrap(const private_handle_t *src)
 
   android::sp<android::GraphicBuffer> graphicBuffer =
     new android::GraphicBuffer(unaligned_width, unaligned_height, src->format,
-#ifndef __NOUGAT__
                                1,  // Layer count
-#endif
                                flags, stride /*src->stride*/,
                                native_handle, false);
 

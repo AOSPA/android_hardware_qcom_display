@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2015 - 2017, The Linux Foundation. All rights reserved.
+* Copyright (c) 2015 - 2018, 2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -149,7 +149,8 @@ static uint32_t GetContentType(const LayerBuffer &layer_buffer) {
 #endif
 
 static bool MapHDMIDisplayTiming(const msm_hdmi_mode_timing_info *mode,
-                                 fb_var_screeninfo *info, bool hdr_enabled) {
+                                 fb_var_screeninfo *info, bool hdr_enabled,
+                                 DisplayInterfaceFormat fmt) {
   if (!mode || !info) {
     return false;
   }
@@ -171,16 +172,24 @@ static bool MapHDMIDisplayTiming(const msm_hdmi_mode_timing_info *mode,
   info->vsync_len = mode->pulse_width_v;
   info->upper_margin = mode->back_porch_v;
 
-  info->grayscale = V4L2_PIX_FMT_RGB24;
-  // If the mode supports YUV420 set grayscale to the FOURCC value for YUV420.
-  std::bitset<32> pixel_formats = mode->pixel_formats;
-  if (pixel_formats[1] && !pixel_formats[0]) {
+  if (fmt == DisplayInterfaceFormat::kFormatNone) {
+    info->grayscale = V4L2_PIX_FMT_RGB24;
+    // If the mode supports YUV420 set grayscale to the FOURCC value for YUV420.
+    std::bitset<32> pixel_formats = mode->pixel_formats;
+    if (pixel_formats[1] && !pixel_formats[0]) {
+      info->grayscale = V4L2_PIX_FMT_NV12;
+    }
+    if (pixel_formats[1] && pixel_formats[0] && hdr_enabled) {
+      info->grayscale = V4L2_PIX_FMT_NV12;
+    }
+  } else if (fmt == DisplayInterfaceFormat::kFormatRGB) {
+    info->grayscale = V4L2_PIX_FMT_RGB24;
+  } else if (fmt == DisplayInterfaceFormat::kFormatYUV) {
     info->grayscale = V4L2_PIX_FMT_NV12;
+  } else {
+    DLOGE("Invalid format!");
+    return false;
   }
-  if (pixel_formats[1] && pixel_formats[0] && hdr_enabled) {
-    info->grayscale = V4L2_PIX_FMT_NV12;
-  }
-
 
   if (!mode->active_low_h) {
     info->sync |= (uint32_t)FB_SYNC_HOR_HIGH_ACT;
@@ -206,6 +215,7 @@ HWHDMI::HWHDMI(BufferSyncHandler *buffer_sync_handler,  HWInfoInterface *hw_info
   (void)hdr_reset_end_;
   (void)reset_hdr_flag_;
   (void)cdm_color_space_;
+  pref_fmt_ = DisplayInterfaceFormat::kFormatNone;
 }
 
 DisplayError HWHDMI::Init() {
@@ -237,6 +247,8 @@ DisplayError HWHDMI::Init() {
     Deinit();
     return error;
   }
+
+  ClearNonStandardConfigs();
 
   ReadScanInfo();
 
@@ -393,7 +405,8 @@ DisplayError HWHDMI::SetDisplayAttributes(uint32_t index) {
     }
   }
 
-  if (MapHDMIDisplayTiming(timing_mode, &vscreeninfo, hw_panel_info_.hdr_enabled) == false) {
+  if (MapHDMIDisplayTiming(timing_mode, &vscreeninfo,
+                           hw_panel_info_.hdr_enabled, pref_fmt_) == false) {
     return kErrorParameters;
   }
 
@@ -433,6 +446,18 @@ DisplayError HWHDMI::SetDisplayAttributes(uint32_t index) {
   }
 
   SetS3DMode(kS3DModeNone);
+
+  return kErrorNone;
+}
+
+DisplayError HWHDMI::SetDisplayFormat(uint32_t index, DisplayInterfaceFormat fmt) {
+
+  // Check for the usage of index
+
+  if (index > hdmi_modes_.size()) {
+    return kErrorNotSupported;
+  }
+  pref_fmt_ = fmt;
 
   return kErrorNone;
 }
@@ -1167,6 +1192,29 @@ DisplayError HWHDMI::UpdateHDRMetaData(HWLayers *hw_layers) {
 #endif
 
   return error;
+}
+
+DisplayError HWHDMI::GetHdmiMode(std::vector<uint32_t> &hdmi_modes) {
+  hdmi_modes = hdmi_modes_;
+  return kErrorNone;
+}
+
+DisplayError HWHDMI::ClearNonStandardConfigs() {
+  vector<msm_hdmi_mode_timing_info> standard_video_modes;
+  vector<uint32_t> standard_modes;
+  for (uint32_t i = 0; i < hdmi_modes_.size(); i++) {
+    if (supported_video_modes_[i].video_format <= STANDARD_VIC) {
+      standard_video_modes.push_back(supported_video_modes_[i]);
+    }
+    if(hdmi_modes_[i] <= STANDARD_VIC) {
+      standard_modes.push_back(hdmi_modes_[i]);
+    }
+  }
+  hdmi_modes_.clear();
+  supported_video_modes_.clear();
+  hdmi_modes_ = standard_modes;
+  supported_video_modes_ = standard_video_modes;
+  return kErrorNone;
 }
 
 }  // namespace sdm

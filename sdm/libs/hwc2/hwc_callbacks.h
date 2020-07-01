@@ -36,6 +36,8 @@
 #undef HWC2_INCLUDE_STRINGIFICATION
 #undef HWC2_USE_CPP11
 
+#include <mutex>
+
 namespace sdm {
 
 class HWCCallbacks {
@@ -80,6 +82,12 @@ class HWCCallbacks {
   HWC2_PFN_VSYNC vsync_ = nullptr;
   HWC2_PFN_VSYNC_2_4 vsync_2_4_ = nullptr;
   HWC2_PFN_VSYNC_PERIOD_TIMING_CHANGED vsync_period_timing_changed_ = nullptr;
+
+  std::mutex hotplug_mutex_;
+  std::mutex refresh_mutex_;
+  std::mutex vsync_mutex_;
+  std::mutex vsync_2_4_mutex_;
+  std::mutex vsync_period_timing_changed_mutex_;
 
   hwc2_display_t vsync_source_ = HWC_DISPLAY_PRIMARY;   // hw vsync is active on this display
   std::bitset<kNumDisplays> pending_refresh_;         // Displays waiting to get refreshed

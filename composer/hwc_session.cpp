@@ -2844,7 +2844,7 @@ void HWCSession::DestroyPluggableDisplay(DisplayMapInfo *map_info) {
   callbacks_.Hotplug(client_id, HWC2::Connection::Disconnected);
 
   {
-    SCOPE_LOCK(locker_[client_id]);
+    SEQUENCE_WAIT_SCOPE_LOCK(locker_[client_id]);
     auto &hwc_display = hwc_display_[client_id];
     if (!hwc_display) {
       return;
@@ -3163,8 +3163,12 @@ int32_t HWCSession::GetReadbackBufferAttributes(hwc2_display_t display, int32_t 
     return HWC2_ERROR_BAD_PARAMETER;
   }
 
-  if (display != HWC_DISPLAY_PRIMARY) {
+  if (display >= HWCCallbacks::kNumDisplays) {
     return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  if (display != HWC_DISPLAY_PRIMARY) {
+    return HWC2_ERROR_UNSUPPORTED;
   }
 
   HWCDisplay *hwc_display = hwc_display_[display];
@@ -3186,8 +3190,12 @@ int32_t HWCSession::SetReadbackBuffer(hwc2_display_t display, const native_handl
     return HWC2_ERROR_BAD_PARAMETER;
   }
 
-  if (display != HWC_DISPLAY_PRIMARY) {
+  if (display >= HWCCallbacks::kNumDisplays) {
     return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  if (display != HWC_DISPLAY_PRIMARY) {
+    return HWC2_ERROR_UNSUPPORTED;
   }
 
   int external_dpy_index = GetDisplayIndex(qdutils::DISPLAY_EXTERNAL);
@@ -3207,8 +3215,12 @@ int32_t HWCSession::GetReadbackBufferFence(hwc2_display_t display,
     return HWC2_ERROR_BAD_PARAMETER;
   }
 
-  if (display != HWC_DISPLAY_PRIMARY) {
+  if (display >= HWCCallbacks::kNumDisplays) {
     return HWC2_ERROR_BAD_DISPLAY;
+  }
+
+  if (display != HWC_DISPLAY_PRIMARY) {
+    return HWC2_ERROR_UNSUPPORTED;
   }
 
   return CallDisplayFunction(display, &HWCDisplay::GetReadbackBufferFence, release_fence);
@@ -3445,6 +3457,7 @@ void HWCSession::NotifyClientStatus(bool connected) {
     }
     SCOPE_LOCK(locker_[i]);
     hwc_display_[i]->NotifyClientStatus(connected);
+    hwc_display_[i]->SetVsyncEnabled(HWC2::Vsync::Disable);
   }
 }
 

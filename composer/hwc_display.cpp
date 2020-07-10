@@ -569,7 +569,9 @@ void HWCDisplay::UpdateConfigs() {
   }
 
   if (num_configs_ != 0) {
-    SetActiveConfigIndex(hwc_config_map_.at(0));
+    hwc2_config_t active_config = hwc_config_map_.at(0);
+    GetActiveConfig(&active_config);
+    SetActiveConfigIndex(active_config);
   }
 
   // Update num config count.
@@ -1702,6 +1704,7 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence
     }
 
     layer->request.flags = {};
+    layer_buffer->acquire_fence = nullptr;
   }
 
   client_target_->GetSDMLayer()->request.flags = {};

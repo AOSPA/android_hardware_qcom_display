@@ -216,7 +216,6 @@ else
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/composer
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/gpu_tonemapper
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/hdmi_cec
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libdebug
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libdrmutils
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libhistogram
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/liblight
@@ -231,7 +230,7 @@ endif
 #Modules that will be added in QMAA/Non-QMAA paths
 PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/gralloc
 PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/init
-
+PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libdebug
 
 
 QMAA_ENABLED_HAL_MODULES += display

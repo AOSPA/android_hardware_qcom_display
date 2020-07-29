@@ -63,6 +63,7 @@
 
 #ifndef QMAA
 #include <display/media/mmm_color_fmt.h>
+#include <display/drm/sde_drm.h>
 #endif
 
 #include <drm/drm_fourcc.h>

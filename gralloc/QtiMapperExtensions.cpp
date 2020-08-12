@@ -398,7 +398,7 @@ Return<void> QtiMapperExtensions::getFormatLayout(int32_t format, uint64_t usage
   uint32_t size = 0;
   int custom_format = gralloc::GetImplDefinedFormat(usage, format);
   BufferInfo info(width, height, custom_format, usage);
-  int ret = gralloc::GetAlignedWidthAndHeight(info, &alignedw, &alignedh);
+  int ret = gralloc::GetBufferSizeAndDimensions(info, &size, &alignedw, &alignedh);
   if (ret) {
     err = Error::BAD_BUFFER;
     hidl_cb(err, size, plane_info);

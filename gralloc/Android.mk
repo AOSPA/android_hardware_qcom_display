@@ -18,8 +18,14 @@ LOCAL_C_INCLUDES              += external/libcxx/include \
                                  $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 LOCAL_SHARED_LIBRARIES        += libion
 endif
+ifeq ($(TARGET_KERNEL_VERSION), 4.19)
+LOCAL_C_INCLUDES              += external/libcxx/include \
+                                 $(LIBION_HEADER_PATHS) \
+                                 $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+LOCAL_SHARED_LIBRARIES        += libion
+endif
 LOCAL_HEADER_LIBRARIES        := display_headers
-ifneq ($(TARGET_KERNEL_VERSION),$(filter $(TARGET_KERNEL_VERSION),4.14 4.19))
+ifneq ($(TARGET_KERNEL_VERSION), $(filter $(TARGET_KERNEL_VERSION),4.14 4.19))
 LOCAL_CFLAGS                  += -isystem  $(kernel_includes)
 endif
 LOCAL_CLANG                   := true
@@ -44,6 +50,9 @@ LOCAL_VENDOR_MODULE           := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) $(kernel_includes)
 ifeq ($(TARGET_KERNEL_VERSION),$(filter $(TARGET_KERNEL_VERSION),4.14 4.19))
+LOCAL_C_INCLUDES              += $(LIBION_HEADER_PATHS)
+endif
+ifeq ($(TARGET_KERNEL_VERSION), 4.19)
 LOCAL_C_INCLUDES              += $(LIBION_HEADER_PATHS)
 endif
 LOCAL_HEADER_LIBRARIES        := display_headers

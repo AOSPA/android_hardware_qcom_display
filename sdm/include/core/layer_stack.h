@@ -293,6 +293,8 @@ struct LayerStackFlags {
       uint32_t config_changed : 1;  //!< This flag indicates Display config must be validated.
 
       uint32_t scaling_rgb_layer_present : 1; //!< This flag indicates scaling rgb layer presense
+
+      uint32_t fod_pressed_present : 1;
     };
 
     uint32_t flags = 0;               //!< For initialization purpose only.

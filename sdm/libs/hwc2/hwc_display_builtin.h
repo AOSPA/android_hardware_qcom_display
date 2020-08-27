@@ -94,10 +94,14 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   virtual DisplayError GetSupportedDSIClock(std::vector<uint64_t> *bitclk_rates);
   virtual HWC2::Error UpdateDisplayId(hwc2_display_t id);
   virtual HWC2::Error SetPendingRefresh();
+  virtual HWC2::Error SetPanelBrightness(int32_t level) override;
+  virtual HWC2::Error GetPanelBrightness(int32_t &level) const override;
+  virtual HWC2::Error GetPanelMaxBrightness(int32_t &max_brightness_level) const override;
   virtual DisplayError TeardownConcurrentWriteback(void);
   virtual void SetFastPathComposition(bool enable) {
     fast_path_composition_ = enable && !readback_buffer_queued_;
   }
+  virtual HWC2::Error PostCommitLayerStack(int32_t *out_retire_fence);
 
   virtual HWC2::Error SetDisplayedContentSamplingEnabledVndService(bool enabled);
   virtual HWC2::Error SetDisplayedContentSamplingEnabled(int32_t enabled, uint8_t component_mask, uint64_t max_frames) override;
@@ -107,7 +111,10 @@ class HWCDisplayBuiltIn : public HWCDisplay {
                                                 uint64_t timestamp, uint64_t* numFrames,
                                                 int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
                                                 uint64_t* samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) override;
+  virtual HWC2::Error GetDisplayBrightnessSupport(bool *out_support) override;
+  virtual HWC2::Error GetProtectedContentsSupport(bool *out_support) override;
   std::string Dump() override;
+  virtual HWC2::Error UpdatePowerMode(HWC2::PowerMode mode);
 
  private:
   HWCDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
@@ -126,6 +133,18 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   bool CanSkipCommit();
   DisplayError SetMixerResolution(uint32_t width, uint32_t height);
   DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
+  class PMICInterface {
+   public:
+    PMICInterface() { }
+    ~PMICInterface() { }
+    DisplayError Init();
+    void Deinit();
+    DisplayError Notify(SecureEvent event);
+
+   private:
+    int fd_lcd_bias_ = -1;
+    int fd_wled_ = -1;
+  };
 
   BufferAllocator *buffer_allocator_ = nullptr;
   CPUHint *cpu_hint_ = nullptr;
@@ -142,7 +161,8 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   void *output_buffer_base_ = nullptr;
   int default_mode_status_ = 0;
   bool pending_refresh_ = true;
-  bool enable_drop_refresh_ = false;
+  bool enable_optimize_refresh_ = false;
+  bool hdr_present_ = false;
 
   // Members for 1 frame capture in a client provided buffer
   bool frame_capture_buffer_queued_ = false;
@@ -162,6 +182,9 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   bool api_sampling_vote = false;
   bool vndservice_sampling_vote = false;
 
+  // PMIC interface to notify secure display start/end
+  PMICInterface *pmic_intf_ = nullptr;
+  bool pmic_notification_pending_ = false;
 };
 
 }  // namespace sdm

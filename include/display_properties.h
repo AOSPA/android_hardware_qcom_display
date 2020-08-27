@@ -120,10 +120,15 @@
 #define PLUGGABLE_BASEID_AND_SIZE_PROP       DISPLAY_PROP("pluggable_baseid_and_size")
 #define VIRTUAL_BASEID_AND_SIZE_PROP         DISPLAY_PROP("virtual_baseid_and_size")
 #define ENABLE_QDCM_DIAG                     DISPLAY_PROP("enable_qdcm_diag")
+#define QDCM_DISABLE_FACTORY_MODE_PROP       DISPLAY_PROP("qdcm.disable_factory_mode")
+#define DISABLE_DEFER_POWER_STATE            DISPLAY_PROP("disable_defer_power_state")
 
 #define ZERO_SWAP_INTERVAL                   "vendor.debug.egl.swapinterval"
-#define ENABLE_DROP_REFRESH                  DISPLAY_PROP("enable_drop_refresh")
-#define DISABLE_UI_3D_TONEMAP                DISPLAY_PROP("disable_ui_3d_tonemap")
 #define DEFER_FPS_FRAME_COUNT                DISPLAY_PROP("defer_fps_frame_count")
+#define ENABLE_OPTIMIZE_REFRESH              DISPLAY_PROP("enable_optimize_refresh")
+#define ENABLE_ASYNC_POWERMODE               DISPLAY_PROP("enable_async_powermode")
+#define DISABLE_UI_3D_TONEMAP                DISPLAY_PROP("disable_ui_3d_tonemap")
+#define DISABLE_PARALLEL_CACHE               DISPLAY_PROP("disable_parallel_cache")
+#define ENABLE_FORCE_SPLIT                   DISPLAY_PROP("enable_force_split")
 
 #endif  // __DISPLAY_PROPERTIES_H__

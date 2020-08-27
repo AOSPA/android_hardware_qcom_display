@@ -183,7 +183,8 @@ Return<void> QtiMapper::lock(void *buffer, uint64_t cpu_usage,
 
   auto hnd = PRIV_HANDLE_CONST(buffer);
   auto *out_data = reinterpret_cast<void *>(hnd->base);
-  hidl_cb(err, out_data, gralloc::GetBpp(hnd->format), hnd->width);
+  auto bytes_per_pixel = gralloc::GetBpp(hnd->format);
+  hidl_cb(err, out_data, bytes_per_pixel, hnd->width * bytes_per_pixel);
   return Void();
 }
 
@@ -245,6 +246,10 @@ Return<void> QtiMapper::getTransportSize(void *buffer, IMapper_3_0::getTransport
   auto hnd = static_cast<private_handle_t *>(buffer);
   uint32_t num_fds = 0, num_ints = 0;
   if (buffer != nullptr && private_handle_t::validate(hnd) == 0) {
+    if (buf_mgr_->IsBufferImported(hnd) != Error::NONE) {
+      hidl_cb(err, num_fds, num_ints);
+      return Void();
+    }
     num_fds = 2;
     // TODO(user): reduce to transported values;
     num_ints = static_cast<uint32_t >(hnd->numInts);

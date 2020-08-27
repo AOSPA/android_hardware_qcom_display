@@ -16,13 +16,13 @@
 
 #include <sched.h>
 
-#include <android/hardware/graphics/composer/2.3/IComposer.h>
+#include <android/hardware/graphics/composer/2.4/IComposer.h>
 #include <binder/ProcessState.h>
-#include <composer-passthrough/2.3/HwcLoader.h>
+#include <composer-passthrough/2.4/HwcLoader.h>
 #include <hidl/HidlTransportSupport.h>
 
-using android::hardware::graphics::composer::V2_3::IComposer;
-using android::hardware::graphics::composer::V2_3::passthrough::HwcLoader;
+using android::hardware::graphics::composer::V2_4::IComposer;
+using android::hardware::graphics::composer::V2_4::passthrough::HwcLoader;
 
 int main() {
     // the conventional HAL might start binder services

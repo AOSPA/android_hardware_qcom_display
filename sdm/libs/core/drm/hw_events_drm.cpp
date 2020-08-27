@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -235,8 +235,6 @@ DisplayError HWEventsDRM::Init(int display_id, DisplayType display_type,
     return kErrorResources;
   }
 
-  RegisterVSync();
-  vsync_registered_ = true;
   RegisterPanelDead(true);
   RegisterIdleNotify(true);
   RegisterIdlePowerCollapse(true);
@@ -272,13 +270,19 @@ DisplayError HWEventsDRM::Deinit() {
 }
 
 DisplayError HWEventsDRM::SetEventState(HWEvent event, bool enable, void *arg) {
+  DisplayError error = kErrorNone;
   switch (event) {
     case HWEvent::VSYNC: {
       std::lock_guard<std::mutex> lock(vsync_mutex_);
       vsync_enabled_ = enable;
       if (vsync_enabled_ && !vsync_registered_) {
-        RegisterVSync();
+        error = RegisterVSync();
+        if (error != kErrorNone) {
+          return error;
+        }
         vsync_registered_ = true;
+      } else if (!vsync_enabled_) {
+        vsync_registered_ = false;
       }
     } break;
     default:
@@ -403,6 +407,7 @@ void *HWEventsDRM::DisplayEventHandler() {
 }
 
 DisplayError HWEventsDRM::RegisterVSync() {
+  DTRACE_SCOPED();
   drmVBlank vblank {};
   uint32_t high_crtc = token_.crtc_index << DRM_VBLANK_HIGH_CRTC_SHIFT;
   vblank.request.type = (drmVBlankSeqType)(DRM_VBLANK_RELATIVE | DRM_VBLANK_EVENT |
@@ -549,6 +554,17 @@ DisplayError HWEventsDRM::RegisterHwRecovery(bool enable) {
 }
 
 void HWEventsDRM::HandleVSync(char *data) {
+  DisplayError ret = kErrorNone;
+  vsync_handler_count_ = 0;  //  reset vsync handler count. lock not needed
+  {
+    std::lock_guard<std::mutex> lock(vsync_mutex_);
+    vsync_registered_ = false;
+    if (vsync_enabled_) {
+      ret = RegisterVSync();
+      vsync_registered_ = (ret == kErrorNone);
+    }
+  }
+
   drmEventContext event = {};
   event.version = DRM_EVENT_CONTEXT_VERSION;
   event.vblank_handler = &HWEventsDRM::VSyncHandlerCallback;
@@ -557,11 +573,14 @@ void HWEventsDRM::HandleVSync(char *data) {
     DLOGE("drmHandleEvent failed: %i", error);
   }
 
-  std::lock_guard<std::mutex> lock(vsync_mutex_);
-  vsync_registered_ = false;
-  if (vsync_enabled_) {
-    RegisterVSync();
-    vsync_registered_ = true;
+  if (vsync_handler_count_ > 1) {
+    //  probable thread preemption caused > 1 vsync handling. Re-enable vsync before polling
+    std::lock_guard<std::mutex> lock(vsync_mutex_);
+    vsync_registered_ = false;
+    if (vsync_enabled_) {
+      ret = RegisterVSync();
+      vsync_registered_ = (ret == kErrorNone);
+    }
   }
 }
 
@@ -608,8 +627,11 @@ void HWEventsDRM::HandlePanelDead(char *data) {
 
 void HWEventsDRM::VSyncHandlerCallback(int fd, unsigned int sequence, unsigned int tv_sec,
                                        unsigned int tv_usec, void *data) {
+  HWEventsDRM *ev_data = reinterpret_cast<HWEventsDRM *>(data);
+  ev_data->vsync_handler_count_++;
   int64_t timestamp = (int64_t)(tv_sec)*1000000000 + (int64_t)(tv_usec)*1000;
-  reinterpret_cast<HWEventsDRM *>(data)->event_handler_->VSync(timestamp);
+  DTRACE_SCOPED();
+  ev_data->event_handler_->VSync(timestamp);
 }
 
 void HWEventsDRM::HandleIdleTimeout(char *data) {

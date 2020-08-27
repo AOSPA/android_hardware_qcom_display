@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -173,8 +173,8 @@ void Strategy::GenerateROI() {
     return;
   }
 
-  float layer_mixer_width = mixer_attributes_.width;
-  float layer_mixer_height = mixer_attributes_.height;
+  float layer_mixer_width = FLOAT(mixer_attributes_.width);
+  float layer_mixer_height = FLOAT(mixer_attributes_.height);
 
   if (!hw_resource_info_.is_src_split && display_attributes_.is_device_split) {
     split_display = true;
@@ -273,6 +273,13 @@ DisplayError Strategy::SetBlendSpace(const PrimariesTransfer &blend_space) {
     return strategy_intf_->SetBlendSpace(blend_space);
   }
   return kErrorNotSupported;
+}
+
+bool Strategy::CanSkipValidate() {
+  if (strategy_intf_) {
+    return strategy_intf_->CanSkipValidate();
+  }
+  return true;
 }
 
 }  // namespace sdm

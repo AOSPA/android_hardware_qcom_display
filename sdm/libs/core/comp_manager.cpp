@@ -188,6 +188,18 @@ DisplayError CompManager::UnregisterDisplay(Handle display_ctx) {
   return kErrorNone;
 }
 
+DisplayError CompManager::CheckEnforceSplit(Handle comp_handle,
+                                            uint32_t new_refresh_rate) {
+  SCOPE_LOCK(locker_);
+  DisplayError error = kErrorNone;
+  DisplayCompositionContext *display_comp_ctx =
+                             reinterpret_cast<DisplayCompositionContext *>(comp_handle);
+
+  error = resource_intf_->Perform(ResourceInterface::kCmdCheckEnforceSplit,
+                                  display_comp_ctx->display_resource_ctx, new_refresh_rate);
+  return error;
+}
+
 DisplayError CompManager::ReconfigureDisplay(Handle comp_handle,
                                              const HWDisplayAttributes &display_attributes,
                                              const HWPanelInfo &hw_panel_info,
@@ -209,6 +221,12 @@ DisplayError CompManager::ReconfigureDisplay(Handle comp_handle,
 
   error = resource_intf_->Perform(ResourceInterface::kCmdGetDefaultClk,
                                   display_comp_ctx->display_resource_ctx, default_clk_hz);
+  if (error != kErrorNone) {
+    return error;
+  }
+
+  error = resource_intf_->Perform(ResourceInterface::kCmdCheckEnforceSplit,
+                                  display_comp_ctx->display_resource_ctx, display_attributes.fps);
   if (error != kErrorNone) {
     return error;
   }
@@ -554,7 +572,7 @@ DisplayError CompManager::ControlDpps(bool enable) {
   return kErrorNone;
 }
 
-bool CompManager::SetDisplayState(Handle display_ctx, DisplayState state) {
+bool CompManager::SetDisplayState(Handle display_ctx, DisplayState state, int sync_handle) {
   DisplayCompositionContext *display_comp_ctx =
       reinterpret_cast<DisplayCompositionContext *>(display_ctx);
 
@@ -592,6 +610,8 @@ bool CompManager::SetDisplayState(Handle display_ctx, DisplayState state) {
   bool inactive = (state == kStateOff) || (state == kStateDozeSuspend);
   UpdateStrategyConstraints(display_comp_ctx->is_primary_panel, inactive);
 
+  resource_intf_->Perform(ResourceInterface::kCmdUpdateSyncHandle,
+                          display_comp_ctx->display_resource_ctx, sync_handle);
   return true;
 }
 
@@ -647,6 +667,13 @@ void CompManager::UpdateStrategyConstraints(bool is_primary, bool disabled) {
   // Allow builtin display to use all pipes when primary is suspended.
   // Restore it back to 2 after primary poweron.
   max_sde_builtin_layers_ = (disabled && (powered_on_displays_.size() <= 1)) ? kMaxSDELayers : 2;
+}
+
+bool CompManager::CanSkipValidate(Handle display_ctx) {
+  DisplayCompositionContext *display_comp_ctx =
+      reinterpret_cast<DisplayCompositionContext *>(display_ctx);
+
+  return display_comp_ctx->strategy->CanSkipValidate();
 }
 
 }  // namespace sdm

@@ -47,6 +47,7 @@
 #define __CLASS__ "HWHDMI"
 
 #define  MIN_HDR_RESET_WAITTIME_SEC 2
+#define  RGB_PIX_CLOCK_LIMIT 590
 
 namespace sdm {
 
@@ -182,6 +183,9 @@ static bool MapHDMIDisplayTiming(const msm_hdmi_mode_timing_info *mode,
     if (pixel_formats[1] && pixel_formats[0] && hdr_enabled) {
       info->grayscale = V4L2_PIX_FMT_NV12;
     }
+    if (info->pixclock/1000000 < RGB_PIX_CLOCK_LIMIT && pixel_formats[0]) {
+      info->grayscale = V4L2_PIX_FMT_RGB24;
+    }
   } else if (fmt == DisplayInterfaceFormat::kFormatRGB) {
     info->grayscale = V4L2_PIX_FMT_RGB24;
   } else if (fmt == DisplayInterfaceFormat::kFormatYUV) {
@@ -189,6 +193,12 @@ static bool MapHDMIDisplayTiming(const msm_hdmi_mode_timing_info *mode,
   } else {
     DLOGE("Invalid format!");
     return false;
+  }
+
+  if (info->grayscale == V4L2_PIX_FMT_RGB24) {
+    DLOGI("Using RGB format");
+  } else {
+    DLOGI("Using YUV format");
   }
 
   if (!mode->active_low_h) {

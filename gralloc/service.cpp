@@ -31,12 +31,16 @@
 
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
+using android::hardware::setMinSchedulerPolicy;
 using vendor::qti::hardware::display::allocator::V3_0::IQtiAllocator;
 using vendor::qti::hardware::display::allocator::V3_0::implementation::QtiAllocator;
 
 int main(int, char **) {
   android::sp<IQtiAllocator> service = new QtiAllocator();
   configureRpcThreadpool(4, true /*callerWillJoin*/);
+  if (!setMinSchedulerPolicy(service, SCHED_NORMAL, -20)) {
+    ALOGW("Cannot bump allocator priority");
+  }
   if (service->registerAsService() != android::OK) {
     ALOGE("Cannot register QTI Allocator service");
     return -EINVAL;

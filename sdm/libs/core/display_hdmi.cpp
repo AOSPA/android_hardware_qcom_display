@@ -35,6 +35,7 @@
 
 #define __CLASS__ "DisplayHDMI"
 
+#define STANDARD_VIC 127  // 1-127 are standard vic-ids
 
 namespace sdm {
 

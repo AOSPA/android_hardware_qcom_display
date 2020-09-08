@@ -85,9 +85,7 @@ class DisplayBase : public DisplayInterface {
   virtual bool IsUnderscanSupported() {
     return false;
   }
-  virtual DisplayError SetPanelBrightness(int level) {
-    return kErrorNotSupported;
-  }
+  virtual DisplayError SetPanelBrightness(int32_t level) override { return kErrorNotSupported; }
   virtual DisplayError OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) {
     return kErrorNotSupported;
   }
@@ -103,6 +101,9 @@ class DisplayBase : public DisplayInterface {
   virtual DisplayError GetSupportedDSIClock(std::vector<uint64_t> *bitclk_rates) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetPanelLuminanceAttributes(float min_lum, float max_lum) {
+    return kErrorNotSupported;
+  }
   virtual DisplayError GetColorModeCount(uint32_t *mode_count);
   virtual DisplayError GetColorModes(uint32_t *mode_count, std::vector<std::string> *color_modes);
   virtual DisplayError GetColorModeAttr(const std::string &color_mode, AttrVal *attr);
@@ -113,9 +114,13 @@ class DisplayBase : public DisplayInterface {
   virtual DisplayError GetDefaultColorMode(std::string *color_mode);
   virtual DisplayError SetCursorPosition(int x, int y);
   virtual DisplayError GetRefreshRateRange(uint32_t *min_refresh_rate, uint32_t *max_refresh_rate);
-  virtual DisplayError GetPanelBrightness(int *level) {
+  virtual DisplayError GetPanelBrightness(int32_t &level) const override {
     return kErrorNotSupported;
   }
+  virtual DisplayError GetPanelMaxBrightness(int32_t &max_brightness_level) const override {
+    return kErrorNotSupported;
+  }
+  virtual bool IsSupportPanelBrightnessControl() override { return false; }
   virtual DisplayError SetVSyncState(bool enable);
   virtual void SetIdleTimeoutMs(uint32_t active_ms) {}
   virtual DisplayError SetMixerResolution(uint32_t width, uint32_t height);
@@ -149,6 +154,8 @@ class DisplayBase : public DisplayInterface {
   virtual DisplayError colorSamplingOn();
   virtual DisplayError colorSamplingOff();
   virtual DisplayError ReconfigureDisplay();
+  virtual bool CanSkipValidate();
+  virtual DisplayError GetRefreshRate(uint32_t *refresh_rate) { return kErrorNotSupported; }
 
  protected:
   const char *kBt2020Pq = "bt2020_pq";
@@ -229,6 +236,13 @@ class DisplayBase : public DisplayInterface {
   uint32_t current_refresh_rate_ = 0;
   bool drop_skewed_vsync_ = false;
   bool custom_mixer_resolution_ = false;
+  DisplayState power_state_pending_ = kStateOff;
+  bool vsync_state_change_pending_ = false;
+  bool requested_vsync_state_ = false;
+  bool defer_power_state_ = false;
+  QSyncMode qsync_mode_ = kQSyncModeNone;
+  bool needs_avr_update_ = false;
+  bool safe_mode_in_fast_path_ = false;
 
   static Locker display_power_reset_lock_;
   static bool display_power_reset_pending_;
@@ -236,6 +250,8 @@ class DisplayBase : public DisplayInterface {
  private:
   bool StartDisplayPowerReset();
   void EndDisplayPowerReset();
+  void SetLutSwapFlag();
+  bool lut_swap_ = false;
 };
 
 }  // namespace sdm

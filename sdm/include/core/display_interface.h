@@ -159,9 +159,10 @@ enum SecureEvent {
 
 /*! @brief This enum represents the QSync modes supported by the hardware. */
 enum QSyncMode {
-  kQSyncModeNone,        // This is set by the client to disable qsync
-  kQSyncModeContinuous,  // This is set by the client to enable qsync forever
-  kQsyncModeOneShot,     // This is set by client to enable qsync only for current frame.
+  kQSyncModeNone,               // This is set by the client to disable qsync
+  kQSyncModeContinuous,         // This is set by the client to enable qsync forever
+  kQsyncModeOneShot,            // This is set by client to enable qsync only for current frame.
+  kQsyncModeOneShotContinuous,  // This is set by client to enable qsync only for every commit.
 };
 
 /*! @brief This structure defines configuration for display dpps ad4 region of interest. */
@@ -210,6 +211,11 @@ struct DisplayConfigVariableInfo {
     return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) && (x_dpi == info.x_dpi) &&
             (y_dpi == info.y_dpi) && (fps == info.fps) && (vsync_period_ns == info.vsync_period_ns)
             && (is_yuv == info.is_yuv));
+  }
+
+  bool SameGroup(const DisplayConfigVariableInfo &info) const {
+    return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) && (x_dpi == info.x_dpi) &&
+            (y_dpi == info.y_dpi) && (is_yuv == info.is_yuv));
   }
 };
 
@@ -525,6 +531,14 @@ class DisplayInterface {
   */
   virtual DisplayError SetRefreshRate(uint32_t refresh_rate, bool final_rate) = 0;
 
+  /*! @brief Method to get the refresh rate of a display.
+
+    @param[in] refresh_rate refresh rate of the display.
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetRefreshRate(uint32_t *refresh_rate) = 0;
+
   /*! @brief Method to query whether scanning is support for the HDMI display.
 
     @return \link DisplayError \endlink
@@ -537,7 +551,7 @@ class DisplayInterface {
 
     @return \link DisplayError \endlink
   */
-  virtual DisplayError SetPanelBrightness(int level) = 0;
+  virtual DisplayError SetPanelBrightness(int32_t level) = 0;
 
   /*! @brief Method to notify display about change in min HDCP encryption level.
 
@@ -644,7 +658,21 @@ class DisplayInterface {
 
     @return \link DisplayError \endlink
   */
-  virtual DisplayError GetPanelBrightness(int *level) = 0;
+  virtual DisplayError GetPanelBrightness(int32_t &level) const = 0;
+
+  /*! @brief Method to get the max brightness level of the display
+
+    @param[out] max_brightness level
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetPanelMaxBrightness(int32_t &max_brightness_level) const = 0;
+
+  /*! @brief Method to query whether it is support brightness control
+
+    @return true if support brightness control
+  */
+  virtual bool IsSupportPanelBrightnessControl() = 0;
 
   /*! @brief Method to set layer mixer resolution.
 
@@ -845,6 +873,21 @@ class DisplayInterface {
 
   /*! @brief Method to turn off histogram events. */
   virtual DisplayError colorSamplingOff() = 0;
+
+  /*! @brief Method to set min/max luminance for dynamic tonemapping of external device over WFD.
+
+    @param[in] min_lum min luminance supported by external device.
+    @param[in] max_lum max luminance supported by external device.
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetPanelLuminanceAttributes(float min_lum, float max_lum) = 0;
+
+  /*! @brief Method to query if there is a need to validate.
+
+      @return \link boolean \endlink
+  */
+  virtual bool CanSkipValidate() = 0;
 
  protected:
   virtual ~DisplayInterface() { }

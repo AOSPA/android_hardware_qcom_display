@@ -103,13 +103,14 @@ class HWInterface {
   virtual void SetIdleTimeoutMs(uint32_t timeout_ms) = 0;
   virtual DisplayError SetDisplayMode(const HWDisplayMode hw_display_mode) = 0;
   virtual DisplayError SetRefreshRate(uint32_t refresh_rate) = 0;
-  virtual DisplayError SetPanelBrightness(int level) = 0;
+  virtual DisplayError SetPanelBrightness(int32_t level) = 0;
   virtual DisplayError GetHWScanInfo(HWScanInfo *scan_info) = 0;
   virtual DisplayError GetVideoFormat(uint32_t config_index, uint32_t *video_format) = 0;
   virtual DisplayError GetMaxCEAFormat(uint32_t *max_cea_format) = 0;
   virtual DisplayError SetCursorPosition(HWLayers *hw_layers, int x, int y) = 0;
   virtual DisplayError OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) = 0;
-  virtual DisplayError GetPanelBrightness(int *level) = 0;
+  virtual DisplayError GetPanelBrightness(int32_t &level) const = 0;
+  virtual bool IsSupportPanelBrightnessControl() = 0;
   virtual DisplayError SetAutoRefresh(bool enable) = 0;
   virtual DisplayError SetS3DMode(HWS3DMode s3d_mode) = 0;
   virtual DisplayError SetScaleLutConfig(HWScaleLutInfo *lut_info) = 0;

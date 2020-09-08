@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 - 2016, 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013 - 2016, 2018 - 2020, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -116,10 +116,6 @@ int isExternalConnected(void);
 // Returns 0 on success, negative values on errors
 int getDisplayAttributes(int dpy, DisplayAttributes_t& dpyattr);
 
-// Set HSIC data on a given display ID
-// Returns 0 on success, negative values on errors
-int setHSIC(int dpy, const HSICData_t& hsic_data);
-
 // get the active visible region for the display
 // Returns 0 on success, negative values on errors
 int getDisplayVisibleRegion(int dpy, hwc_rect_t &rect);
@@ -170,6 +166,9 @@ uint64_t getDsiClk(int dpy);
 
 // Get supported bit clk values.
 int getSupportedBitClk(int dpy, std::vector<uint64_t>& bit_rates);
+
+// Sets the specified min and max luminance values.
+int setPanelLuminanceAttributes(int dpy, float min_lum, float max_lum);
 
 }; //namespace
 

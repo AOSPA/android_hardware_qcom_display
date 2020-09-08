@@ -22,7 +22,6 @@ LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware li
                                  libutils libcutils libsync libqdutils libqdMetaData \
                                  libdisplaydebug libsdmutils libc++ liblog libgrallocutils libui \
                                  libgpu_tonemapper libhidlbase libhidltransport \
-                                 vendor.display.config@1.0 \
                                  android.hardware.graphics.mapper@2.0 \
                                  android.hardware.graphics.mapper@2.1 \
                                  android.hardware.graphics.mapper@3.0 \
@@ -30,63 +29,23 @@ LOCAL_SHARED_LIBRARIES        := libsdmcore libqservice libbinder libhardware li
                                  android.hardware.graphics.allocator@3.0 \
                                  android.hardware.graphics.composer@2.2 \
                                  android.hardware.graphics.composer@2.3 \
+                                 android.hardware.graphics.composer@2.4 \
                                  hardware.google.light@1.0 \
-                                 libdrm.vendor \
+                                 libdrm \
+                                 vendor.display.config@1.0 \
+                                 vendor.display.config@1.1 \
+                                 vendor.display.config@1.2 \
+                                 vendor.display.config@1.3 \
+                                 vendor.display.config@1.4 \
+                                 vendor.display.config@1.5 \
+                                 vendor.display.config@1.6 \
+                                 vendor.display.config@1.7 \
+                                 vendor.display.config@1.8 \
+                                 vendor.display.config@1.9 \
+                                 vendor.display.config@1.10 \
+                                 vendor.display.config@1.11
 
 LOCAL_STATIC_LIBRARIES        := libhistogram
-
-#$(info IDisplayConfig version: $(display_config_version))
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_1)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
-endif
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_2)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2 vendor.display.config@1.1
-endif
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_3)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.3
-endif
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_4)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.3
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.4
-endif
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_5)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.3
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.4
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.5
-endif
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_6)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.3
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.4
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.5
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.6
-endif
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_7)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.3
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.4
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.5
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.6
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.7
-endif
-ifeq ($(display_config_version), DISPLAY_CONFIG_1_8)
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.1
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.2
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.3
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.4
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.5
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.6
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.7
-LOCAL_SHARED_LIBRARIES        += vendor.display.config@1.8
-endif
 
 # Allow implicit fallthroughs in hwc_display.cpp until they are fixed.
 LOCAL_CFLAGS                  += -Wno-error=implicit-fallthrough
@@ -100,6 +59,7 @@ LOCAL_SRC_FILES               := hwc_session.cpp \
                                  hwc_display.cpp \
                                  hwc_display_builtin.cpp \
                                  hwc_display_pluggable.cpp \
+                                 hwc_display_dummy.cpp \
                                  hwc_display_pluggable_test.cpp \
                                  hwc_display_virtual.cpp \
                                  hwc_debugger.cpp \

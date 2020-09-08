@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2018, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -56,8 +56,13 @@ DisplayBuiltIn::DisplayBuiltIn(int32_t display_id, DisplayEventHandler *event_ha
   : DisplayBase(display_id, kBuiltIn, event_handler, kDeviceBuiltIn, buffer_sync_handler,
                 buffer_allocator, comp_manager, hw_info_intf) {}
 
+DisplayBuiltIn::~DisplayBuiltIn() {
+  CloseFd(&previous_retire_fence_);
+}
+
 DisplayError DisplayBuiltIn::Init() {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
+  int32_t disable_defer_power_state = 0;
 
   DisplayError error = HWInterface::Create(display_id_, kBuiltIn, hw_info_intf_,
                                            buffer_sync_handler_, buffer_allocator_, &hw_intf_);
@@ -123,6 +128,10 @@ DisplayError DisplayBuiltIn::Init() {
 
   initColorSamplingState();
 
+  Debug::GetProperty(DISABLE_DEFER_POWER_STATE, &disable_defer_power_state);
+  defer_power_state_ = !disable_defer_power_state;
+  DLOGI("defer_power_state %d", defer_power_state_);
+
   int value = 0;
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
@@ -153,7 +162,8 @@ DisplayError DisplayBuiltIn::Prepare(LayerStack *layer_stack) {
     }
   } else {
     if (CanSkipDisplayPrepare(layer_stack)) {
-      hw_layers_.hw_avr_info.enable = NeedsAVREnable();
+      hw_layers_.hw_avr_info.update = needs_avr_update_;
+      hw_layers_.hw_avr_info.mode = GetAvrMode(qsync_mode_);
       return kErrorNone;
     }
   }
@@ -163,7 +173,8 @@ DisplayError DisplayBuiltIn::Prepare(LayerStack *layer_stack) {
   hw_layers_ = HWLayers();
   DTRACE_END();
 
-  hw_layers_.hw_avr_info.enable = NeedsAVREnable();
+  hw_layers_.hw_avr_info.update = needs_avr_update_;
+  hw_layers_.hw_avr_info.mode = GetAvrMode(qsync_mode_);
 
   left_frame_roi_ = {};
   right_frame_roi_ = {};
@@ -221,6 +232,20 @@ DisplayError DisplayBuiltIn::colorSamplingOff() {
   return setColorSamplingState(SamplingState::Off);
 }
 
+HWAVRModes DisplayBuiltIn::GetAvrMode(QSyncMode mode) {
+  switch (mode) {
+     case kQSyncModeNone:
+       return kQsyncNone;
+     case kQSyncModeContinuous:
+       return kContinuousMode;
+     case kQsyncModeOneShot:
+     case kQsyncModeOneShotContinuous:
+       return kOneShotMode;
+     default:
+       return kQsyncNone;
+  }
+}
+
 DisplayError DisplayBuiltIn::Commit(LayerStack *layer_stack) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   DisplayError error = kErrorNone;
@@ -244,6 +269,16 @@ DisplayError DisplayBuiltIn::Commit(LayerStack *layer_stack) {
     DppsProcessOps(kDppsSetFeature, &histogramIRQ, sizeof(histogramIRQ));
   }
 
+  if (vsync_enable_) {
+    DTRACE_BEGIN("RegisterVsync");
+    // wait for previous frame's retire fence to signal.
+    buffer_sync_handler_->SyncWait(previous_retire_fence_);
+
+    // Register for vsync and then commit the frame.
+    hw_events_intf_->SetEventState(HWEvent::VSYNC, true);
+    DTRACE_END();
+  }
+
   error = DisplayBase::Commit(layer_stack);
   if (error != kErrorNone) {
     return error;
@@ -253,11 +288,11 @@ DisplayError DisplayBuiltIn::Commit(LayerStack *layer_stack) {
     dpps_info_.DppsNotifyOps(kDppsCommitEvent, &display_type_, sizeof(display_type_));
   }
 
-  deferred_config_.OnCommit();
+  deferred_config_.UpdateDeferCount();
 
   ReconfigureDisplay();
 
-  if (deferred_config_.IsReady()) {
+  if (deferred_config_.CanApplyDeferredState()) {
     event_handler_->HandleEvent(kInvalidateDisplay);
     deferred_config_.Clear();
   }
@@ -274,6 +309,22 @@ DisplayError DisplayBuiltIn::Commit(LayerStack *layer_stack) {
   }
 
   dpps_info_.Init(this, hw_panel_info_.panel_name);
+
+  if (qsync_mode_ == kQsyncModeOneShot) {
+    // Reset qsync mode.
+    SetQSyncMode(kQSyncModeNone);
+  } else if (qsync_mode_ == kQsyncModeOneShotContinuous) {
+    // No action needed.
+  } else if (qsync_mode_ == kQSyncModeContinuous) {
+    needs_avr_update_ = false;
+  } else if (qsync_mode_ == kQSyncModeNone) {
+    needs_avr_update_ = false;
+  }
+
+  first_cycle_ = false;
+
+  CloseFd(&previous_retire_fence_);
+  previous_retire_fence_ = Sys::dup_(layer_stack->retire_fence_fd);
 
   return error;
 }
@@ -382,9 +433,18 @@ DisplayError DisplayBuiltIn::SetDisplayMode(uint32_t mode) {
   return error;
 }
 
-DisplayError DisplayBuiltIn::SetPanelBrightness(int level) {
-  lock_guard<recursive_mutex> obj(recursive_mutex_);
-  return hw_intf_->SetPanelBrightness(level);
+DisplayError DisplayBuiltIn::SetPanelBrightness(int32_t level) {
+  lock_guard<std::mutex> lock(brightness_lock_);
+
+  if (state_ == kStateOff) {
+    return kErrorNone;
+  }
+
+  DisplayError err = hw_intf_->SetPanelBrightness(level);
+
+  DLOGI_IF(kTagDisplay, "Setting brightness to level %d, error %d", level, err);
+
+  return err;
 }
 
 DisplayError DisplayBuiltIn::GetRefreshRateRange(uint32_t *min_refresh_rate,
@@ -411,7 +471,7 @@ DisplayError DisplayBuiltIn::TeardownConcurrentWriteback(void) {
 DisplayError DisplayBuiltIn::SetRefreshRate(uint32_t refresh_rate, bool final_rate) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
 
-  if (!active_ || !hw_panel_info_.dynamic_fps) {
+  if (!active_ || !hw_panel_info_.dynamic_fps || qsync_mode_ != kQSyncModeNone) {
     return kErrorNotSupported;
   }
 
@@ -430,6 +490,11 @@ DisplayError DisplayBuiltIn::SetRefreshRate(uint32_t refresh_rate, bool final_ra
       // Attempt to update refresh rate can fail if rf interfenence is detected.
       // Just drop min fps settting for now.
       handle_idle_timeout_ = false;
+      return error;
+    }
+
+    error = comp_manager_->CheckEnforceSplit(display_comp_ctx_, refresh_rate);
+    if (error != kErrorNone) {
       return error;
     }
   }
@@ -496,9 +561,29 @@ void DisplayBuiltIn::Histogram(int histogram_fd, uint32_t blob_id) {
     event_handler_->HistogramEvent(histogram_fd, blob_id);
 }
 
-DisplayError DisplayBuiltIn::GetPanelBrightness(int *level) {
+DisplayError DisplayBuiltIn::GetPanelBrightness(int32_t &level) const {
+  lock_guard<std::mutex> lock(brightness_lock_);
+
+  DisplayError err = hw_intf_->GetPanelBrightness(level);
+
+  DLOGI_IF(kTagDisplay, "Getting brightness level %d, error %d", level, err);
+
+  return err;
+}
+
+DisplayError DisplayBuiltIn::GetPanelMaxBrightness(int32_t &max_brightness_level) const {
+  lock_guard<std::mutex> lock(brightness_lock_);
+
+  max_brightness_level = static_cast<int32_t>(hw_panel_info_.panel_max_brightness);
+
+  DLOGI_IF(kTagDisplay, "Get panel max brightness %u", max_brightness_level);
+  return kErrorNone;
+}
+
+bool DisplayBuiltIn::IsSupportPanelBrightnessControl() {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
-  return hw_intf_->GetPanelBrightness(level);
+
+  return hw_intf_->IsSupportPanelBrightnessControl();
 }
 
 DisplayError DisplayBuiltIn::ControlPartialUpdate(bool enable, uint32_t *pending) {
@@ -535,20 +620,6 @@ DisplayError DisplayBuiltIn::DisablePartialUpdateOneFrame() {
   disable_pu_one_frame_ = true;
 
   return kErrorNone;
-}
-
-bool DisplayBuiltIn::NeedsAVREnable() {
-  if (avr_prop_disabled_ || qsync_mode_ == kQSyncModeNone) {
-    return false;
-  }
-
-  if (GetDriverType() == DriverType::DRM) {
-    return hw_panel_info_.qsync_support;
-  }
-
-  return (hw_panel_info_.mode == kModeVideo &&
-          ((hw_panel_info_.dynamic_fps && hw_panel_info_.dfps_porch_mode) ||
-           (!hw_panel_info_.dynamic_fps && hw_panel_info_.min_fps != hw_panel_info_.max_fps)));
 }
 
 DisplayError DisplayBuiltIn::DppsProcessOps(enum DppsOps op, void *payload, size_t size) {
@@ -684,10 +755,15 @@ DisplayError DisplayBuiltIn::HandleSecureEvent(SecureEvent secure_event, LayerSt
 
 DisplayError DisplayBuiltIn::SetQSyncMode(QSyncMode qsync_mode) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
-  if (GetDriverType() == DriverType::DRM && qsync_mode == kQsyncModeOneShot) {
+  if (!hw_panel_info_.qsync_support || qsync_mode_ == qsync_mode || first_cycle_) {
+    DLOGE("Failed: qsync_support: %d first_cycle %d mode: %d -> %d", hw_panel_info_.qsync_support,
+          first_cycle_, qsync_mode_, qsync_mode);
     return kErrorNotSupported;
   }
+
   qsync_mode_ = qsync_mode;
+  needs_avr_update_ = true;
+  event_handler_->Refresh();
 
   return kErrorNone;
 }
@@ -717,6 +793,11 @@ DisplayError DisplayBuiltIn::GetSupportedDSIClock(std::vector<uint64_t> *bitclk_
 
 DisplayError DisplayBuiltIn::SetDynamicDSIClock(uint64_t bit_clk_rate) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
+  if (!active_) {
+    DLOGW("Invalid display state = %d. Panel must be on.", state_);
+    return kErrorNotSupported;
+  }
+
   if (!hw_panel_info_.dyn_bitclk_support) {
     return kErrorNotSupported;
   }
@@ -914,8 +995,8 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
 }
 
 bool DisplayBuiltIn::CanDeferFpsConfig(uint32_t fps) {
-  if (deferred_config_.IsReady()) {
-    // Deferred Fps Config is ready to be applied.
+  if (deferred_config_.CanApplyDeferredState()) {
+    // Deferred Fps Config needs to be applied.
     return false;
   }
 
@@ -936,6 +1017,11 @@ void DisplayBuiltIn::GetFpsConfig(HWDisplayAttributes *display_attr, HWPanelInfo
   display_attr->fps = display_attributes_.fps;
   display_attr->vsync_period_ns = display_attributes_.vsync_period_ns;
   panel_info->transfer_time_us = hw_panel_info_.transfer_time_us;
+}
+
+DisplayError DisplayBuiltIn::GetRefreshRate(uint32_t *refresh_rate) {
+  *refresh_rate = current_refresh_rate_;
+  return kErrorNone;
 }
 
 }  // namespace sdm

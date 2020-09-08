@@ -1,6 +1,9 @@
 # Gralloc module
 LOCAL_PATH := $(call my-dir)
+LIBION_HEADER_PATH_WRAPPER := $(QC_OPEN_PATH)/core-utils/build/libion_header_paths/libion_path.mk
+
 include $(LOCAL_PATH)/../common.mk
+include $(LIBION_HEADER_PATH_WRAPPER)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE                  := gralloc.$(TARGET_BOARD_PLATFORM)
@@ -43,8 +46,7 @@ LOCAL_MODULE                  := libgralloccore
 LOCAL_VENDOR_MODULE           := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) \
-                                 system/memory/libion/include \
-                                 system/memory/libion/kernel-headers \
+                                 $(LIBION_HEADER_PATHS) \
                                  $(kernel_includes)
 
 LOCAL_HEADER_LIBRARIES        := display_headers
@@ -52,6 +54,9 @@ LOCAL_SHARED_LIBRARIES        := $(common_libs) libqdMetaData libdl libgrallocut
                                   android.hardware.graphics.mapper@2.1 \
                                   android.hardware.graphics.mapper@3.0
 LOCAL_CFLAGS                  := $(common_flags) -DLOG_TAG=\"qdgralloc\" -Wno-sign-conversion
+ifeq ($(ENABLE_HYP),true)
+LOCAL_CFLAGS += -DHYPERVISOR
+endif
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
 LOCAL_SRC_FILES               := gr_allocator.cpp gr_buf_mgr.cpp gr_ion_alloc.cpp
 include $(BUILD_SHARED_LIBRARY)
@@ -66,7 +71,6 @@ LOCAL_C_INCLUDES              := $(common_includes) $(kernel_includes)
 LOCAL_HEADER_LIBRARIES        := display_headers
 LOCAL_SHARED_LIBRARIES        := $(common_libs) \
                                   libhidlbase \
-                                  libhidltransport \
                                   libqdMetaData \
                                   libgrallocutils \
                                   libgralloccore \
@@ -75,12 +79,9 @@ LOCAL_SHARED_LIBRARIES        := $(common_libs) \
                                   vendor.qti.hardware.display.mapperextensions@1.0 \
                                   android.hardware.graphics.mapper@2.0 \
                                   android.hardware.graphics.mapper@2.1 \
-                                  android.hardware.graphics.mapper@3.0
+                                  android.hardware.graphics.mapper@3.0 \
+				  vendor.qti.hardware.display.mapperextensions@1.1
 LOCAL_CFLAGS                  := $(common_flags) -DLOG_TAG=\"qdgralloc\" -Wno-sign-conversion
-ifeq ($(qti_mapper1_1_version), QTI_MAPPER_1_1)
-LOCAL_SHARED_LIBRARIES        += vendor.qti.hardware.display.mapper@1.1
-LOCAL_CFLAGS                  += -DQTI_MAPPER_1_1
-endif
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
 LOCAL_SRC_FILES               := QtiMapper.cpp QtiMapperExtensions.cpp
 include $(BUILD_SHARED_LIBRARY)
@@ -94,7 +95,6 @@ LOCAL_MODULE_TAGS             := optional
 LOCAL_HEADER_LIBRARIES        := display_headers
 LOCAL_SHARED_LIBRARIES        := $(common_libs) \
                                  libhidlbase \
-                                 libhidltransport\
                                  libqdMetaData \
                                  libgrallocutils \
                                  libgralloccore \

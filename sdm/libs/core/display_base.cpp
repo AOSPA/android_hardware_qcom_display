@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -268,8 +268,8 @@ DisplayError DisplayBase::ValidateGPUTargetParams() {
   auto gpu_target_layer_dst_xpixels = out_rect.right - out_rect.left;
   auto gpu_target_layer_dst_ypixels = out_rect.bottom - out_rect.top;
 
-  if (gpu_target_layer_dst_xpixels > mixer_attributes_.width ||
-    gpu_target_layer_dst_ypixels > mixer_attributes_.height) {
+  if (gpu_target_layer_dst_xpixels > layer_mixer_width ||
+    gpu_target_layer_dst_ypixels > layer_mixer_height) {
     DLOGE("GPU target layer dst rect is not with in limits gpu wxh %fx%f, mixer wxh %dx%d",
                   gpu_target_layer_dst_xpixels, gpu_target_layer_dst_ypixels,
                   mixer_attributes_.width, mixer_attributes_.height);
@@ -283,6 +283,14 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
   DisplayError error = kErrorNone;
   needs_validate_ = true;
+  if (defer_power_state_ && power_state_pending_ != kStateOff) {
+    defer_power_state_ = false;
+    error = SetDisplayState(power_state_pending_, false, NULL);
+    if (error != kErrorNone) {
+      return error;
+    }
+    power_state_pending_ = kStateOff;
+  }
 
   DTRACE_SCOPED();
   if (!active_) {
@@ -399,12 +407,14 @@ DisplayError DisplayBase::Commit(LayerStack *layer_stack) {
       // If COMMIT fails on the Fast Path, set Safe Mode.
       DLOGE("COMMIT failed in Fast Path, set Safe Mode!");
       comp_manager_->SetSafeMode(true);
+      safe_mode_in_fast_path_ = true;
       error = kErrorNotValidated;
     }
     return error;
   }
 
   PostCommitLayerParams(layer_stack);
+  SetLutSwapFlag();
 
   if (partial_update_control_) {
     comp_manager_->ControlPartialUpdate(display_comp_ctx_, true /* enable */);
@@ -417,6 +427,12 @@ DisplayError DisplayBase::Commit(LayerStack *layer_stack) {
 
   // Stop dropping vsync when first commit is received after idle fallback.
   drop_hw_vsync_ = false;
+
+  if (safe_mode_in_fast_path_) {
+    comp_manager_->SetSafeMode(false);
+    safe_mode_in_fast_path_ = false;
+  }
+
   DLOGI_IF(kTagDisplay, "Exiting commit for display: %d-%d", display_id_, display_type_);
 
   return kErrorNone;
@@ -516,6 +532,14 @@ DisplayError DisplayBase::GetVSyncState(bool *enabled) {
 DisplayError DisplayBase::SetDisplayState(DisplayState state, bool teardown,
                                           int *release_fence) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
+  if (defer_power_state_) {
+    if (state == kStateOff) {
+      DLOGE("State cannot be PowerOff on first cycle");
+      return kErrorParameters;
+    }
+    power_state_pending_ = state;
+    return kErrorNone;
+  }
   DisplayError error = kErrorNone;
   bool active = false;
 
@@ -578,7 +602,15 @@ DisplayError DisplayBase::SetDisplayState(DisplayState state, bool teardown,
   if (error == kErrorNone) {
     active_ = active;
     state_ = state;
-    comp_manager_->SetDisplayState(display_comp_ctx_, state);
+    comp_manager_->SetDisplayState(display_comp_ctx_, state, release_fence ? *release_fence : -1);
+  }
+
+  if (vsync_state_change_pending_ && (state_ != kStateOff || state_ != kStateStandby)) {
+    error = SetVSyncState(requested_vsync_state_);
+    if (error != kErrorNone) {
+      return error;
+    }
+    vsync_state_change_pending_ = false;
   }
 
   return error;
@@ -593,6 +625,12 @@ DisplayError DisplayBase::SetActiveConfig(uint32_t index) {
 
   if (active_index == index) {
     return kErrorNone;
+  }
+
+  // Reject active config changes if qsync is in use.
+  if (needs_avr_update_ || qsync_mode_ != kQSyncModeNone) {
+    DLOGE("Failed: needs_avr_update_: %d, qsync_mode_: %d", needs_avr_update_, qsync_mode_);
+    return kErrorNotSupported;
   }
 
   error = hw_intf_->SetDisplayAttributes(index);
@@ -771,8 +809,8 @@ std::string DisplayBase::Dump() {
       char flags[16] = { 0 };
       char z_order[8] = { 0 };
       const char *color_primary = "";
-      const char *transfer = "";
       const char *range = "";
+      const char *transfer = "";
       char row[1024] = { 0 };
 
       snprintf(z_order, sizeof(z_order), "%d", layer_config.hw_solidfill_stage.z_order);
@@ -815,6 +853,7 @@ std::string DisplayBase::Dump() {
       snprintf(color_primary, sizeof(color_primary), "%d", color_metadata.colorPrimaries);
       snprintf(transfer, sizeof(transfer), "%d", color_metadata.transfer);
       snprintf(range, sizeof(range), "%d", color_metadata.range);
+      snprintf(transfer, sizeof(transfer), "%d", color_metadata.transfer);
 
       char row[1024];
       snprintf(row, sizeof(row), format, idx, comp_type, pipe_split[count],
@@ -1089,6 +1128,14 @@ DisplayError DisplayBase::GetRefreshRateRange(uint32_t *min_refresh_rate,
 
 DisplayError DisplayBase::SetVSyncState(bool enable) {
   lock_guard<recursive_mutex> obj(recursive_mutex_);
+  if (state_ == kStateOff) {
+    DLOGW("Can't %s vsync when power state is off for display %d-%d," \
+          "Defer it when display is active", enable ? "enable":"disable",
+          display_id_, display_type_);
+    vsync_state_change_pending_ = true;
+    requested_vsync_state_ = enable;
+    return kErrorNone;
+  }
   DisplayError error = kErrorNone;
   if (vsync_enable_ != enable) {
     error = hw_intf_->SetVSyncState(enable);
@@ -1306,7 +1353,7 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
 
     // Align the width and height according to fb's aspect ratio
     *new_mixer_width = FloorToMultipleOf(UINT32((FLOAT(fb_width) / FLOAT(fb_height)) *
-                                         layer_height), align_x);
+                                         FLOAT(layer_height)), align_x);
     *new_mixer_height = FloorToMultipleOf(layer_height, align_y);
 
     LayerRect dst_domain = {0.0f, 0.0f, FLOAT(*new_mixer_width), FLOAT(*new_mixer_height)};
@@ -1458,6 +1505,7 @@ void DisplayBase::CommitLayerParams(LayerStack *layer_stack) {
     hw_layer.input_buffer.size = sdm_layer->input_buffer.size;
     hw_layer.input_buffer.acquire_fence_fd = sdm_layer->input_buffer.acquire_fence_fd;
     hw_layer.input_buffer.handle_id = sdm_layer->input_buffer.handle_id;
+    hw_layer.input_buffer.buffer_id = sdm_layer->input_buffer.buffer_id;
     // TODO(user): Other FBT layer attributes like surface damage, dataspace, secure camera and
     // secure display flags are also updated during SetClientTarget() called between validate and
     // commit. Need to revist this and update it accordingly for FBT layer.
@@ -1887,6 +1935,30 @@ DisplayError DisplayBase::colorSamplingOn() {
 
 DisplayError DisplayBase::colorSamplingOff() {
   return kErrorNone;
+}
+
+bool DisplayBase::CanSkipValidate() {
+  return comp_manager_->CanSkipValidate(display_comp_ctx_) && !lut_swap_;
+}
+
+void DisplayBase::SetLutSwapFlag() {
+  uint32_t hw_layer_count = UINT32(hw_layers_.info.hw_layers.size());
+  for (uint32_t i = 0; i < hw_layer_count; i++) {
+    HWPipeInfo *left_pipe = &hw_layers_.config[i].left_pipe;
+    HWPipeInfo *right_pipe = &hw_layers_.config[i].right_pipe;
+    for (uint32_t count = 0; count < 2; count++) {
+      HWPipeInfo *pipe_info = (count == 0) ? left_pipe : right_pipe;
+      if (!pipe_info->valid || !pipe_info->scale_data.lut_flag.lut_swap) {
+        continue;
+      }
+      lut_swap_ = true;
+      return;
+    }
+  }
+
+  // No pipe needs lut swap.
+  lut_swap_ = false;
+  return;
 }
 
 }  // namespace sdm

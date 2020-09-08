@@ -1,4 +1,4 @@
-service vendor.hwcomposer-2-3 /vendor/bin/hw/android.hardware.graphics.composer@2.3-service-sm8150
+service vendor.hwcomposer-2-4 /vendor/bin/hw/android.hardware.graphics.composer@2.4-service-sm8150
     class hal animation
     user system
     group graphics drmrpc

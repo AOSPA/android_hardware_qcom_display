@@ -112,6 +112,8 @@ DisplayError HWDevice::Init() {
     return kErrorResources;
   }
 
+  InitializePanelBrightnessFileDescriptor();
+
   return HWScale::Create(&hw_scale_, hw_resource_.has_qseed3);
 }
 
@@ -127,6 +129,9 @@ DisplayError HWDevice::Deinit() {
     Sys::close_(stored_retire_fence);
     stored_retire_fence = -1;
   }
+
+  Sys::close_(brightness_fd_);
+  Sys::close_(max_brightness_fd_);
   return kErrorNone;
 }
 
@@ -987,27 +992,7 @@ void HWDevice::GetSplitInfo(int device_node, HWPanelInfo *panel_info) {
 }
 
 void HWDevice::GetHWPanelMaxBrightnessFromNode(HWPanelInfo *panel_info) {
-  char brightness[kMaxStringLength] = { 0 };
-  char kMaxBrightnessNode[64] = { 0 };
-
-  snprintf(kMaxBrightnessNode, sizeof(kMaxBrightnessNode), "%s",
-           "/sys/class/leds/lcd-backlight/max_brightness");
-
-  panel_info->panel_max_brightness = 0;
-  int fd = Sys::open_(kMaxBrightnessNode, O_RDONLY);
-  if (fd < 0) {
-    DLOGW("Failed to open max brightness node = %s, error = %s", kMaxBrightnessNode,
-          strerror(errno));
-    return;
-  }
-
-  if (Sys::pread_(fd, brightness, sizeof(brightness), 0) > 0) {
-    panel_info->panel_max_brightness = atoi(brightness);
-    DLOGI("Max brightness level = %d", panel_info->panel_max_brightness);
-  } else {
-    DLOGW("Failed to read max brightness level. error = %s", strerror(errno));
-  }
-  Sys::close_(fd);
+  panel_info->panel_max_brightness = kDefaultMaxBrightness;
 }
 
 int HWDevice::ParseLine(const char *input, char *tokens[], const uint32_t max_token,
@@ -1219,7 +1204,7 @@ DisplayError HWDevice::OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) {
   return kErrorNotSupported;
 }
 
-DisplayError HWDevice::GetPanelBrightness(int *level) {
+DisplayError HWDevice::GetPanelBrightness(int &level) const {
   return kErrorNotSupported;
 }
 
@@ -1335,7 +1320,7 @@ DisplayError HWDevice::SetMixerAttributes(const HWMixerAttributes &mixer_attribu
 
   float scale_x = FLOAT(display_attributes_.x_pixels) / FLOAT(mixer_attributes.width);
   float scale_y = FLOAT(display_attributes_.y_pixels) / FLOAT(mixer_attributes.height);
-  float max_scale_up = hw_resource_.hw_dest_scalar_info.max_scale_up;
+  float max_scale_up = FLOAT(hw_resource_.hw_dest_scalar_info.max_scale_up);
   if (scale_x > max_scale_up || scale_y > max_scale_up) {
     DLOGW_IF(kTagDriverConfig, "Up scaling ratio exceeds for destination scalar upscale " \
              "limit scale_x %f scale_y %f max_scale_up %f", scale_x, scale_y, max_scale_up);

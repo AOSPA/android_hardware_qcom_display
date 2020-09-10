@@ -34,7 +34,7 @@ else
 PRODUCT_PACKAGES += \
     android.hardware.memtrack@1.0-impl \
     android.hardware.memtrack@1.0-service \
-    memtrack.qcom
+    memtrack.default
 endif
 endif
 

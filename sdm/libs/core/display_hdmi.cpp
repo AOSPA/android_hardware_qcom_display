@@ -28,6 +28,7 @@
 #include <utility>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 #include "display_hdmi.h"
 #include "hw_interface.h"

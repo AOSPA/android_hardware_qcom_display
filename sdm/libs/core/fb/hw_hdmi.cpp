@@ -37,6 +37,7 @@
 #include <utils/debug.h>
 #include <utils/sys.h>
 #include <utils/formats.h>
+#include <errno.h>
 
 #include <vector>
 #include <map>
@@ -335,7 +336,47 @@ DisplayError HWHDMI::ReadEDIDInfo() {
       hdmi_modes_[i] = UINT32(atoi(tokens[i]));
     }
   }
+  char screen_size_path[kMaxStringLength] = {'\0'};
+  snprintf(screen_size_path, sizeof(screen_size_path), "%s%d/edid_screen_size",
+           fb_path_, fb_node_index_);
+  int screen_size_file = Sys::open_(screen_size_path, O_RDONLY);
+  if (screen_size_file < 0) {
+    DLOGE("Screen size file open failed. error = %d",errno);
+    return kErrorNone;
+  }
 
+  char screen_size_str[kPageSize] = {'\0'};
+  ssize_t len = Sys::pread_(screen_size_file, screen_size_str, sizeof(screen_size_str)-1, 0);
+  if (len <= 0) {
+    DLOGE("screen_size file empty");
+    return kErrorNone;
+  }
+  while (len > 1 && isspace(screen_size_str[len-1])) {
+    --len;
+  }
+  screen_size_str[len] = '\0';
+  DLOGI("Edid screen size = %s",screen_size_str);
+  char width[kMaxStringLength] = {'\0'};
+  size_t index = 0;
+  while (!isspace(screen_size_str[index])) {
+    width[index] = screen_size_str[index];
+    index++;
+  }
+  width[index] = '\0';
+  DLOGI("Display width = %s mm",width);
+  index++;
+  char height[kMaxStringLength] = {'\0'};
+  int i = 0;
+  for (size_t k = index;k < strlen(screen_size_str);k++)
+  {
+    height[i] = screen_size_str[k];
+    i++;
+  }
+  height[i] = '\0';
+  DLOGI("Display height = %s mm",height);
+  physical_screen_width_ = (uint32_t)atoi(width);
+  physical_screen_height_ = (uint32_t)atoi(height);
+  Sys::close_(screen_size_file);
   return kErrorNone;
 }
 
@@ -365,8 +406,11 @@ DisplayError HWHDMI::GetDisplayAttributes(uint32_t index,
   uint32_t h_blanking = timing_mode->front_porch_h + timing_mode->back_porch_h +
       timing_mode->pulse_width_h;
   display_attributes->h_total = timing_mode->active_h + h_blanking;
-  display_attributes->x_dpi = 0;
-  display_attributes->y_dpi = 0;
+  display_attributes->x_dpi = (FLOAT(display_attributes->x_pixels) * 25.4f) /
+                               FLOAT(physical_screen_width_);
+  display_attributes->y_dpi = (FLOAT(display_attributes->y_pixels) * 25.4f) /
+                               FLOAT(physical_screen_height_);
+  DLOGI("Display xdpi x ydpi = %f x %f",display_attributes->x_dpi,display_attributes->y_dpi);
   display_attributes->fps = timing_mode->refresh_rate / 1000;
   display_attributes->vsync_period_ns = UINT32(1000000000L / display_attributes->fps);
   display_attributes->is_device_split = false;

@@ -183,16 +183,12 @@ PRODUCT_PROPERTY_OVERRIDES +=  vendor.display.enable_async_powermode=1
 
 ifeq ($(TARGET_USES_QMAA),true)
     ifeq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)
-        PRODUCT_PROPERTY_OVERRIDES += \
-            vendor.display.enable_null_display=0
         #Modules that shouldn't be enabled in QMAA go here
         PRODUCT_PACKAGES += libdrmutils
         PRODUCT_PACKAGES += libsdedrm
         PRODUCT_PACKAGES += libgpu_tonemapper
     else
     TARGET_IS_HEADLESS := true
-    PRODUCT_PROPERTY_OVERRIDES += \
-        vendor.display.enable_null_display=1
     endif
 endif
 

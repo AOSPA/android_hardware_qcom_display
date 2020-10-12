@@ -1024,12 +1024,6 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   std::lock_guard<std::mutex> buffer_lock(buffer_lock_);
 
   uint64_t usage = descriptor.GetUsage();
-  if (!strcmp(descriptor.GetName().c_str(),"ScreenDecorOverlay#0") ||
-      !strcmp(descriptor.GetName().c_str(),"ScreenDecorOverlayBottom#0")) {
-    usage |= BufferUsage::CPU_READ_RARELY;
-    usage |= BufferUsage::CPU_WRITE_RARELY;
-  }
-
   int format = GetImplDefinedFormat(usage, descriptor.GetFormat());
   uint32_t layer_count = descriptor.GetLayerCount();
 

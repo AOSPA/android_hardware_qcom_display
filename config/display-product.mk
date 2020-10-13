@@ -182,13 +182,9 @@ endif
 PRODUCT_PROPERTY_OVERRIDES +=  vendor.display.enable_async_powermode=1
 
 ifeq ($(TARGET_USES_QMAA),true)
-    ifeq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)
-        #Modules that shouldn't be enabled in QMAA go here
-        PRODUCT_PACKAGES += libdrmutils
-        PRODUCT_PACKAGES += libsdedrm
-        PRODUCT_PACKAGES += libgpu_tonemapper
-    else
-    TARGET_IS_HEADLESS := true
+    ifneq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)
+        #QMAA Mode is enabled
+        TARGET_IS_HEADLESS := true
     endif
 endif
 
@@ -208,19 +204,14 @@ ifeq ($(TARGET_IS_HEADLESS), true)
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/qmaa
     SOONG_CONFIG_qtidisplay_headless := true
 else
+    #Packages that should not be installed in QMAA are enabled here.
+    PRODUCT_PACKAGES += libdrmutils
+    PRODUCT_PACKAGES += libsdedrm
+    PRODUCT_PACKAGES += libgpu_tonemapper
+    #Properties that should not be set in QMAA are enabled here.
+    PRODUCT_PROPERTY_OVERRIDES += \
+        vendor.display.enable_early_wakeup=1
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/composer
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/gpu_tonemapper
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/hdmi_cec
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libdrmutils
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libhistogram
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/liblight
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libmemtrack
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libqdutils
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/libqservice
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/sde-drm
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/sdm/libs/core
-    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/sdm/libs/utils
 endif
 
 #Modules that will be added in QMAA/Non-QMAA paths

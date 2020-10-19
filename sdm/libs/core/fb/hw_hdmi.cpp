@@ -406,11 +406,15 @@ DisplayError HWHDMI::GetDisplayAttributes(uint32_t index,
   uint32_t h_blanking = timing_mode->front_porch_h + timing_mode->back_porch_h +
       timing_mode->pulse_width_h;
   display_attributes->h_total = timing_mode->active_h + h_blanking;
-  display_attributes->x_dpi = (FLOAT(display_attributes->x_pixels) * 25.4f) /
-                               FLOAT(physical_screen_width_);
-  display_attributes->y_dpi = (FLOAT(display_attributes->y_pixels) * 25.4f) /
-                               FLOAT(physical_screen_height_);
-  DLOGI("Display xdpi x ydpi = %f x %f",display_attributes->x_dpi,display_attributes->y_dpi);
+  display_attributes->x_dpi = 0;
+  display_attributes->y_dpi = 0;
+  if (physical_screen_width_ != 0 && physical_screen_height_ != 0) {
+    display_attributes->x_dpi = (FLOAT(display_attributes->x_pixels) * 25.4f) /
+                                 FLOAT(physical_screen_width_);
+    display_attributes->y_dpi = (FLOAT(display_attributes->y_pixels) * 25.4f) /
+                                 FLOAT(physical_screen_height_);
+    DLOGI("Display xdpi x ydpi = %f x %f",display_attributes->x_dpi,display_attributes->y_dpi);
+  }
   display_attributes->fps = timing_mode->refresh_rate / 1000;
   display_attributes->vsync_period_ns = UINT32(1000000000L / display_attributes->fps);
   display_attributes->is_device_split = false;

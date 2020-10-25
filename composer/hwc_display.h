@@ -181,7 +181,7 @@ class HWCDisplay : public DisplayEventHandler {
   virtual int OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level);
   virtual int Perform(uint32_t operation, ...);
   virtual int HandleSecureSession(const std::bitset<kSecureMax> &secure_sessions,
-                                  bool *power_on_pending);
+                                  bool *power_on_pending, bool is_active_secure_display);
   virtual int GetActiveSecureSession(std::bitset<kSecureMax> *secure_sessions);
   virtual DisplayError SetMixerResolution(uint32_t width, uint32_t height);
   virtual DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
@@ -387,6 +387,9 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::PowerMode GetPendingPowerMode() {
     return pending_power_mode_;
   }
+  virtual void SetPendingPowerMode(HWC2::PowerMode mode) {
+    pending_power_mode_ = mode;
+  }
   virtual void ClearPendingPowerMode() {
     pending_power_mode_ = current_power_mode_;
   }
@@ -532,6 +535,7 @@ class HWCDisplay : public DisplayEventHandler {
   LayerRect window_rect_ = {};
   bool windowed_display_ = false;
   uint32_t active_refresh_rate_ = 0;
+  bool animating_ = false;
 
  private:
   void DumpInputBuffers(void);
@@ -543,7 +547,6 @@ class HWCDisplay : public DisplayEventHandler {
   DisplayClass display_class_;
   uint32_t geometry_changes_ = GeometryChanges::kNone;
   uint32_t geometry_changes_on_doze_suspend_ = GeometryChanges::kNone;
-  bool animating_ = false;
   int null_display_mode_ = 0;
   DisplayValidateState validate_state_ = kNormalValidate;
   bool fast_path_enabled_ = true;
@@ -551,6 +554,8 @@ class HWCDisplay : public DisplayEventHandler {
   shared_ptr<Fence> fbt_release_fence_ = nullptr;
   shared_ptr<Fence> release_fence_ = nullptr;
   hwc2_config_t pending_config_index_ = 0;
+  bool pending_first_commit_config_ = false;
+  hwc2_config_t pending_first_commit_config_index_ = 0;
   bool game_supported_ = false;
   uint64_t elapse_timestamp_ = 0;
   int async_power_mode_ = 0;

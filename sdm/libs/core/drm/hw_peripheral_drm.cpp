@@ -562,8 +562,14 @@ void HWPeripheralDRM::ConfigureConcurrentWriteback(LayerStack *layer_stack) {
   sde_drm::DRMRect dst = {};
   dst.left = 0;
   dst.top = 0;
-  dst.right = display_attributes_[current_mode_index_].x_pixels;
-  dst.bottom = display_attributes_[current_mode_index_].y_pixels;
+
+  if (capture_mode == DRMCWbCaptureMode::DSPP_OUT) {
+    dst.right = display_attributes_[current_mode_index_].x_pixels;
+    dst.bottom = display_attributes_[current_mode_index_].y_pixels;
+  } else {
+    dst.right = mixer_attributes_.width;
+    dst.bottom = mixer_attributes_.height;
+  }
 
   DLOGV_IF(kTagDriverConfig, "CWB Mode:%d dst.left:%d dst.top:%d dst.right:%d dst.bottom:%d",
     capture_mode, dst.left, dst.top, dst.right, dst.bottom);
@@ -777,6 +783,9 @@ DisplayError HWPeripheralDRM::SetPanelBrightness(int level) {
 
   if (brightness_base_path_.empty()) {
     return kErrorHardware;
+  }
+  if (!active_) {
+    return kErrorNone;
   }
 
   std::string brightness_node(brightness_base_path_ + "brightness");

@@ -663,11 +663,8 @@ DisplayError DisplayBase::GetConfig(DisplayConfigFixedInfo *fixed_info) {
     hdr_supported = (hdr_supported && hw_panel_info_.hdr_enabled);
   }
 
-  // Built-in displays always support HDR10+ when the target supports HDR. For non-builtins, check
-  // panel capability.
-  if (kBuiltIn == display_type_) {
-    hdr_plus_supported = hdr_supported;
-  } else if (hdr_supported && hw_panel_info_.hdr_plus_enabled) {
+  // For non-builtin displays, check panel capability for HDR10+
+  if (hdr_supported && hw_panel_info_.hdr_plus_enabled) {
     hdr_plus_supported = true;
   }
 
@@ -680,6 +677,7 @@ DisplayError DisplayBase::GetConfig(DisplayConfigFixedInfo *fixed_info) {
   fixed_info->hdr_eotf = hw_panel_info_.hdr_eotf;
   fixed_info->hdr_metadata_type_one = hw_panel_info_.hdr_metadata_type_one;
   fixed_info->partial_update = hw_panel_info_.partial_update;
+  fixed_info->readback_supported = hw_resource_info.has_concurrent_writeback;
 
   return kErrorNone;
 }
@@ -2449,6 +2447,11 @@ DisplayError DisplayBase::HandleSecureEvent(SecureEvent secure_event, bool *need
     }
   }
   return kErrorNone;
+}
+
+DisplayError DisplayBase::OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) {
+  lock_guard<recursive_mutex> obj(recursive_mutex_);
+  return hw_intf_->OnMinHdcpEncryptionLevelChange(min_enc_level);
 }
 
 }  // namespace sdm

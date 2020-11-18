@@ -28,12 +28,15 @@
 #include <utility>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 #include "display_hdmi.h"
 #include "hw_interface.h"
 #include "hw_info_interface.h"
 
 #define __CLASS__ "DisplayHDMI"
+
+#define STANDARD_VIC 127  // 1-127 are standard vic-ids
 
 namespace sdm {
 

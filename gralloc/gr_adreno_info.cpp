@@ -58,6 +58,8 @@ AdrenoMemInfo::AdrenoMemInfo() {
   if (libadreno_utils_) {
     *reinterpret_cast<void **>(&LINK_adreno_compute_aligned_width_and_height) =
         ::dlsym(libadreno_utils_, "compute_aligned_width_and_height");
+    *reinterpret_cast<void **>(&LINK_adreno_compute_fmt_aligned_width_and_height) =
+        ::dlsym(libadreno_utils_, "compute_fmt_aligned_width_and_height");
     *reinterpret_cast<void **>(&LINK_adreno_compute_padding) =
         ::dlsym(libadreno_utils_, "compute_surface_padding");
     *reinterpret_cast<void **>(&LINK_adreno_compute_compressedfmt_aligned_width_and_height) =
@@ -138,7 +140,15 @@ void AdrenoMemInfo::AlignUnCompressedRGB(int width, int height, int format, int 
   int padding_threshold = 512;  // Threshold for padding surfaces.
   // the function below computes aligned width and aligned height
   // based on linear or macro tile mode selected.
-  if (LINK_adreno_compute_aligned_width_and_height) {
+  if (LINK_adreno_compute_fmt_aligned_width_and_height) {
+    // We call into adreno_utils only for RGB formats. So plane_id is 0 and
+    // num_samples is 1 always. We may  have to add uitility function to
+    // find out these if there is a need to call this API for YUV formats.
+    LINK_adreno_compute_fmt_aligned_width_and_height(
+        width, height, 0/*plane_id*/, GetGpuPixelFormat(format), 1/*num_samples*/,
+        tile_enabled, raster_mode, padding_threshold,
+        reinterpret_cast<int *>(aligned_w), reinterpret_cast<int *>(aligned_h));
+  } else if (LINK_adreno_compute_aligned_width_and_height) {
     LINK_adreno_compute_aligned_width_and_height(
         width, height, bpp, tile_enabled, raster_mode, padding_threshold,
         reinterpret_cast<int *>(aligned_w), reinterpret_cast<int *>(aligned_h));
@@ -150,6 +160,7 @@ void AdrenoMemInfo::AlignUnCompressedRGB(int width, int height, int format, int 
   } else {
     ALOGW(
         "%s: Warning!! Symbols compute_surface_padding and "
+        "compute_fmt_aligned_width_and_height and "
         "compute_aligned_width_and_height not found",
         __FUNCTION__);
   }
@@ -197,13 +208,17 @@ ADRENOPIXELFORMAT AdrenoMemInfo::GetGpuPixelFormat(int hal_format) {
     case HAL_PIXEL_FORMAT_RGBX_8888:
       return ADRENO_PIXELFORMAT_R8G8B8X8;
     case HAL_PIXEL_FORMAT_BGRA_8888:
-      return ADRENO_PIXELFORMAT_B8G8R8A8_UNORM;
+      return ADRENO_PIXELFORMAT_B8G8R8A8;
     case HAL_PIXEL_FORMAT_RGB_888:
       return ADRENO_PIXELFORMAT_R8G8B8;
     case HAL_PIXEL_FORMAT_RGB_565:
       return ADRENO_PIXELFORMAT_B5G6R5;
     case HAL_PIXEL_FORMAT_BGR_565:
       return ADRENO_PIXELFORMAT_R5G6B5;
+    case HAL_PIXEL_FORMAT_RGBA_5551:
+      return ADRENO_PIXELFORMAT_R5G5B5A1;
+    case HAL_PIXEL_FORMAT_RGBA_4444:
+      return ADRENO_PIXELFORMAT_R4G4B4A4;
     case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:
       return ADRENO_PIXELFORMAT_NV12;
     case HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS:
@@ -230,8 +245,6 @@ ADRENOPIXELFORMAT AdrenoMemInfo::GetGpuPixelFormat(int hal_format) {
       return ADRENO_PIXELFORMAT_D24_UNORM_S8_UINT;
     case HAL_PIXEL_FORMAT_DEPTH_32F:
       return ADRENO_PIXELFORMAT_D32_FLOAT;
-    case HAL_PIXEL_FORMAT_STENCIL_8:
-      return ADRENO_PIXELFORMAT_S8_UINT;
     default:
       ALOGE("%s: No map for format: 0x%x", __FUNCTION__, hal_format);
       break;

@@ -61,9 +61,9 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
 
  protected:
   virtual DisplayError Init();
-  virtual DisplayError Validate(HWLayers *hw_layers);
-  virtual DisplayError Commit(HWLayers *hw_layers);
-  virtual DisplayError Flush(HWLayers *hw_layers);
+  virtual DisplayError Validate(HWLayersInfo *hw_layers_info);
+  virtual DisplayError Commit(HWLayersInfo *hw_layers_info);
+  virtual DisplayError Flush(HWLayersInfo *hw_layers_info);
   virtual DisplayError SetDppsFeature(void *payload, size_t size);
   virtual DisplayError GetDppsFeatureInfo(void *payload, size_t size);
   virtual DisplayError HandleSecureEvent(SecureEvent secure_event, const HWQosData &qos_data);

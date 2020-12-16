@@ -46,7 +46,7 @@ class HWTVDRM : public HWDeviceDRM {
   virtual DisplayError Doze(const HWQosData &qos_data, shared_ptr<Fence> *release_fence);
   virtual DisplayError DozeSuspend(const HWQosData &qos_data, shared_ptr<Fence> *release_fence);
   virtual DisplayError Standby();
-  virtual DisplayError Commit(HWLayers *hw_layers);
+  virtual DisplayError Commit(HWLayersInfo *hw_layers_info);
   virtual void PopulateHWPanelInfo();
   virtual DisplayError GetDefaultConfig(uint32_t *default_config);
   virtual DisplayError PowerOn(const HWQosData &qos_data, shared_ptr<Fence> *release_fence);
@@ -54,7 +54,7 @@ class HWTVDRM : public HWDeviceDRM {
   virtual DisplayError Flush(HWLayers *hw_layers);
 
  private:
-  DisplayError UpdateHDRMetaData(HWLayers *hw_layers);
+  DisplayError UpdateHDRMetaData(HWLayersInfo *hw_layers_info);
   void DumpHDRMetaData(HWHDRLayerInfo::HDROperation operation);
   void InitMaxHDRMetaData();
 

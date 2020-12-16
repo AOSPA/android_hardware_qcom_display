@@ -229,41 +229,39 @@ DisplayError HWPeripheralDRM::SetDisplayMode(const HWDisplayMode hw_display_mode
   return kErrorNone;
 }
 
-DisplayError HWPeripheralDRM::Validate(HWLayers *hw_layers) {
-  HWLayersInfo &hw_layer_info = hw_layers->info;
-  SetDestScalarData(hw_layer_info);
-  SetupConcurrentWriteback(hw_layer_info, true, nullptr);
+DisplayError HWPeripheralDRM::Validate(HWLayersInfo *hw_layers_info) {
+  SetDestScalarData(*hw_layers_info);
+  SetupConcurrentWriteback(*hw_layers_info, true, nullptr);
   SetIdlePCState();
   SetSelfRefreshState();
   SetVMReqState();
 
-  return HWDeviceDRM::Validate(hw_layers);
+  return HWDeviceDRM::Validate(hw_layers_info);
 }
 
-DisplayError HWPeripheralDRM::Commit(HWLayers *hw_layers) {
-  HWLayersInfo &hw_layer_info = hw_layers->info;
-  SetDestScalarData(hw_layer_info);
+DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
+  SetDestScalarData(*hw_layers_info);
 
   int64_t cwb_fence_fd = -1;
-  bool has_fence = SetupConcurrentWriteback(hw_layer_info, false, &cwb_fence_fd);
+  bool has_fence = SetupConcurrentWriteback(*hw_layers_info, false, &cwb_fence_fd);
 
   SetIdlePCState();
   SetSelfRefreshState();
   SetVMReqState();
 
-  DisplayError error = HWDeviceDRM::Commit(hw_layers);
+  DisplayError error = HWDeviceDRM::Commit(hw_layers_info);
   if (error != kErrorNone) {
     return error;
   }
 
   if (has_fence) {
-    hw_layer_info.stack->output_buffer->release_fence = Fence::Create(INT(cwb_fence_fd),
+    hw_layers_info->output_buffer->release_fence = Fence::Create(INT(cwb_fence_fd),
                                                                       "release_cwb");
   }
 
   CacheDestScalarData();
   if (cwb_config_.enabled && (error == kErrorNone)) {
-    PostCommitConcurrentWriteback(hw_layer_info.stack->output_buffer);
+    PostCommitConcurrentWriteback(hw_layers_info->output_buffer);
   }
 
   // Initialize to default after successful commit
@@ -368,8 +366,8 @@ void HWPeripheralDRM::SetSelfRefreshState() {
   }
 }
 
-DisplayError HWPeripheralDRM::Flush(HWLayers *hw_layers) {
-  DisplayError err = HWDeviceDRM::Flush(hw_layers);
+DisplayError HWPeripheralDRM::Flush(HWLayersInfo *hw_layers_info) {
+  DisplayError err = HWDeviceDRM::Flush(hw_layers_info);
   if (err != kErrorNone) {
     return err;
   }
@@ -515,7 +513,7 @@ DisplayError HWPeripheralDRM::HandleSecureEvent(SecureEvent secure_event,
 
 bool HWPeripheralDRM::SetupConcurrentWriteback(const HWLayersInfo &hw_layer_info, bool validate,
                                                int64_t *release_fence_fd) {
-  bool enable = hw_resource_.has_concurrent_writeback && hw_layer_info.stack->output_buffer;
+  bool enable = hw_resource_.has_concurrent_writeback && hw_layer_info.output_buffer;
   if (!(enable || cwb_config_.enabled)) {
     return false;
   }
@@ -595,7 +593,7 @@ DisplayError HWPeripheralDRM::SetupConcurrentWritebackModes() {
 
 void HWPeripheralDRM::ConfigureConcurrentWriteback(const HWLayersInfo &hw_layer_info) {
   CwbConfig *cwb_config = hw_layer_info.hw_cwb_config;
-  LayerBuffer *output_buffer = hw_layer_info.stack->output_buffer;
+  LayerBuffer *output_buffer = hw_layer_info.output_buffer;
   registry_.MapOutputBufferToFbId(output_buffer);
   uint32_t &vitual_conn_id = cwb_config_.token.conn_id;
 

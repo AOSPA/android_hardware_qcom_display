@@ -736,8 +736,14 @@ void HWCDisplay::BuildLayerStack() {
       layer_stack_.flags.hdr_present = true;
     }
 
+    if (game_supported_ && (hwc_layer->GetType() == kLayerGame)) {
+      layer->flags.is_game = true;
+      layer->input_buffer.flags.game = true;
+    }
+
     if (hwc_layer->IsNonIntegralSourceCrop() && !is_secure && !hdr_layer &&
-        !layer->flags.single_buffer && !layer->flags.solid_fill && !is_video) {
+        !layer->flags.single_buffer && !layer->flags.solid_fill && !is_video &&
+        !layer->flags.is_game) {
       layer->flags.skip = true;
     }
 
@@ -797,11 +803,6 @@ void HWCDisplay::BuildLayerStack() {
         (hwc_layer->GetClientRequestedCompositionType() != HWC2::Composition::Device) ||
         layer->flags.skip) {
       layer->update_mask.set(kClientCompRequest);
-    }
-
-    if (game_supported_ && (hwc_layer->GetType() == kLayerGame)) {
-      layer->flags.is_game = true;
-      layer->input_buffer.flags.game = true;
     }
 
     layer_stack_.layers.push_back(layer);
@@ -961,9 +962,11 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode, bool teardown) {
       }
       break;
     case HWC2::PowerMode::On:
+      RestoreColorTransform();
       state = kStateOn;
       break;
     case HWC2::PowerMode::Doze:
+      RestoreColorTransform();
       state = kStateDoze;
       break;
     case HWC2::PowerMode::DozeSuspend:
@@ -1746,7 +1749,8 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence
     display_paused_ = true;
     display_pause_pending_ = false;
   }
-  if (secure_event_ == kTUITransitionEnd || secure_event_ == kSecureDisplayEnd) {
+  if (secure_event_ == kTUITransitionEnd || secure_event_ == kSecureDisplayEnd ||
+      secure_event_ == kTUITransitionUnPrepare) {
     secure_event_ = kSecureEventMax;
   }
 
@@ -2895,13 +2899,13 @@ DisplayError HWCDisplay::ValidateTUITransition (SecureEvent secure_event) {
 }
 
 DisplayError HWCDisplay::HandleSecureEvent(SecureEvent secure_event, bool *needs_refresh) {
+  if (secure_event == secure_event_) {
+    return kErrorNone;
+  }
+
   DisplayError err = ValidateTUITransition(secure_event);
   if (err != kErrorNone) {
     return err;
-  }
-
-  if (secure_event == secure_event_) {
-    return kErrorNone;
   }
 
   err = display_intf_->HandleSecureEvent(secure_event, needs_refresh);

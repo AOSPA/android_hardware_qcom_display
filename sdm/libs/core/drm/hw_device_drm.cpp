@@ -165,6 +165,9 @@ static void GetDRMFormat(LayerBufferFormat format, uint32_t *drm_format,
     case kFormatRGB888:
       *drm_format = DRM_FORMAT_BGR888;
       break;
+    case kFormatBGR888:
+      *drm_format = DRM_FORMAT_RGB888;
+      break;
     case kFormatRGB565:
       *drm_format = DRM_FORMAT_BGR565;
       break;
@@ -2553,6 +2556,8 @@ void HWDeviceDRM::SetTUIState() {
   if (tui_state_ == kTUIStateStart) {
     tui_state_ = kTUIStateInProgress;
   } else if (tui_state_ == kTUIStateEnd) {
+    tui_state_ = kTUIStateNone;
+  } else if (tui_state_ == kTUIStateInProgress) {
     tui_state_ = kTUIStateNone;
   }
 }

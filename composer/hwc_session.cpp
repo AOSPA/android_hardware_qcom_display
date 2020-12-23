@@ -3112,9 +3112,12 @@ void HWCSession::DisplayPowerReset() {
   }
 
   hwc2_display_t vsync_source = callbacks_.GetVsyncSource();
-  status = hwc_display_[vsync_source]->SetVsyncEnabled(HWC2::Vsync::Enable);
-  if (status != HWC2::Error::None) {
-    DLOGE("Enabling vsync failed for disp: %" PRIu64 " with error = %d", vsync_source, status);
+  // adb shell stop sets vsync source as max display
+  if (vsync_source != HWCCallbacks::kNumDisplays) {
+    status = hwc_display_[vsync_source]->SetVsyncEnabled(HWC2::Vsync::Enable);
+    if (status != HWC2::Error::None) {
+      DLOGE("Enabling vsync failed for disp: %" PRIu64 " with error = %d", vsync_source, status);
+    }
   }
 
   // Release lock on all displays.
@@ -3187,6 +3190,8 @@ void HWCSession::HandlePendingPowerMode(hwc2_display_t disp_id,
 
   Locker::ScopeLock lock_d(locker_[active_builtin_disp_id]);
   bool pending_power_mode = false;
+  std::bitset<kSecureMax> secure_sessions = 0;
+  hwc_display_[active_builtin_disp_id]->GetActiveSecureSession(&secure_sessions);
   for (hwc2_display_t display = HWC_DISPLAY_PRIMARY + 1;
     display < HWCCallbacks::kNumDisplays; display++) {
     if (display != active_builtin_disp_id) {
@@ -3199,6 +3204,9 @@ void HWCSession::HandlePendingPowerMode(hwc2_display_t disp_id,
   }
 
   if (!pending_power_mode) {
+    if (!secure_sessions.any()) {
+      secure_session_active_ = false;
+    }
     return;
   }
 
@@ -3770,18 +3778,23 @@ android::status_t HWCSession::TUITransitionUnPrepare(int disp_id) {
   std::copy(map_info_virtual_.begin(), map_info_virtual_.end(), std::back_inserter(map_info));
 
   for (auto &info : map_info) {
-    SEQUENCE_WAIT_SCOPE_LOCK(locker_[info.client_id]);
-    if (hwc_display_[info.client_id]) {
-      if (info.client_id == target_display) {
-        continue;
+    {
+      SEQUENCE_WAIT_SCOPE_LOCK(locker_[info.client_id]);
+      if (hwc_display_[info.client_id]) {
+        if (info.client_id == target_display) {
+          continue;
+        }
+        if (info.disp_type == kPluggable && pending_hotplug_event_ == kHotPlugEvent) {
+          continue;
+        }
+        if (hwc_display_[info.client_id]->HandleSecureEvent(kTUITransitionUnPrepare,
+                                                            &needs_refresh) != kErrorNone) {
+          return -EINVAL;
+        }
       }
-      if (info.disp_type == kPluggable && pending_hotplug_event_ == kHotPlugEvent) {
-        continue;
-      }
-      if (hwc_display_[info.client_id]->HandleSecureEvent(kTUITransitionUnPrepare,
-                                                          &needs_refresh) != kErrorNone) {
-        return -EINVAL;
-      }
+    }
+    if (needs_refresh) {
+      callbacks_.Refresh(info.client_id);
     }
   }
   if (pending_hotplug_event_ == kHotPlugEvent) {

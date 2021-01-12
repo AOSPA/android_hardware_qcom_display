@@ -26,27 +26,25 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #include <hidl/LegacySupport.h>
 
 #include "QtiAllocator.h"
 
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
-using IQtiAllocator3 = vendor::qti::hardware::display::allocator::V3_0::IQtiAllocator;
 using IQtiAllocator4 = vendor::qti::hardware::display::allocator::V4_0::IQtiAllocator;
 
 int main(int, char **) {
-  android::sp<IQtiAllocator3> service3 =
-      new vendor::qti::hardware::display::allocator::V3_0::implementation::QtiAllocator();
-
   configureRpcThreadpool(4, true /*callerWillJoin*/);
-  if (service3->registerAsService() != android::OK) {
-    ALOGE("Cannot register QTI Allocator 3 service");
-    return -EINVAL;
-  }
-  ALOGI("Initialized qti-allocator 3");
 
-#ifdef TARGET_USES_GRALLOC4
   android::sp<IQtiAllocator4> service4 =
       new vendor::qti::hardware::display::allocator::V4_0::implementation::QtiAllocator();
   if (service4->registerAsService() != android::OK) {
@@ -54,7 +52,6 @@ int main(int, char **) {
     return -EINVAL;
   }
   ALOGI("Initialized qti-allocator 4");
-#endif
 
   joinRpcThreadpool();
 

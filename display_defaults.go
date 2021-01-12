@@ -29,7 +29,7 @@ func display_Defaults(ctx android.LoadHookContext) {
 func display_globalDefaults(ctx android.LoadHookContext) *bool {
 	var module_enabled *bool
 
-	if android.ExistentPathForSource(ctx, "vendor/qcom/sm8150/codeaurora/commonsys-intf/display/Android.bp").Valid() == false {
+	if android.ExistentPathForSource(ctx, "vendor/qcom/opensource/commonsys-intf/display/Android.bp").Valid() == false {
 		module_enabled = proptools.BoolPtr(false)
 	}
 

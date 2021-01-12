@@ -27,59 +27,22 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __QTIALLOCATOR_H__
 #define __QTIALLOCATOR_H__
 
 #include <hidl/MQDescriptor.h>
 #include <hidl/Status.h>
-#include <vendor/qti/hardware/display/allocator/3.0/IQtiAllocator.h>
 #include <vendor/qti/hardware/display/allocator/4.0/IQtiAllocator.h>
 
 #include "gr_buf_mgr.h"
 #include "gr_utils.h"
-
-namespace vendor {
-namespace qti {
-namespace hardware {
-namespace display {
-namespace allocator {
-namespace V3_0 {
-namespace implementation {
-
-using ::android::sp;
-using ::android::hardware::hidl_array;
-using ::android::hardware::hidl_memory;
-using ::android::hardware::hidl_string;
-using ::android::hardware::hidl_vec;
-using ::android::hardware::Return;
-using ::android::hardware::Void;
-using android::hardware::graphics::allocator::V3_0::IAllocator;
-using ::android::hidl::base::V1_0::DebugInfo;
-using ::android::hidl::base::V1_0::IBase;
-using gralloc::BufferManager;
-using vendor::qti::hardware::display::allocator::V3_0::IQtiAllocator;
-
-class QtiAllocator : public IQtiAllocator {
- public:
-  QtiAllocator();
-
-  // Methods from ::android::hardware::graphics::allocator::V2_0::IAllocator follow.
-  Return<void> dumpDebugInfo(dumpDebugInfo_cb _hidl_cb) override;
-  Return<void> allocate(const hidl_vec<uint32_t> &descriptor, uint32_t count,
-                        allocate_cb _hidl_cb) override;
-
-  // Methods from ::android::hidl::base::V1_0::IBase follow.
- private:
-  BufferManager *buf_mgr_ = nullptr;
-};
-
-}  // namespace implementation
-}  // namespace V3_0
-}  // namespace allocator
-}  // namespace display
-}  // namespace hardware
-}  // namespace qti
-}  // namespace vendor
 
 namespace vendor {
 namespace qti {

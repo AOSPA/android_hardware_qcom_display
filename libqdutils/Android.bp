@@ -21,7 +21,8 @@ cc_library_shared {
 
 cc_library_shared {
     name: "libqdMetaData",
-    vendor: true,
+    vendor_available: true,
+    system_ext_specific: true,
     defaults: ["display_defaults"],
     cflags: [
         "-Wno-sign-conversion",

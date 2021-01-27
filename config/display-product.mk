@@ -33,11 +33,6 @@ PRODUCT_PACKAGES += \
 ifeq ($(TARGET_USE_AIDL_QTI_MEMTRACK), true)
 PRODUCT_PACKAGES += \
     vendor.qti.hardware.memtrack-service
-else
-PRODUCT_PACKAGES += \
-    android.hardware.memtrack@1.0-impl \
-    android.hardware.memtrack@1.0-service \
-    memtrack.$(TARGET_BOARD_PLATFORM)
 endif
 
 #QDCM calibration xml file for 2k panel

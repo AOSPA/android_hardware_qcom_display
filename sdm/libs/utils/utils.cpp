@@ -31,6 +31,7 @@
 #include <math.h>
 #include <utils/sys.h>
 #include <utils/utils.h>
+#include <utils/debug.h>
 
 #include <algorithm>
 
@@ -138,6 +139,14 @@ void ApplyCwbRoiRestrictions(LayerRect &roi, const LayerRect &cwb_full_frame,
     AdjustSize(roi_height + height_to_expand, 0, INT(cwb_full_frame.bottom), &roi_top, &roi_bottom);
     roi.top = FLOAT(roi_top);
     roi.bottom = FLOAT(roi_bottom);
+  }
+}
+
+void SetRealTimePriority() {
+  struct sched_param param = {0};
+  param.sched_priority = 2;
+  if (sched_setscheduler(0, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
+    DLOGW("Couldn't set SCHED_FIFO: %d", errno);
   }
 }
 

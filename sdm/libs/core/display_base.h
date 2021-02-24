@@ -293,6 +293,10 @@ class DisplayBase : public DisplayInterface {
   DisplayError ConfigureCwb(LayerStack *layer_stack);
   void CommitThread();
   virtual void HandleAsyncCommit();
+  DisplayError SetUpCommit(LayerStack *layer_stack);
+  DisplayError PerformCommit(LayerStack *layer_stack);
+  DisplayError PostCommitLayerStack(LayerStack *layer_stack);
+  virtual DisplayError CommitLocked(LayerStack *layer_stack);
 
   DisplayMutex disp_mutex_;
   std::thread commit_thread_;

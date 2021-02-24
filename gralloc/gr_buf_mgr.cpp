@@ -558,10 +558,26 @@ static Error getComponentSizeAndOffset(int32_t format, PlaneLayoutComponent &com
       }
       break;
     case static_cast<int32_t>(HAL_PIXEL_FORMAT_YCbCr_420_P010):
+      ALOGE("GetComponentLayout HAL_PIXEL_FORMAT_YCbCr_420_P010");
       if (comp.type.value == android::gralloc4::PlaneLayoutComponentType_Y.value ||
-          comp.type.value == android::gralloc4::PlaneLayoutComponentType_CB.value ||
-          comp.type.value == android::gralloc4::PlaneLayoutComponentType_CR.value) {
-        comp.offsetInBits = 0;
+          comp.type.value == android::gralloc4::PlaneLayoutComponentType_CB.value) {
+        comp.offsetInBits = 6;
+        comp.sizeInBits = 10;
+      } else if (comp.type.value == android::gralloc4::PlaneLayoutComponentType_CR.value) {
+        comp.offsetInBits = 22;
+        comp.sizeInBits = 10;
+      } else {
+        return Error::BAD_VALUE;
+      }
+      break;
+    case static_cast<int32_t>(HAL_PIXEL_FORMAT_YCbCr_420_P010_VENUS):
+      ALOGE("GetComponentLayout HAL_PIXEL_FORMAT_YCbCr_420_P010_VENUS");
+      if (comp.type.value == android::gralloc4::PlaneLayoutComponentType_Y.value ||
+          comp.type.value == android::gralloc4::PlaneLayoutComponentType_CB.value) {
+        comp.offsetInBits = 6;
+        comp.sizeInBits = 10;
+      } else if (comp.type.value == android::gralloc4::PlaneLayoutComponentType_CR.value) {
+        comp.offsetInBits = 22;
         comp.sizeInBits = 10;
       } else {
         return Error::BAD_VALUE;
@@ -1321,6 +1337,20 @@ Error BufferManager::GetMetadata(private_handle_t *handle, int64_t metadatatype_
       }
       break;
     }
+    case (int64_t)StandardMetadataType::SMPTE2094_10: {
+      if (metadata->color.dynamicMetaDataValid &&
+          metadata->color.dynamicMetaDataLen <= HDR_DYNAMIC_META_DATA_SZ) {
+        std::vector<uint8_t> dynamic_metadata_payload;
+        dynamic_metadata_payload.resize(metadata->color.dynamicMetaDataLen);
+        dynamic_metadata_payload.assign(
+            metadata->color.dynamicMetaDataPayload,
+            metadata->color.dynamicMetaDataPayload + metadata->color.dynamicMetaDataLen);
+        android::gralloc4::encodeSmpte2094_10(dynamic_metadata_payload, out);
+      } else {
+        android::gralloc4::encodeSmpte2094_10(std::nullopt, out);
+      }
+      break;
+    }
     case (int64_t)StandardMetadataType::CROP: {
       // Crop is the same for all planes
       std::vector<Rect> out_crop = {{metadata->crop.left, metadata->crop.top, metadata->crop.right,
@@ -1528,6 +1558,27 @@ Error BufferManager::SetMetadata(private_handle_t *handle, int64_t metadatatype_
     case (int64_t)StandardMetadataType::SMPTE2094_40: {
       std::optional<std::vector<uint8_t>> dynamic_metadata_payload;
       android::gralloc4::decodeSmpte2094_40(in, &dynamic_metadata_payload);
+      if (dynamic_metadata_payload != std::nullopt) {
+        if (dynamic_metadata_payload->size() > HDR_DYNAMIC_META_DATA_SZ)
+          return Error::BAD_VALUE;
+
+        metadata->color.dynamicMetaDataLen = static_cast<uint32_t>(dynamic_metadata_payload->size());
+        std::copy(dynamic_metadata_payload->begin(), dynamic_metadata_payload->end(),
+                  metadata->color.dynamicMetaDataPayload);
+        metadata->color.dynamicMetaDataValid = true;
+      } else {
+        // Reset metadata by passing in std::nullopt
+#ifdef METADATA_V2
+        metadata->isStandardMetadataSet[GET_STANDARD_METADATA_STATUS_INDEX(metadatatype_value)] =
+            false;
+#endif
+        metadata->color.dynamicMetaDataValid = false;
+      }
+      break;
+    }
+    case (int64_t)StandardMetadataType::SMPTE2094_10: {
+      std::optional<std::vector<uint8_t>> dynamic_metadata_payload;
+      android::gralloc4::decodeSmpte2094_10(in, &dynamic_metadata_payload);
       if (dynamic_metadata_payload != std::nullopt) {
         if (dynamic_metadata_payload->size() > HDR_DYNAMIC_META_DATA_SZ)
           return Error::BAD_VALUE;

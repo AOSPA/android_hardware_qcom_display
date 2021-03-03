@@ -56,7 +56,7 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   lock_guard<mutex> lock(lock_);
 
   if (!res || (fd < 0)) {
-    DRM_LOGE("Invalid arguments for init - fd %d and DRM resources pointer 0x%p", fd, (void *)res);
+    DRM_LOGE("Invalid arguments for init - fd %d and DRM resources pointer 0x%pK", fd, (void *)res);
     return;
   }
 

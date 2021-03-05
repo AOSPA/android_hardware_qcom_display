@@ -454,6 +454,12 @@ enum struct DRMOps {
    *      uint32_t - colorspace value bit-mask
    */
   CONNECTOR_SET_COLORSPACE,
+  /*
+   * Op: Sets new dynamic bit clk
+   * Arg: uint32_t - Connector ID
+   *      uint64_t - bit clk value
+   */
+  CONNECTOR_SET_DYN_BIT_CLK,
 };
 
 enum struct DRMRotation {
@@ -663,8 +669,10 @@ struct DRMModeInfo {
   int wmin;
   int hmin;
   bool roi_merge;
-  uint64_t bit_clk_rate;
+  uint64_t default_bit_clk_rate;
   uint32_t transfer_time_us;
+  std::vector<uint64_t> dyn_bitclk_list;
+  uint64_t curr_bit_clk_rate;
 };
 
 /* Per Connector Info*/

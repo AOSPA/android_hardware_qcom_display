@@ -50,6 +50,11 @@ LOCAL_SHARED_LIBRARIES        := $(common_libs) libqdMetaData libdl  \
                                   android.hardware.graphics.mapper@4.0
 LOCAL_CFLAGS                  := $(common_flags) $(qmaa_flags) -DLOG_TAG=\"qdgralloc\" -Wno-sign-conversion \
                                  -D__QTI_DISPLAY_GRALLOC__
+
+ifeq ($(TARGET_NO_RAW10_CUSTOM_FORMAT),true)
+    LOCAL_CFLAGS              += -DNO_RAW10_CUSTOM_FORMAT
+endif
+
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
 LOCAL_SRC_FILES               := gr_utils.cpp gr_adreno_info.cpp gr_camera_info.cpp
 include $(BUILD_SHARED_LIBRARY)

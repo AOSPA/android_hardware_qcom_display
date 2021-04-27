@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -511,6 +511,29 @@ int HWCSession::SetCameraLaunchStatus(uint32_t on) {
 int HWCSession::DisplayConfigImpl::SetCameraLaunchStatus(uint32_t on) {
   return hwc_session_->SetCameraLaunchStatus(on);
 }
+
+#ifdef DISPLAY_CONFIG_CAMERA_SMOOTH_APIs_1_0
+int HWCSession::DisplayConfigImpl::SetCameraSmoothInfo(CameraSmoothOp op, uint32_t fps) {
+  std::shared_ptr<DisplayConfig::ConfigCallback> callback = hwc_session_->camera_callback_.lock();
+  if (!callback) {
+    return -EAGAIN;
+  }
+
+  callback->NotifyCameraSmoothInfo(op, fps);
+
+  return 0;
+}
+
+int HWCSession::DisplayConfigImpl::ControlCameraSmoothCallback(bool enable) {
+  if (enable) {
+    hwc_session_->camera_callback_ = callback_;
+  } else {
+    hwc_session_->camera_callback_.reset();
+  }
+
+  return 0;
+}
+#endif
 
 int HWCSession::DisplayBWTransactionPending(bool *status) {
   SEQUENCE_WAIT_SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);

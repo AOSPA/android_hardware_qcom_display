@@ -341,6 +341,7 @@ unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int
   int width = info.width;
   int height = info.height;
   uint64_t usage = info.usage;
+  unsigned int mmm_color_format;
 
   if (!IsGPUFlagSupported(usage)) {
     ALOGE("Unsupported GPU usage flags present 0x%" PRIx64, usage);
@@ -402,9 +403,9 @@ unsigned int GetSize(const BufferInfo &info, unsigned int alignedw, unsigned int
         break;
 #ifndef QMAA
       case HAL_PIXEL_FORMAT_YCbCr_420_P010_VENUS:
-        size = MMM_COLOR_FMT_BUFFER_SIZE(MMM_COLOR_FMT_P010,
-                                 width,
-                                 height);
+        mmm_color_format = (usage & GRALLOC_USAGE_PRIVATE_HEIF) ? MMM_COLOR_FMT_P010_512 :
+                                                                  MMM_COLOR_FMT_P010;
+        size = MMM_COLOR_FMT_BUFFER_SIZE(mmm_color_format, width, height);
         break;
       case HAL_PIXEL_FORMAT_YCbCr_422_SP:
       case HAL_PIXEL_FORMAT_YCrCb_422_SP:
@@ -1058,6 +1059,7 @@ void GetAlignedWidthAndHeight(const BufferInfo &info, unsigned int *alignedw,
   // Currently surface padding is only computed for RGB* surfaces.
   bool ubwc_enabled = IsUBwcEnabled(format, usage);
   int tile = ubwc_enabled;
+  unsigned int mmm_color_format;
 
   // Use of aligned width and aligned height is to calculate the size of buffer,
   // but in case of camera custom format size is being calculated from given width
@@ -1168,8 +1170,10 @@ void GetAlignedWidthAndHeight(const BufferInfo &info, unsigned int *alignedw,
       break;
 #ifndef QMAA
     case HAL_PIXEL_FORMAT_YCbCr_420_P010_VENUS:
-      aligned_w = INT(MMM_COLOR_FMT_Y_STRIDE(MMM_COLOR_FMT_P010, width) / 2);
-      aligned_h = INT(MMM_COLOR_FMT_Y_SCANLINES(MMM_COLOR_FMT_P010, height));
+      mmm_color_format = (usage & GRALLOC_USAGE_PRIVATE_HEIF) ? MMM_COLOR_FMT_P010_512 :
+                                                                MMM_COLOR_FMT_P010;
+      aligned_w = INT(MMM_COLOR_FMT_Y_STRIDE(mmm_color_format, width) / 2);
+      aligned_h = INT(MMM_COLOR_FMT_Y_SCANLINES(mmm_color_format, height));
       break;
     case HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS:
     case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:
@@ -1471,7 +1475,7 @@ int GetBufferType(int inputFormat) {
 int GetYUVPlaneInfo(const BufferInfo &info, int32_t format, int32_t width, int32_t height,
                     int32_t flags, int *plane_count, PlaneLayoutInfo *plane_info) {
   int err = 0;
-  unsigned int y_stride, c_stride, y_height, c_height, y_size, c_size;
+  unsigned int y_stride, c_stride, y_height, c_height, y_size, c_size, mmm_color_format;
   uint64_t yOffset, cOffset, crOffset, cbOffset;
   int h_subsampling = 0, v_subsampling = 0;
   if (IsCameraCustomFormat(format) && CameraInfo::GetInstance()) {
@@ -1610,13 +1614,15 @@ int GetYUVPlaneInfo(const BufferInfo &info, int32_t format, int32_t width, int32
 
     case HAL_PIXEL_FORMAT_YCbCr_420_P010_VENUS:
       *plane_count = 2;
-      y_stride = MMM_COLOR_FMT_Y_STRIDE(MMM_COLOR_FMT_P010, width);
-      c_stride = MMM_COLOR_FMT_UV_STRIDE(MMM_COLOR_FMT_P010, width);
-      y_height = MMM_COLOR_FMT_Y_SCANLINES(MMM_COLOR_FMT_P010, height);
+      mmm_color_format = (info.usage & GRALLOC_USAGE_PRIVATE_HEIF) ? MMM_COLOR_FMT_P010_512 :
+                                                                     MMM_COLOR_FMT_P010;
+      y_stride = MMM_COLOR_FMT_Y_STRIDE(mmm_color_format, width);
+      c_stride = MMM_COLOR_FMT_UV_STRIDE(mmm_color_format, width);
+      y_height = MMM_COLOR_FMT_Y_SCANLINES(mmm_color_format, height);
+      c_height = MMM_COLOR_FMT_UV_SCANLINES(mmm_color_format, INT(height));
       y_size = y_stride * y_height;
       yOffset = 0;
       cOffset = y_size;
-      c_height = MMM_COLOR_FMT_UV_SCANLINES(MMM_COLOR_FMT_P010, INT(height));
       c_size = c_stride * c_height;
       GetYuvSubSamplingFactor(format, &h_subsampling, &v_subsampling);
 

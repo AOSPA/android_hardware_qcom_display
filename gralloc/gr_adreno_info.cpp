@@ -74,8 +74,21 @@ AdrenoMemInfo::AdrenoMemInfo() {
         ::dlsym(libadreno_utils_, "adreno_init_memory_layout");
     *reinterpret_cast<void **>(&LINK_adreno_get_aligned_gpu_buffer_size) =
         ::dlsym(libadreno_utils_, "adreno_get_aligned_gpu_buffer_size");
+    *reinterpret_cast<void **>(&LINK_adreno_isSecureContextSupportedByGpu) =
+        ::dlsym(libadreno_utils_, "isSecureContextSupportedByGpu");
   } else {
     ALOGE(" Failed to load libadreno_utils.so");
+  }
+  char property[PROPERTY_VALUE_MAX];
+  property_get(DISABLE_UBWC_PROP, property, "0");
+  if (!(strncmp(property, "1", PROPERTY_VALUE_MAX)) ||
+      !(strncmp(property, "true", PROPERTY_VALUE_MAX))) {
+     gfx_ubwc_disable_ = true;
+  }
+  property_get(DISABLE_AHARDWAREBUFFER_PROP, property, "0");
+  if (!(strncmp(property, "1", PROPERTY_VALUE_MAX)) ||
+      !(strncmp(property, "true", PROPERTY_VALUE_MAX))) {
+     gfx_ahardware_buffer_disable_ = true;
   }
 }
 
@@ -85,10 +98,6 @@ AdrenoMemInfo::~AdrenoMemInfo() {
   }
 }
 
-void AdrenoMemInfo::AdrenoSetProperties(gralloc::GrallocProperties props) {
-  gfx_ubwc_disable_ = props.ubwc_disable;
-  gfx_ahardware_buffer_disable_ = props.ahardware_buffer_disable;
-}
 
 void AdrenoMemInfo::AlignUnCompressedRGB(int width, int height, int format, int tile_enabled,
                                          unsigned int *aligned_w, unsigned int *aligned_h) {
@@ -272,4 +281,12 @@ bool AdrenoMemInfo::IsPISupportedByGPU(int format, uint64_t usage) {
   return false;
 }
 
-}  // namespace gralloc
+bool AdrenoMemInfo::isSecureContextSupportedByGpu() {
+  if(LINK_adreno_isSecureContextSupportedByGpu) {
+    bool isSupported = LINK_adreno_isSecureContextSupportedByGpu();
+    return isSupported;
+  }
+  return true;
+}
+
+}  // namespace gralloc1

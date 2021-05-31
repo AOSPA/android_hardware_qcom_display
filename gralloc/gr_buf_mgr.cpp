@@ -713,7 +713,6 @@ BufferManager::~BufferManager() {
 
 void BufferManager::SetGrallocDebugProperties(gralloc::GrallocProperties props) {
   allocator_->SetProperties(props);
-  AdrenoMemInfo::GetInstance()->AdrenoSetProperties(props);
 }
 
 Error BufferManager::FreeBuffer(std::shared_ptr<Buffer> buf) {
@@ -997,6 +996,12 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   int format = GetImplDefinedFormat(usage, descriptor.GetFormat());
   uint32_t layer_count = descriptor.GetLayerCount();
 
+  // Check if GPU supports requested hardware buffer usage
+  if (!IsGPUSupportedHwBuffer(usage)) {
+    ALOGE("AllocateBuffer - Protected Buffer not supported by GPU usage=%" PRIx64 , usage);
+    return Error::UNSUPPORTED;
+  }
+
   unsigned int size;
   unsigned int alignedw, alignedh;
   int err = 0;
@@ -1010,6 +1015,10 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   err = GetBufferSizeAndDimensions(info, &size, &alignedw, &alignedh, &graphics_metadata);
   if (err < 0) {
     return Error::BAD_DESCRIPTOR;
+  }
+
+  if (size == 0) {
+    return Error::UNSUPPORTED;
   }
 
   if (testAlloc) {

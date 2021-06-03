@@ -1979,7 +1979,7 @@ bool DisplayBase::IsHdrMode(const AttrVal &attr) {
 }
 
 bool DisplayBase::CanSkipValidate() {
-  return (!is_idle_timeout_) && comp_manager_->CanSkipValidate(display_comp_ctx_) && !lut_swap_;
+  return comp_manager_->CanSkipValidate(display_comp_ctx_) && !lut_swap_;
 }
 
 void DisplayBase::SetLutSwapFlag() {

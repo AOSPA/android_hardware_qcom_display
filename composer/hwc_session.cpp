@@ -906,6 +906,14 @@ void HWCSession::RegisterCallback(int32_t descriptor, hwc2_callback_data_t callb
     // Notfify all displays.
     NotifyClientStatus(client_connected_);
   }
+
+  // On SF stop, disable the idle time.
+  if (!pointer && is_idle_time_up_ && hwc_display_[HWC_DISPLAY_PRIMARY]) { // De-registering…
+    DLOGI("disable idle time");
+    hwc_display_[HWC_DISPLAY_PRIMARY]->SetIdleTimeoutMs(0,0);
+    is_idle_time_up_ = false;
+  }
+
   need_invalidate_ = false;
 }
 
@@ -2999,10 +3007,6 @@ HWC2::Error HWCSession::ValidateDisplayInternal(hwc2_display_t display, uint32_t
     if (need_invalidate_) {
       callbacks_.Refresh(display);
       need_invalidate_ = false;
-    }
-
-    if (color_mgr_) {
-      color_mgr_->SetColorModeDetailEnhancer(hwc_display_[display]);
     }
   }
 

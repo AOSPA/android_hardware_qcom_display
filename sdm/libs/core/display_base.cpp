@@ -617,11 +617,6 @@ DisplayError DisplayBase::SetDisplayState(DisplayState state, bool teardown,
     return kErrorParameters;
   }
 
-  error = ReconfigureDisplay();
-  if (error != kErrorNone) {
-    return error;
-  }
-
   DisablePartialUpdateOneFrame();
 
   if (error == kErrorNone) {
@@ -2015,11 +2010,6 @@ DisplayError DisplayBase::HandlePendingPowerState(int32_t retire_fence) {
 
     if (pending_doze_) {
       state_ = kStateDoze;
-      DisplayError error = ReconfigureDisplay();
-      if (error != kErrorNone) {
-        return error;
-      }
-      event_handler_->Refresh();
     }
     if (pending_power_on_) {
       state_ = kStateOn;

@@ -210,8 +210,6 @@ class HWCSession : hwc2_device_t, HWCUEventListener, public qClient::BnQClient,
                                              bool *outSupport);
   static int32_t SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t display,
                                       float brightness);
-  static int32_t GetDisplayConnectionType(hwc2_device_t *device, hwc2_display_t display,
-                                          uint32_t *outType);
 
   virtual int RegisterClientContext(std::shared_ptr<DisplayConfig::ConfigCallback> callback,
                                     DisplayConfig::ConfigInterface **intf);

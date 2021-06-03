@@ -212,12 +212,6 @@ class HWCSession : hwc2_device_t, HWCUEventListener, public qClient::BnQClient,
                                       float brightness);
   static int32_t GetDisplayConnectionType(hwc2_device_t *device, hwc2_display_t display,
                                           uint32_t *outType);
-  static int32_t GetDisplayVsyncPeriod(hwc2_device_t *device, hwc2_display_t display,
-                                       hwc2_vsync_period_t *out_vsync_period);
-  static int32_t SetActiveConfigWithConstraints(hwc2_device_t *device, hwc2_display_t display,
-                    hwc2_config_t config,
-                    hwc_vsync_period_change_constraints_t *vsync_period_change_constraints,
-                    hwc_vsync_period_change_timeline_t *out_timeline);
 
   virtual int RegisterClientContext(std::shared_ptr<DisplayConfig::ConfigCallback> callback,
                                     DisplayConfig::ConfigInterface **intf);

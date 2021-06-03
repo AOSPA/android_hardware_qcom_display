@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, 2019-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, 2019 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,7 +35,6 @@
 namespace sdm {
 
 HWC2::Error HWCCallbacks::Hotplug(hwc2_display_t display, HWC2::Connection state) {
-  std::lock_guard<std::mutex> hotplug_lock(hotplug_mutex_);
   if (!hotplug_) {
     return HWC2::Error::NoResources;
   }
@@ -44,7 +43,6 @@ HWC2::Error HWCCallbacks::Hotplug(hwc2_display_t display, HWC2::Connection state
 }
 
 HWC2::Error HWCCallbacks::Refresh(hwc2_display_t display) {
-  std::lock_guard<std::mutex> refresh_lock(refresh_mutex_);
   if (!refresh_) {
     return HWC2::Error::NoResources;
   }
@@ -54,7 +52,6 @@ HWC2::Error HWCCallbacks::Refresh(hwc2_display_t display) {
 }
 
 HWC2::Error HWCCallbacks::Vsync(hwc2_display_t display, int64_t timestamp) {
-  std::lock_guard<std::mutex> vsync_lock(vsync_mutex_);
   if (!vsync_) {
     return HWC2::Error::NoResources;
   }
@@ -64,7 +61,6 @@ HWC2::Error HWCCallbacks::Vsync(hwc2_display_t display, int64_t timestamp) {
 }
 
 HWC2::Error HWCCallbacks::Vsync_2_4(hwc2_display_t display, int64_t timestamp, uint32_t period) {
-  std::lock_guard<std::mutex> vsync_2_4_lock(vsync_2_4_mutex_);
   DTRACE_SCOPED();
   if (!vsync_2_4_) {
     return HWC2::Error::NoResources;
@@ -76,8 +72,6 @@ HWC2::Error HWCCallbacks::Vsync_2_4(hwc2_display_t display, int64_t timestamp, u
 
 HWC2::Error HWCCallbacks::VsyncPeriodTimingChanged(
     hwc2_display_t display, hwc_vsync_period_change_timeline_t *updated_timeline) {
-  std::lock_guard<std::mutex>
-    vsyncPeriodTimingChanged_lock(vsync_period_timing_changed_mutex_);
   DTRACE_SCOPED();
   if (!vsync_period_timing_changed_) {
     return HWC2::Error::NoResources;
@@ -88,7 +82,6 @@ HWC2::Error HWCCallbacks::VsyncPeriodTimingChanged(
 }
 
 HWC2::Error HWCCallbacks::SeamlessPossible(hwc2_display_t display) {
-  std::lock_guard<std::mutex> seamlessPossible_lock(seamless_possible_mutex_);
   DTRACE_SCOPED();
   if (!seamless_possible_) {
     return HWC2::Error::NoResources;
@@ -102,48 +95,29 @@ HWC2::Error HWCCallbacks::Register(HWC2::Callback descriptor, hwc2_callback_data
                                    hwc2_function_pointer_t pointer) {
   switch (descriptor) {
     case HWC2::Callback::Hotplug:
-      {
-        std::lock_guard<std::mutex> hotplug_lock(hotplug_mutex_);
-        hotplug_data_ = callback_data;
-        hotplug_ = reinterpret_cast<HWC2_PFN_HOTPLUG>(pointer);
-      }
+      hotplug_data_ = callback_data;
+      hotplug_ = reinterpret_cast<HWC2_PFN_HOTPLUG>(pointer);
       break;
     case HWC2::Callback::Refresh:
-      {
-        std::lock_guard<std::mutex> refresh_lock(refresh_mutex_);
-        refresh_data_ = callback_data;
-        refresh_ = reinterpret_cast<HWC2_PFN_REFRESH>(pointer);
-      }
+      refresh_data_ = callback_data;
+      refresh_ = reinterpret_cast<HWC2_PFN_REFRESH>(pointer);
       break;
     case HWC2::Callback::Vsync:
-      {
-        std::lock_guard<std::mutex> vsync_lock(vsync_mutex_);
-        vsync_data_ = callback_data;
-        vsync_ = reinterpret_cast<HWC2_PFN_VSYNC>(pointer);
-      }
+      vsync_data_ = callback_data;
+      vsync_ = reinterpret_cast<HWC2_PFN_VSYNC>(pointer);
       break;
     case HWC2::Callback::Vsync_2_4:
-      {
-        std::lock_guard<std::mutex> vsync_2_4_lock(vsync_2_4_mutex_);
-        vsync_2_4_data_ = callback_data;
-        vsync_2_4_ = reinterpret_cast<HWC2_PFN_VSYNC_2_4>(pointer);
-      }
+      vsync_2_4_data_ = callback_data;
+      vsync_2_4_ = reinterpret_cast<HWC2_PFN_VSYNC_2_4>(pointer);
       break;
     case HWC2::Callback::VsyncPeriodTimingChanged:
-      {
-        std::lock_guard<std::mutex>
-          vsyncPeriodTimingChanged_lock(vsync_period_timing_changed_mutex_);
-        vsync_period_timing_changed_data_ = callback_data;
-        vsync_period_timing_changed_ =
+      vsync_period_timing_changed_data_ = callback_data;
+      vsync_period_timing_changed_ =
           reinterpret_cast<HWC2_PFN_VSYNC_PERIOD_TIMING_CHANGED>(pointer);
-      }
       break;
     case HWC2::Callback::SeamlessPossible:
-      {
-        std::lock_guard<std::mutex> seamlessPossible_lock(seamless_possible_mutex_);
-        seamless_possible_data_ = callback_data;
-        seamless_possible_ = reinterpret_cast<HWC2_PFN_SEAMLESS_POSSIBLE>(pointer);
-      }
+      seamless_possible_data_ = callback_data;
+      seamless_possible_ = reinterpret_cast<HWC2_PFN_SEAMLESS_POSSIBLE>(pointer);
       break;
     default:
       return HWC2::Error::BadParameter;

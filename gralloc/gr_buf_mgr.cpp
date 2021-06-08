@@ -998,7 +998,7 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
 
   // Check if GPU supports requested hardware buffer usage
   if (!IsGPUSupportedHwBuffer(usage)) {
-    ALOGE("AllocateBuffer - Requested HW Buffer usage not supported by GPU usage=%" PRIx64 , usage);
+    ALOGE("AllocateBuffer - Protected Buffer not supported by GPU usage=%" PRIx64 , usage);
     return Error::UNSUPPORTED;
   }
 
@@ -1018,7 +1018,6 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   }
 
   if (size == 0) {
-    ALOGE("AllocateBuffer - QCOMDBG MIPMAP/CUBEMAP usage set usage=%" PRIx64 ,usage);
     return Error::UNSUPPORTED;
   }
 

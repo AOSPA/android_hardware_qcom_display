@@ -284,10 +284,9 @@ bool AdrenoMemInfo::IsPISupportedByGPU(int format, uint64_t usage) {
 bool AdrenoMemInfo::isSecureContextSupportedByGpu() {
   if(LINK_adreno_isSecureContextSupportedByGpu) {
     bool isSupported = LINK_adreno_isSecureContextSupportedByGpu();
-    ALOGE("isSecureContextSupportedByGpu isSupported = %d", isSupported);
     return isSupported;
   }
-  return 1;
+  return true;
 }
 
 }  // namespace gralloc1

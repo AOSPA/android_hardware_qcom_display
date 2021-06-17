@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "956943e2_3e64090f",
+        "filename": "sdm/include/core/layer_stack.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 1000468
+      },
+      "writtenOn": "2021-06-17T22:30:16Z",
+      "side": 1,
+      "message": "Add \n//!\u003c Set if layer stack has fod pressed layers.",
+      "revId": "e83255a71dd6f7f416968abcd87a23335ba4aa50",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

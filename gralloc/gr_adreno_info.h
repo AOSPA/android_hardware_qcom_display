@@ -32,8 +32,6 @@
 
 #include <media/msm_media_info.h>
 
-#include "gr_utils.h"
-
 namespace gralloc {
 
 // Adreno Pixel Formats
@@ -114,6 +112,12 @@ typedef enum {
   SURFACE_TILE_MODE_DISABLE    = 0x0,    // used for linear surface
   SURFACE_TILE_MODE_ENABLE     = 0x1     // used for tiled surface
 } surface_tile_mode_t;
+
+struct GrallocProperties {
+  bool use_system_heap_for_sensors = true;
+  bool ubwc_disable = false;
+  bool ahardware_buffer_disable = false;
+};
 
 class AdrenoMemInfo {
  public:

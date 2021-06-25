@@ -63,12 +63,6 @@ struct BufferInfo {
   uint64_t usage;
 };
 
-struct GrallocProperties {
-  bool use_system_heap_for_sensors = true;
-  bool ubwc_disable = false;
-  bool ahardware_buffer_disable = false;
-};
-
 template <class Type1, class Type2>
 inline Type1 ALIGN(Type1 x, Type2 align) {
   return (Type1)((x + (Type1)align - 1) & ~((Type1)align - 1));

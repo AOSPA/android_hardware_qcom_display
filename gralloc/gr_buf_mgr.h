@@ -30,6 +30,7 @@
 
 #include "gr_allocator.h"
 #include "gr_buf_descriptor.h"
+#include "gr_adreno_info.h"
 #include "gr_utils.h"
 #include "gralloc_priv.h"
 

@@ -9,9 +9,12 @@ PRODUCT_PACKAGES += \
     gralloc.$(TARGET_BOARD_PLATFORM) \
     hwcomposer.$(TARGET_BOARD_PLATFORM) \
     memtrack.$(TARGET_BOARD_PLATFORM) \
+    libgralloc.qti \
+    libdisplayconfig \
+    libdisplayconfig.vendor \
     libdisplayconfig.qti \
     libdisplayconfig.qti.vendor \
-    libdisplayconfig.vendor \
+    libqdMetaData.system \
     libqdMetaData.vendor \
     libsdmcore \
     libsdmutils \

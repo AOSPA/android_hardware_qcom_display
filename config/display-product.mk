@@ -12,6 +12,10 @@ PRODUCT_PACKAGES += \
     hwcomposer.$(TARGET_BOARD_PLATFORM) \
     memtrack.$(TARGET_BOARD_PLATFORM) \
     libqdMetaData.vendor \
+    libqdMetaData.system \
+    libdisplayconfig \
+    libgralloc.qti \
+    libdisplayconfig.qti \
     libdisplayconfig.vendor \
     libdisplayconfig.qti.vendor \
     vendor.display.config@1.0.vendor \
@@ -137,6 +141,71 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.disable_hw_recovery_dump=1
 endif
 
+<<<<<<< HEAD
+=======
+ifeq ($(TARGET_USES_QMAA),true)
+    ifneq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)
+        #QMAA Mode is enabled
+        TARGET_IS_HEADLESS := true
+    endif
+endif
+
+# Soong Namespace
+SOONG_CONFIG_NAMESPACES += qtidisplay
+
+# Soong Keys
+SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4 displayconfig_enabled default var1 var2 var3
+
+# Soong Values
+SOONG_CONFIG_qtidisplay_drmpp := true
+SOONG_CONFIG_qtidisplay_headless := false
+SOONG_CONFIG_qtidisplay_llvmsa := false
+SOONG_CONFIG_qtidisplay_gralloc4 := true
+SOONG_CONFIG_qtidisplay_displayconfig_enabled := false
+SOONG_CONFIG_qtidisplay_default := true
+SOONG_CONFIG_qtidisplay_var1 := false
+SOONG_CONFIG_qtidisplay_var2 := false
+SOONG_CONFIG_qtidisplay_var3 := false
+
+ifeq ($(call is-vendor-board-platform,QCOM),true)
+    SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
+endif
+
+# Techpack values
+
+ifeq ($(TARGET_IS_HEADLESS), true)
+    # TODO: QMAA prebuilts
+    PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/qmaa
+    SOONG_CONFIG_qtidisplay_headless := true
+    SOONG_CONFIG_qtidisplay_default := false
+else
+    #Packages that should not be installed in QMAA are enabled here.
+    PRODUCT_PACKAGES += libdrmutils
+    PRODUCT_PACKAGES += libsdedrm
+    PRODUCT_PACKAGES += libgpu_tonemapper
+    #Properties that should not be set in QMAA are enabled here.
+    PRODUCT_PROPERTY_OVERRIDES += \
+        vendor.display.enable_early_wakeup=1
+    ifneq ($(BUILD_DISPLAY_TECHPACK_SOURCE), true)
+        SOONG_CONFIG_qtidisplay_var1 := true
+        SOONG_CONFIG_qtidisplay_var2 := true
+        SOONG_CONFIG_qtidisplay_var3 := true
+    endif
+endif
+
+ifeq (,$(wildcard $(QCPATH)/display-noship))
+    SOONG_CONFIG_qtidisplay_var1 := true
+endif
+
+ifeq (,$(wildcard $(QCPATH)/display))
+    SOONG_CONFIG_qtidisplay_var2 := true
+endif
+
+
+
+QMAA_ENABLED_HAL_MODULES += display
+
+>>>>>>> ba7898d5e (vendor-freeze: Move few commonsys-intf libs to commonsys)
 # Properties using default value:
 #    vendor.display.disable_hw_recovery=0
 

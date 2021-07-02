@@ -12,6 +12,10 @@ PRODUCT_PACKAGES += \
     hwcomposer.$(TARGET_BOARD_PLATFORM) \
     memtrack.$(TARGET_BOARD_PLATFORM) \
     libqdMetaData.vendor \
+    libqdMetaData.system \
+    libdisplayconfig \
+    libgralloc.qti \
+    libdisplayconfig.qti \
     libdisplayconfig.vendor \
     libdisplayconfig.qti.vendor \
     vendor.display.config@1.0.vendor \

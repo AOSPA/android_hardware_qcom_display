@@ -17,6 +17,10 @@ PRODUCT_PACKAGES += \
     libsdmcore \
     libsdmutils \
     libqdMetaData \
+    libqdMetaData.system \
+    libdisplayconfig \
+    libgralloc.qti \
+    libdisplayconfig.qti \
     libdisplayconfig.vendor \
     vendor.qti.hardware.display.mapper@2.0.vendor \
     vendor.qti.hardware.display.mapper@3.0.vendor \
@@ -161,13 +165,25 @@ PRODUCT_PROPERTY_OVERRIDES +=  vendor.display.enable_async_powermode=1
 # Soong Namespace
 SOONG_CONFIG_NAMESPACES += qtidisplay
 # Soong Keys
-SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4
+SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4 displayconfig_enabled default var1 var2 var3
+
 # Soong Values
 SOONG_CONFIG_qtidisplay_drmpp := true
 SOONG_CONFIG_qtidisplay_headless := false
 SOONG_CONFIG_qtidisplay_llvmsa := false
 SOONG_CONFIG_qtidisplay_gralloc4 := true
 
+SOONG_CONFIG_qtidisplay_displayconfig_enabled := false
+SOONG_CONFIG_qtidisplay_default := true
+SOONG_CONFIG_qtidisplay_var1 := false
+SOONG_CONFIG_qtidisplay_var2 := false
+SOONG_CONFIG_qtidisplay_var3 := false
+
+ifeq ($(call is-vendor-board-platform,QCOM),true)
+    SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
+endif
+
+# Techpack values
 
 QMAA_ENABLED_HAL_MODULES += display
 ifeq ($(TARGET_USES_QMAA),true)

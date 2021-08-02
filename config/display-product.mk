@@ -17,6 +17,8 @@ PRODUCT_PACKAGES += \
     vendor.qti.hardware.display.mapper@2.0.vendor \
     vendor.qti.hardware.display.mapper@3.0.vendor \
     vendor.qti.hardware.display.mapper@4.0.vendor \
+    init.qti.display_boot.sh \
+    init.qti.display_boot.rc \
     modetest
 
 ifneq ($(TARGET_HAS_LOW_RAM),true)
@@ -53,7 +55,7 @@ PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_default.xml:$
 #QDCM calibration xml file for nt36525 truly panel
 PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_bengal_default.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_nt36525_video_mode_dsi_truly_panel.xml
 #QDCM calibration xml file for nt36672e LCD video mode single dsi with DSC panel.
-PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_nt36672e_lcd_video_mode_dsi_novatek_fhd_plus_144Hz_with_DSC.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_nt36672e_90Hz_fhd_plus_video_mode_panel_with_DSC.xml
+PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_bengal_default.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_nt36672e_90Hz_fhd_plus_video_mode_panel_with_DSC.xml
 endif
 #QDCM calibration xml file for td4330 panel
 PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_bengal_default.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_td4330_v2_cmd_mode_dsi_truly_panel.xml
@@ -97,6 +99,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
     debug.sf.high_fps_early_gl_phase_offset_ns=-5000000
 endif
 
+ifeq ($(TARGET_BOARD_PLATFORM),monaco)
+PRODUCT_PROPERTY_OVERRIDES += \
+    vendor.display.disable_layer_stitch=1
+endif
+
 ifeq ($(TARGET_BOARD_PLATFORM),kona)
 PRODUCT_PROPERTY_OVERRIDES += \
     debug.sf.enable_gl_backpressure=1 \
@@ -108,7 +115,6 @@ endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),lito)
 PRODUCT_PROPERTY_OVERRIDES += \
-    vendor.display.enable_perf_hint_large_comp_cycle=1 \
     debug.sf.high_fps_late_sf_phase_offset_ns=-4000000 \
     debug.sf.high_fps_early_phase_offset_ns=-4000000 \
     debug.sf.high_fps_early_gl_phase_offset_ns=-4000000 \
@@ -116,6 +122,13 @@ PRODUCT_PROPERTY_OVERRIDES += \
     debug.sf.perf_fps_early_phase_offset_ns=-5000000 \
     debug.sf.perf_fps_early_gl_phase_offset_ns=-5000000 \
     debug.sf.enable_advanced_sf_phase_offset=1
+endif
+
+ifeq ($(TARGET_FWK_SUPPORTS_FULL_VALUEADDS), true)
+  ifeq ($(TARGET_BOARD_PLATFORM),lito)
+  PRODUCT_PROPERTY_OVERRIDES += \
+      vendor.display.enable_perf_hint_large_comp_cycle=1
+  endif
 endif
 
 #Set WCG properties

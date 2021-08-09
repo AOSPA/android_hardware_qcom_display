@@ -72,7 +72,8 @@ int Allocator::AllocateMem(AllocData *alloc_data, uint64_t usage, int format) {
   // After this point we should have the right heap set, there is no fallback
 
   alloc_intf->GetHeapInfo(usage, use_system_heap_for_sensors_, &alloc_data->heap_name,
-                          &alloc_data->vm_names, &alloc_data->alloc_type, &alloc_data->flags);
+                          &alloc_data->vm_names, &alloc_data->alloc_type, &alloc_data->flags,
+                          &alloc_data->size);
 
   ret = alloc_intf->AllocBuffer(alloc_data);
   if (ret >= 0) {
@@ -154,6 +155,7 @@ bool Allocator::CheckForBufferSharing(uint32_t num_descriptors,
   unsigned int alignedw, alignedh;
   unsigned int max_size = 0;
   bool is_secure = false;
+  unsigned int cur_size = 0, prev_size = 0;
 
   *max_index = -1;
 
@@ -166,10 +168,11 @@ bool Allocator::CheckForBufferSharing(uint32_t num_descriptors,
     // Check Cached vs non-cached and all the flags
     cur_uncached = UseUncached(descriptors[i]->GetFormat(), descriptors[i]->GetUsage());
     alloc_intf->GetHeapInfo(descriptors[i]->GetUsage(), use_system_heap_for_sensors_,
-                            &cur_heap_name, &cur_vm_names, &cur_alloc_type, &cur_flags);
+                            &cur_heap_name, &cur_vm_names, &cur_alloc_type, &cur_flags, &cur_size);
 
     if (i > 0 && (cur_heap_name != prev_heap_name || cur_alloc_type != prev_alloc_type ||
-                  cur_flags != prev_flags || cur_vm_names != prev_vm_names)) {
+                  cur_flags != prev_flags || cur_vm_names != prev_vm_names ||
+                  cur_size != prev_size)) {
       return false;
     }
 
@@ -186,6 +189,7 @@ bool Allocator::CheckForBufferSharing(uint32_t num_descriptors,
     prev_flags = cur_flags;
     prev_alloc_type = cur_alloc_type;
     prev_vm_names = cur_vm_names;
+    prev_size = cur_size;
   }
 
   return true;

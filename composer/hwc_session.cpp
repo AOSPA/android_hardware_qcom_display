@@ -1719,6 +1719,14 @@ android::status_t HWCSession::notifyCallback(uint32_t command, const android::Pa
       status = SetStandByMode(input_parcel);
       break;
 
+    case qService::IQService::GET_PANEL_RESOLUTION:
+      if (!input_parcel || !output_parcel) {
+        DLOGE("QService command = %d: input_parcel and output_parcel needed.", command);
+        break;
+      }
+      status = GetPanelResolution(input_parcel, output_parcel);
+      break;
+
     default:
       DLOGW("QService command = %d is not supported.", command);
       break;
@@ -2496,6 +2504,24 @@ void HWCSession::Refresh(hwc2_display_t display) {
   callbacks_.Refresh(display);
 }
 
+android::status_t HWCSession::GetPanelResolution(const android::Parcel *input_parcel,
+                                                 android::Parcel *output_parcel) {
+  SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);
+
+  if (!hwc_display_[HWC_DISPLAY_PRIMARY]) {
+    DLOGI("Primary display is not initialized");
+    return -EINVAL;
+  }
+  auto panel_width = 0u;
+  auto panel_height = 0u;
+
+  hwc_display_[HWC_DISPLAY_PRIMARY]->GetPanelResolution(&panel_width, &panel_height);
+  output_parcel->writeInt32(INT32(panel_width));
+  output_parcel->writeInt32(INT32(panel_height));
+
+  return android::NO_ERROR;
+}
+
 android::status_t HWCSession::GetVisibleDisplayRect(const android::Parcel *input_parcel,
                                                     android::Parcel *output_parcel) {
   int disp_idx = GetDisplayIndex(input_parcel->readInt32());
@@ -3016,7 +3042,10 @@ HWC2::Error HWCSession::ValidateDisplayInternal(hwc2_display_t display, uint32_t
     }
   }
 
-  return hwc_display->Validate(out_num_types, out_num_requests);
+  auto status = HWC2::Error::None;
+  status = hwc_display->Validate(out_num_types, out_num_requests);
+  SetCpuPerfHintLargeCompCycle();
+  return status;
 }
 
 HWC2::Error HWCSession::PresentDisplayInternal(hwc2_display_t display) {
@@ -3628,6 +3657,27 @@ int32_t HWCSession::SetActiveConfigWithConstraints(
 
   return CallDisplayFunction(display, &HWCDisplay::SetActiveConfigWithConstraints, config,
                              vsync_period_change_constraints, out_timeline);
+}
+
+void HWCSession::SetCpuPerfHintLargeCompCycle() {
+  bool found_non_primary_active_display = false;
+
+  // Check any non-primary display is active
+  for (hwc2_display_t display = HWC_DISPLAY_PRIMARY + 1;
+    display < HWCCallbacks::kNumDisplays; display++) {
+    if (hwc_display_[display] == NULL) {
+      continue;
+    }
+    if (hwc_display_[display]->GetCurrentPowerMode() != HWC2::PowerMode::Off) {
+      found_non_primary_active_display = true;
+      break;
+    }
+  }
+
+  // send cpu hint for primary display
+  if (!found_non_primary_active_display) {
+    hwc_display_[HWC_DISPLAY_PRIMARY]->SetCpuPerfHintLargeCompCycle();
+  }
 }
 
 }  // namespace sdm

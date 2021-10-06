@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2020, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -113,6 +113,12 @@ typedef enum {
   SURFACE_TILE_MODE_ENABLE     = 0x1     // used for tiled surface
 } surface_tile_mode_t;
 
+struct GrallocProperties {
+  bool use_system_heap_for_sensors = true;
+  bool ubwc_disable = false;
+  bool ahardware_buffer_disable = false;
+};
+
 class AdrenoMemInfo {
  public:
   /*
@@ -191,6 +197,8 @@ class AdrenoMemInfo {
    *         false : Unavaliable
   */
   bool AdrenoSizeAPIAvaliable();
+
+  void AdrenoSetProperties(gralloc::GrallocProperties props);
 
   static AdrenoMemInfo *GetInstance();
 

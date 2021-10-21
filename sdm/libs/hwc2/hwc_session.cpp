@@ -858,12 +858,14 @@ int32_t HWCSession::RegisterCallback(hwc2_device_t *device, int32_t descriptor,
     if (hwc_session->HandleBuiltInDisplays()) {
       DLOGW("Failed handling built-in displays.");
     }
-    DLOGI("Handling pluggable displays...");
-    int32_t err = hwc_session->HandlePluggableDisplays(false);
-    if (err) {
-      DLOGW("All displays could not be created. Error %d '%s'. Hotplug handling %s.", err,
-            strerror(abs(err)), hwc_session->hotplug_pending_event_ == kHotPlugEvent ? "deferred" :
-            "dropped");
+    if(!hwc_session->pluggable_is_primary_) {
+      DLOGI("Handling pluggable displays...");
+      int32_t err = hwc_session->HandlePluggableDisplays(false);
+      if (err) {
+        DLOGW("All displays could not be created. Error %d '%s'. Hotplug handling %s.", err,
+              strerror(abs(err)), hwc_session->hotplug_pending_event_ == kHotPlugEvent ? 
+              "deferred" : "dropped");
+      }
     }
 
     // If previously registered, call hotplug for all connected displays to refresh
@@ -2940,6 +2942,22 @@ bool HWCSession::HasHDRSupport(HWCDisplay *hwc_display) {
 }
 
 int HWCSession::HandleDisconnectedDisplays(HWDisplaysInfo *hw_displays_info) {
+  if (pluggable_is_primary_) {
+    bool disconnect = true;
+    DisplayMapInfo map_info = map_info_primary_;
+    for (auto &iter : *hw_displays_info) {
+      auto &info = iter.second;
+      if (info.display_id != map_info.sdm_id) {
+        continue;
+      }
+      if (info.is_connected) {
+        disconnect = false;
+      }
+    }
+    if (disconnect) {
+      DestroyDisplay(&map_info);
+    }
+  }
   // Destroy pluggable displays which were connected earlier but got disconnected now.
   for (auto &map_info : map_info_pluggable_) {
     bool disconnect = true;   // disconnect in case display id is not found in list.

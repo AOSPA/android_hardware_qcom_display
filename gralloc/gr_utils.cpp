@@ -60,6 +60,7 @@ bool IsYuvFormat(int format) {
     case HAL_PIXEL_FORMAT_Y16:
     case HAL_PIXEL_FORMAT_RAW12:
     case HAL_PIXEL_FORMAT_RAW10:
+    case HAL_PIXEL_FORMAT_RAW8:
     case HAL_PIXEL_FORMAT_YV12:
     case HAL_PIXEL_FORMAT_Y8:
     case HAL_PIXEL_FORMAT_YCbCr_420_P010:

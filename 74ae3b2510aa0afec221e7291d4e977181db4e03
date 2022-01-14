@@ -16,6 +16,24 @@
       "message": "Would rather move to LA.UM.10.3.r1-00500-sdm845.0 for sapphire instead of merging this on ruby",
       "revId": "74ae3b2510aa0afec221e7291d4e977181db4e03",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0dfbbb4_f2c98a6a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2022-01-14T09:17:19Z",
+      "side": 1,
+      "message": "agree but you\u0027re on the right track to get things working first",
+      "parentUuid": "e548bfee_39b85669",
+      "revId": "74ae3b2510aa0afec221e7291d4e977181db4e03",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

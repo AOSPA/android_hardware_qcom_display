@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e548bfee_39b85669",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000178
+      },
+      "writtenOn": "2022-01-14T01:42:27Z",
+      "side": 1,
+      "message": "Would rather move to LA.UM.10.3.r1-00500-sdm845.0 for sapphire instead of merging this on ruby",
+      "revId": "74ae3b2510aa0afec221e7291d4e977181db4e03",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9bca997b_082197ad",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000687
+      },
+      "writtenOn": "2022-01-27T01:05:04Z",
+      "side": 1,
+      "message": "Needed by Xiaomi fod device Kernel dimming,commit from ruby-smxx50",
+      "revId": "d05b80a7c97a218e039c03307984c5ced0d2900e",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

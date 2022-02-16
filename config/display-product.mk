@@ -95,9 +95,9 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.enable_optimize_refresh=1 \
     vendor.display.use_smooth_motion=1 \
     debug.sf.enable_advanced_sf_phase_offset=1 \
-    debug.sf.high_fps_late_sf_phase_offset_ns=-4000000 \
+    debug.sf.high_fps_late_sf_phase_offset_ns=-2000000 \
     debug.sf.high_fps_early_phase_offset_ns=-4000000 \
-    debug.sf.high_fps_early_gl_phase_offset_ns=-4000000 \
+    debug.sf.high_fps_early_gl_phase_offset_ns=-2000000 \
     debug.sf.disable_client_composition_cache=1 \
     debug.sf.enable_gl_backpressure=1
 

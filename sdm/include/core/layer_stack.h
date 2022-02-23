@@ -192,7 +192,14 @@ struct LayerFlags {
       uint32_t single_buffer : 1;  //!< This flag shall be set by client to indicate that the layer
                                    //!< uses only a single buffer that will not be swapped out
 
+      uint32_t sde_preferred : 1;  //! This flag shall be set by client to indicate that this layer
+                                   //! will be composed by display device, layer with this flag
+                                   //! will have highest priority. To be used by OEMs only.
+
 #ifdef FOD_ZPOS
+      uint32_t reserved : 25;      //!< This flag reserves the remaining 4 * 8 - (6 + 1) bits to
+                                   //!< avoid future ABI breakage
+
       uint32_t fod_pressed : 1;    //!< This flag shall be set internally to mark the fod pressed
                                    //!< layer
 #endif
@@ -465,4 +472,3 @@ struct LayerStack {
 }  // namespace sdm
 
 #endif  // __LAYER_STACK_H__
-

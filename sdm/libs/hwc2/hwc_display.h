@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2020, 2021, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -469,12 +469,15 @@ class HWCDisplay : public DisplayEventHandler {
   bool fast_path_composition_ = false;
   bool client_connected_ = true;
   bool pending_config_ = false;
+  bool smart_panel_config_ = false;
+  bool enable_poms_during_doze_ = false;
   uint32_t vsyncs_to_apply_rate_change_ = 1;
   hwc2_config_t pending_refresh_rate_config_ = UINT_MAX;
   int64_t pending_refresh_rate_refresh_time_ = INT64_MAX;
   int64_t pending_refresh_rate_applied_time_ = INT64_MAX;
   std::deque<TransientRefreshRateInfo> transient_refresh_rate_info_;
   std::mutex transient_refresh_rate_lock_;
+  DisplayNullExternal display_null_;
 
  private:
   void DumpInputBuffers(void);

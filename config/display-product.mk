@@ -18,6 +18,7 @@ PRODUCT_PACKAGES += \
     libsdmutils \
     libqdMetaData \
     libdisplayconfig.vendor \
+    libdisplayconfig.qti.vendor \
     vendor.qti.hardware.display.mapper@2.0.vendor \
     vendor.qti.hardware.display.mapper@3.0.vendor \
     vendor.qti.hardware.display.mapper@4.0.vendor \

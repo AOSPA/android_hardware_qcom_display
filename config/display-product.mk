@@ -158,7 +158,9 @@ PRODUCT_PROPERTY_OVERRIDES += \
 endif
 
 # Enable power async mode
+ifneq ($(TARGET_BOARD_PLATFORM),kona)
 PRODUCT_PROPERTY_OVERRIDES +=  vendor.display.enable_async_powermode=1
+endif
 
 QMAA_ENABLED_HAL_MODULES += display
 ifeq ($(TARGET_USES_QMAA),true)

@@ -16,6 +16,24 @@
       "message": "did you miss authorship or what\u0027s the story behind this one",
       "revId": "73146a58a84bf64fd29a60fecd69b44559b28196",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "287f6608_34dae924",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000782
+      },
+      "writtenOn": "2022-04-19T20:55:26Z",
+      "side": 1,
+      "message": "@YumeMichi pointed me in this direction about how it\u0027s not supported on OP8, so I added an if statement to exclude kona devices from the enable clause.\n\nThe other half of the patch is not using the vendor.display.enable_async_powermode\u003d0 in the OP8 device tree.",
+      "parentUuid": "f191c89f_63eb8b6d",
+      "revId": "73146a58a84bf64fd29a60fecd69b44559b28196",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

@@ -34,6 +34,24 @@
       "parentUuid": "f191c89f_63eb8b6d",
       "revId": "73146a58a84bf64fd29a60fecd69b44559b28196",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63ad36c4_c86750a5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2022-04-20T02:32:09Z",
+      "side": 1,
+      "message": "did you try converting it to product_odm_properties like I asked",
+      "parentUuid": "287f6608_34dae924",
+      "revId": "73146a58a84bf64fd29a60fecd69b44559b28196",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

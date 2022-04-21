@@ -70,6 +70,24 @@
       "parentUuid": "63ad36c4_c86750a5",
       "revId": "73146a58a84bf64fd29a60fecd69b44559b28196",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09a98cc6_905e935f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2022-04-21T08:12:23Z",
+      "side": 1,
+      "message": "https://github.com/AOSPA/android_device_oneplus_oneplus8/blame/ruby/device.mk#L144 to PRODUCT_ODM_PROPERTIES",
+      "parentUuid": "78871348_8d30fb47",
+      "revId": "73146a58a84bf64fd29a60fecd69b44559b28196",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

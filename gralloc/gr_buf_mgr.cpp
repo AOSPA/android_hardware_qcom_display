@@ -1032,6 +1032,9 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   }
 
   if (testAlloc) {
+    if (size == 0) {
+       return Error::NO_RESOURCES;
+    }
     return Error::NONE;
   }
 

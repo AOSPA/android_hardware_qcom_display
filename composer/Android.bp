@@ -1,9 +1,28 @@
 composer_srcs = ["*.cpp"]
 
+soong_config_module_type {
+    name: "dolby_vision_cc_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "dolby_vision",
+    bool_variables: ["enabled"],
+    properties: ["cflags"],
+}
+
+dolby_vision_cc_defaults {
+    name: "dolby_vision_defaults",
+    soong_config_variables: {
+        enabled: {
+            cflags: [
+                "-DTARGET_SUPPORTS_DOLBY_VISION",
+            ],
+        },
+    },
+}
+
 cc_binary {
 
     name: "vendor.qti.hardware.display.composer-service",
-    defaults: ["qtidisplay_defaults"],
+    defaults: ["qtidisplay_defaults", "dolby_vision_defaults"],
     sanitize: {
         integer_overflow: true,
     },

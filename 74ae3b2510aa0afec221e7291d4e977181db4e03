@@ -34,6 +34,23 @@
       "parentUuid": "e548bfee_39b85669",
       "revId": "74ae3b2510aa0afec221e7291d4e977181db4e03",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d741a9bf_f48c91ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000791
+      },
+      "writtenOn": "2022-05-25T19:08:27Z",
+      "side": 1,
+      "message": "tested and worked on OnePlus 6T and AOSPA Sapphire",
+      "revId": "74ae3b2510aa0afec221e7291d4e977181db4e03",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

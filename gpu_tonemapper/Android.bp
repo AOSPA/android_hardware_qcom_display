@@ -23,6 +23,7 @@ cc_library_shared {
         "-Wno-unused-parameter",
         "-DLOG_TAG=\"GPU_TONEMAPPER\"",
         "-DTARGET_ION_ABI_VERSION=2",
+        "-Wno-unreachable-code-loop-increment",
     ],
 
     srcs: [

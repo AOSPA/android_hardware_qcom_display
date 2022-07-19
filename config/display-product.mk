@@ -188,6 +188,7 @@ endif
 QMAA_ENABLED_HAL_MODULES += display
 ifeq ($(TARGET_USES_QMAA),true)
     ifeq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)
+        TARGET_IS_HEADLESS := false
         PRODUCT_PROPERTY_OVERRIDES += \
             vendor.display.enable_null_display=0
         #Modules that shouldn't be enabled in QMAA go here

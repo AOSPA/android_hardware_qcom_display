@@ -16,6 +16,24 @@
       "message": "honestly I don\u0027t really see a point of these commits, can you just odm.prop? odm overrides vendor",
       "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2ac9ffb_b2816386",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000737
+      },
+      "writtenOn": "2022-08-02T10:26:41Z",
+      "side": 1,
+      "message": "I tried this, if you leave aosp and qcom together the build doesn\u0027t boot",
+      "parentUuid": "9fd87d75_462a4826",
+      "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

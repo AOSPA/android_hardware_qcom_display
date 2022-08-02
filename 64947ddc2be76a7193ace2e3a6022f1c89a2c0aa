@@ -69,6 +69,23 @@
       "parentUuid": "e2ac9ffb_b2816386",
       "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e1aa5773_305d1f3a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2022-08-02T15:34:39Z",
+      "side": 1,
+      "message": "Also, should we opt in or opt out?",
+      "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

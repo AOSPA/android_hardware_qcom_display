@@ -86,6 +86,23 @@
       "message": "Also, should we opt in or opt out?",
       "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "870e10ac_9eaa24bd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2022-08-02T17:41:03Z",
+      "side": 1,
+      "message": "debug.sf.latch_unsignaled or unsignaled buffering has nothing to do with offsets\nthis has been recommended by qcom for adreno platform ",
+      "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

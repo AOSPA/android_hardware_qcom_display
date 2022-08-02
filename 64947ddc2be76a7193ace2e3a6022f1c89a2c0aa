@@ -139,6 +139,60 @@
       "parentUuid": "e1aa5773_305d1f3a",
       "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e818bf8_3beab85e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000737
+      },
+      "writtenOn": "2022-08-02T23:02:19Z",
+      "side": 1,
+      "message": "Notice that Lito and Kona already have their own offset props inside a flag, I just did something like bengal, as this change will only affect bengal and khaje. this is deactivating for anosp to be defined in Device tree, see: https://github.com/CHRISL7/android_device_xiaomi_spes/commit/9db2dc5d25510b8f0f80ac1a9df059937eda3efd#diff-247ee86229a709a6e2eedfc1d3c4a557825aee073e20b0112ab76f4ca8e4bc4eR254",
+      "parentUuid": "e1aa5773_305d1f3a",
+      "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca645e18_d2a19bb2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000737
+      },
+      "writtenOn": "2022-08-02T23:02:19Z",
+      "side": 1,
+      "message": "\u003e Comment removed by: Jake Weinstein; Reason: Duplicate",
+      "parentUuid": "7b384087_5f6d6cb1",
+      "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5342dd4_b46571b5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000737
+      },
+      "writtenOn": "2022-08-02T23:02:19Z",
+      "side": 1,
+      "message": "I left this together, because qcom made the same definition for Kona and Lito, but in a different way, see: https://github.com/AOSPA/android_hardware_qcom_display/blob/sapphire-bengal/config/display-product.mk#L116",
+      "parentUuid": "870e10ac_9eaa24bd",
+      "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

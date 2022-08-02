@@ -121,6 +121,24 @@
       "parentUuid": "8647c61d_64275376",
       "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b87f5904_24ef6675",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2022-08-02T17:44:12Z",
+      "side": 1,
+      "message": "preferably qcom offsets should be opt out, unless there\u0027s absolute proof that it\u0027s better with some other offset values (like we did with lahaina), I would not want this to be made default",
+      "parentUuid": "e1aa5773_305d1f3a",
+      "revId": "64947ddc2be76a7193ace2e3a6022f1c89a2c0aa",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

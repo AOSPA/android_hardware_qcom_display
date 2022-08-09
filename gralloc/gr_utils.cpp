@@ -1292,9 +1292,9 @@ int GetGpuResourceSizeAndDimensions(const BufferInfo &info, unsigned int *size,
                                                     info.format, 1, is_ubwc_enabled,
                                                     adreno_usage, 1);
   if (ret != 0) {
-    ALOGE("%s Graphics metadata init failed", __FUNCTION__);
+    ALOGW("%s Graphics metadata init failed", __FUNCTION__);
     *size = 0;
-    return -EINVAL;
+    return -ENOTSUP;
   }
   // Call adreno api with the metadata blob to get buffer size
   *size = adreno_mem_info->AdrenoGetAlignedGpuBufferSize(graphics_metadata->data);

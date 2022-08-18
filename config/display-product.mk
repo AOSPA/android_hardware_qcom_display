@@ -197,6 +197,10 @@ else
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display
 endif
 
+ifeq ($(TARGET_USES_FOD_ZPOS), true)
+SOONG_CONFIG_qtidisplay_udfps := true
+endif
+
 #Modules that will be added in QMAA/Non-QMAA paths
 PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/gralloc
 PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/init

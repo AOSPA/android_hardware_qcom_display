@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ce7ac28_67041e78",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2022-08-19T04:55:42Z",
+      "side": 1,
+      "message": "this should probably be opt out rather than opt in.  also how device specific is this?  if we have better offsets for one device in an soc, should they apply to all?  I am not opposed to changing defaults.",
+      "revId": "622ef3d27f0629667b5bfb97ede541d8ac4bae67",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

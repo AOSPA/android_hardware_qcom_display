@@ -9,12 +9,16 @@ PRODUCT_PACKAGES += \
     gralloc.$(TARGET_BOARD_PLATFORM) \
     hwcomposer.$(TARGET_BOARD_PLATFORM) \
     memtrack.$(TARGET_BOARD_PLATFORM) \
+    libdisplayconfig.qti \
+    libdisplayconfig.qti.vendor \
+    libdisplayconfig.vendor \
+    libqdMetaData.vendor \
     libsdmcore \
     libsdmutils \
-    libqdMetaData \
-    libdisplayconfig.vendor \
     libtinyxml \
-    libvulkan
+    libvulkan \
+    vendor.display.config@1.9.vendor \
+    vendor.display.config@2.0.vendor
 
 #Set WCG properties
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.max_frame_buffer_acquired_buffers=3

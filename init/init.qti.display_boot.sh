@@ -71,12 +71,13 @@ fi
 
 case "$target" in
     "bengal")
+    setprop vendor.gralloc.use_dma_buf_heaps 1
     # Set property to differentiate bengal and khaje
     # Soc Id for khaje is 518
     # Soc Id for khaje APQ is 561
-    setprop vendor.gralloc.use_dma_buf_heaps 1
+    # Soc Id for khaje Gaming is 585 and IOT is 586
     case "$soc_hwid" in
-        518|561)
+        518|561|585|586)
         # Set property for khaje
         setprop vendor.display.disable_layer_stitch 1
         setprop vendor.display.enable_rounded_corner 1

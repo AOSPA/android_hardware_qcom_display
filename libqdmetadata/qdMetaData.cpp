@@ -149,8 +149,6 @@ static bool getGralloc4Array(MetaData_t *metadata, int32_t paramType) {
           ->isVendorMetadataSet[GET_VENDOR_METADATA_STATUS_INDEX(QTI_VIDEO_TS_INFO)];
     case GET_S3D_FORMAT:
       return metadata->isVendorMetadataSet[GET_VENDOR_METADATA_STATUS_INDEX(QTI_S3D_FORMAT)];
-    case CRC_BUFFER:
-        return metadata->isVendorMetadataSet[GET_VENDOR_METADATA_STATUS_INDEX(QTI_CRC_BUFFER)];
     default:
       ALOGE("paramType %d not supported", paramType);
       return false;
@@ -214,9 +212,6 @@ static void setGralloc4Array(MetaData_t *metadata, int32_t paramType, bool isSet
       break;
     case S3D_FORMAT:
       metadata->isVendorMetadataSet[GET_VENDOR_METADATA_STATUS_INDEX(QTI_S3D_FORMAT)] = isSet;
-      break;
-    case CRC_BUFFER:
-      metadata->isVendorMetadataSet[GET_VENDOR_METADATA_STATUS_INDEX(QTI_CRC_BUFFER)] = isSet;
       break;
     default:
       ALOGE("paramType %d not supported in Gralloc4", paramType);
@@ -422,9 +417,6 @@ int setMetaDataVa(MetaData_t *data, DispParamType paramType,
         case SET_VIDEO_TS_INFO:
             data->videoTsInfo = *((VideoTimestampInfo *)param);
             break;
-        case CRC_BUFFER:
-            memcpy(data->crcBuffer, param, sizeof(data->crcBuffer));
-            break;
         default:
             ALOGE("Unknown paramType %d", paramType);
             break;
@@ -570,9 +562,6 @@ int getMetaDataVa(MetaData_t *data, DispFetchParamType paramType,
         }
         case GET_VIDEO_TS_INFO:
           *((VideoTimestampInfo *)param) = data->videoTsInfo;
-          break;
-        case GET_CRC_BUFFER:
-          memcpy(param, data->crcBuffer, sizeof(data->crcBuffer));
           break;
         default:
             ALOGE("Unknown paramType %d", paramType);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -147,25 +147,6 @@ Error encodeCVPMetadata(CVPMetadata &in, hidl_vec<uint8_t> *out) {
   return Error::NONE;
 }
 
-Error decodeCRCBufferDataRaw(hidl_vec<uint8_t> &in, void *out)
-{
-  if (!in.size() || !out) {
-    return Error::BAD_VALUE;
-  }
-  memcpy(out, in.data(), CRC_BUFFER_SIZE_IN_BYTES);
-  return Error::NONE;
-}
-
-Error encodeCRCBufferDataRaw(void *in, hidl_vec<uint8_t> *out)
-{
-  if (!out) {
-    return Error::BAD_VALUE;
-  }
-  out->resize(CRC_BUFFER_SIZE_IN_BYTES);
-  memcpy(out->data(), in, CRC_BUFFER_SIZE_IN_BYTES);
-  return Error::NONE;
-}
-
 Error decodeVideoHistogramMetadata(hidl_vec<uint8_t> &in, VideoHistogramMetadata *out) {
   if (!in.size() || !out) {
     return Error::BAD_VALUE;
@@ -270,8 +251,6 @@ MetadataType getMetadataType(uint32_t in) {
       return MetadataType_ColorSpace;
     case QTI_YUV_PLANE_INFO:
       return MetadataType_YuvPlaneInfo;
-    case QTI_CRC_BUFFER:
-        return MetadataType_CRCBuffer;
     default:
       return MetadataType_Invalid;
   }
@@ -395,9 +374,6 @@ Error get(void *buffer, uint32_t type, void *param) {
       break;
     case QTI_YUV_PLANE_INFO:
       err = decodeYUVPlaneInfoMetadata(bytestream, reinterpret_cast<qti_ycbcr *>(param));
-      break;
-    case QTI_CRC_BUFFER:
-      err = decodeCRCBufferDataRaw(bytestream, param);
       break;
     default:
       param = nullptr;

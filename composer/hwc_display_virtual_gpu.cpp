@@ -30,7 +30,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -159,6 +159,12 @@ HWC2::Error HWCDisplayVirtualGPU::Present(shared_ptr<Fence> *out_retire_fence) {
   if (active_secure_sessions_.any() || layer_set_.empty()) {
     return status;
   }
+  Layer *sdm_layer = client_target_->GetSDMLayer();
+  LayerBuffer &input_buffer = sdm_layer->input_buffer;
+  if (!input_buffer.buffer_id) {
+    return HWC2::Error::NoResources;
+  }
+
 
   layer_stack_.output_buffer = &output_buffer_;
   if (display_paused_) {
@@ -180,8 +186,6 @@ HWC2::Error HWCDisplayVirtualGPU::Present(shared_ptr<Fence> *out_retire_fence) {
 
   ColorConvertBlitContext ctx = {};
 
-  Layer *sdm_layer = client_target_->GetSDMLayer();
-  LayerBuffer &input_buffer = sdm_layer->input_buffer;
   ctx.src_hnd = reinterpret_cast<const native_handle_t *>(input_buffer.buffer_id);
   ctx.dst_hnd = reinterpret_cast<const native_handle_t *>(output_handle_);
   ctx.dst_rect = {0, 0, FLOAT(output_buffer_.unaligned_width),

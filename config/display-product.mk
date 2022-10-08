@@ -192,7 +192,7 @@ ifeq ($(call is-vendor-board-platform,QCOM),true)
 endif
 
 ifeq ($(TARGET_USES_FOD_ZPOS), true)
-    SOONG_CONFIG_qtidisplay_udfps_enabled := true
+    SOONG_CONFIG_qtidisplay_udfps := true
 endif
 
 ifeq ($(TARGET_IS_HEADLESS), true)

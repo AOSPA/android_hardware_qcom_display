@@ -175,5 +175,19 @@ PRODUCT_PROPERTY_OVERRIDES += \
 endif
 endif
 
+# Soong Namespace
+SOONG_CONFIG_NAMESPACES += qtidisplay
+
+# Soong Keys
+SOONG_CONFIG_qtidisplay := displayconfig_enabled
+
+# Soong Values
+SOONG_CONFIG_qtidisplay_displayconfig_enabled := false
+SOONG_CONFIG_qtidisplay_default := true
+
+ifeq ($(call is-vendor-board-platform,QCOM),true)
+    SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
+endif
+
 # Properties using default value:
 #    vendor.display.disable_hw_recovery=0

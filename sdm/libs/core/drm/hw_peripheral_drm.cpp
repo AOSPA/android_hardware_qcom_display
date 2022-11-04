@@ -143,21 +143,7 @@ void HWPeripheralDRM::PopulateBitClkRates() {
     return;
   }
 
-  // Group all bit_clk_rates corresponding to DRM_PREFERRED mode.
-  uint32_t width = connector_info_.modes[current_mode_index_].mode.hdisplay;
-  uint32_t height = connector_info_.modes[current_mode_index_].mode.vdisplay;
-
-  for (auto &mode_info : connector_info_.modes) {
-    auto &mode = mode_info.mode;
-    if (mode.hdisplay == width && mode.vdisplay == height) {
-      if (std::find(bitclk_rates_.begin(), bitclk_rates_.end(), mode_info.bit_clk_rate) ==
-            bitclk_rates_.end()) {
-        bitclk_rates_.push_back(mode_info.bit_clk_rate);
-        DLOGI("Possible bit_clk_rates %" PRIu64 , mode_info.bit_clk_rate);
-      }
-    }
-  }
-
+  bitclk_rates_ = connector_info_.modes[current_mode_index_].dyn_bitclk_list;
   hw_panel_info_.bitclk_rates = bitclk_rates_;
   DLOGI("bit_clk_rates Size %zu", bitclk_rates_.size());
 }

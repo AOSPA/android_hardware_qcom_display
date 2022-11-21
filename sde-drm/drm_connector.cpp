@@ -294,18 +294,6 @@ void DRMConnectorManager::Init(drmModeRes *resource) {
   }
 }
 
-static inline vector<uint64_t> GetBitClkRates(const string &bitclk_rates) {
-  stringstream line(bitclk_rates);
-  string bitclk_rate {};
-  vector<uint64_t> dyn_bitclk_list {};
-
-  DRM_LOGI("Setting dynamic bitclk list: %s", bitclk_rates.c_str());
-  while (line >> bitclk_rate) {
-    dyn_bitclk_list.push_back(std::stoi(bitclk_rate));
-  }
-  return dyn_bitclk_list;
-}
-
 void DRMConnectorManager::Update() {
   lock_guard<mutex> lock(lock_);
   drmModeRes *resource = drmModeGetResources(fd_);
@@ -652,7 +640,6 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
   const string pu_hmin = "partial_update_hmin=";
   const string pu_roimerge = "partial_update_roimerge=";
   const string bit_clk_rate = "bit_clk_rate=";
-  const string dyn_bitclk_list = "dyn_bitclk_list=";
   const string mdp_transfer_time_us = "mdp_transfer_time_us=";
 
   DRMModeInfo *mode_item = &info->modes.at(0);
@@ -688,8 +675,6 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
       mode_item->bit_clk_rate = std::stoi(string(line, bit_clk_rate.length()));
     } else if (line.find(mdp_transfer_time_us) != string::npos) {
       mode_item->transfer_time_us = std::stoi(string(line, mdp_transfer_time_us.length()));
-    } else if (line.find(dyn_bitclk_list) != string::npos) {
-      mode_item->dyn_bitclk_list = GetBitClkRates(string(line, dyn_bitclk_list.length()));
     }
   }
 

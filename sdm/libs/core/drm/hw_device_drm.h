@@ -222,6 +222,8 @@ class HWDeviceDRM : public HWInterface {
   void SetQOSData(const HWQosData &qos_data);
   void DumpHWLayers(HWLayers *hw_layers);
   bool IsFullFrameUpdate(const HWLayersInfo &hw_layer_info);
+  uint64_t GetSupportedBitClkRate(uint32_t new_mode_index,
+                                  uint64_t bit_clk_rate_request);
 
   class Registry {
    public:

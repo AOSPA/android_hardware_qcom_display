@@ -80,6 +80,7 @@
 #include <utility>
 #include <vector>
 #include <mutex>
+#include <inttypes.h>
 
 #include "drm_utils.h"
 #include "drm_property.h"
@@ -292,6 +293,18 @@ void DRMConnectorManager::Init(drmModeRes *resource) {
                resource->connectors[i]);
     }
   }
+}
+
+static vector<uint64_t> GetBitClkRates(const string &bitclk_rates) {
+  stringstream line(bitclk_rates);
+  string bitclk_rate {};
+  vector<uint64_t> dyn_bitclk_list {};
+
+  DRM_LOGI("Setting dynamic bitclk list: %s", bitclk_rates.c_str());
+  while (line >> bitclk_rate) {
+    dyn_bitclk_list.push_back(std::stoi(bitclk_rate));
+  }
+  return dyn_bitclk_list;
 }
 
 void DRMConnectorManager::Update() {
@@ -641,6 +654,7 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
   const string pu_roimerge = "partial_update_roimerge=";
   const string bit_clk_rate = "bit_clk_rate=";
   const string mdp_transfer_time_us = "mdp_transfer_time_us=";
+  const string dyn_bitclk_list = "dyn_bitclk_list=";
 
   DRMModeInfo *mode_item = &info->modes.at(0);
   unsigned int index = 0;
@@ -672,9 +686,12 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
     } else if (line.find(pu_roimerge) != string::npos) {
       mode_item->roi_merge = std::stoi(string(line, pu_roimerge.length()));
     } else if (line.find(bit_clk_rate) != string::npos) {
-      mode_item->bit_clk_rate = std::stoi(string(line, bit_clk_rate.length()));
+      mode_item->default_bit_clk_rate = std::stoi(string(line, bit_clk_rate.length()));
+      mode_item->curr_bit_clk_rate = std::stoi(string(line, bit_clk_rate.length()));
     } else if (line.find(mdp_transfer_time_us) != string::npos) {
       mode_item->transfer_time_us = std::stoi(string(line, mdp_transfer_time_us.length()));
+    } else if (line.find(dyn_bitclk_list) != string::npos) {
+      mode_item->dyn_bitclk_list = GetBitClkRates(string(line, dyn_bitclk_list.length()));
     }
   }
 
@@ -1001,6 +1018,21 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
         }
       } else {
         DRM_LOGE("Invalid colorspace %d", colorspace);
+      }
+    } break;
+
+    case DRMOps::CONNECTOR_SET_DYN_BIT_CLK: {
+      if (!prop_mgr_.IsPropertyAvailable(DRMProperty::DYN_BIT_CLK)) {
+        return;
+      }
+      uint64_t drm_bit_clk_rate = va_arg(args, uint64_t);
+      uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::DYN_BIT_CLK);
+      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, drm_bit_clk_rate);
+      if (ret < 0) {
+        DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, bit_clk_rate %" PRIu64
+                 " ret %d", obj_id, prop_id, drm_bit_clk_rate, ret);
+      } else {
+        DRM_LOGD("Connector %d: Setting dynamic bit clk rate %" PRIu64, obj_id, drm_bit_clk_rate);
       }
     } break;
 

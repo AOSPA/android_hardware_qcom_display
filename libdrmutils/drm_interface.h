@@ -665,7 +665,6 @@ struct DRMModeInfo {
   bool roi_merge;
   uint64_t bit_clk_rate;
   uint32_t transfer_time_us;
-  std::vector<uint64_t> dyn_bitclk_list;
 };
 
 /* Per Connector Info*/

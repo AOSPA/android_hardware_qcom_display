@@ -1,7 +1,7 @@
 cc_library_shared {
     name: "libqdutils",
     vendor: true,
-    defaults: ["display_defaults"],
+    defaults: ["qtidisplay_defaults"],
     header_libs: [
         "libhardware_headers",
         "libutils_headers",

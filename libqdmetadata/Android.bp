@@ -1,8 +1,10 @@
 cc_library_shared {
     name: "libqdMetaData",
     vendor: true,
+    defaults: ["qtidisplay_defaults"],
     cflags: [
         "-Wno-sign-conversion",
+        "-Wno-shorten-64-to-32",
         "-DLOG_TAG=\"qdmetadata\"",
         "-D__QTI_DISPLAY_GRALLOC__",
     ],

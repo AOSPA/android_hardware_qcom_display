@@ -175,5 +175,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 endif
 endif
 
+TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE ?= true
+
 # Properties using default value:
 #    vendor.display.disable_hw_recovery=0

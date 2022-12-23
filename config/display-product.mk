@@ -163,6 +163,19 @@ endif
 # Enable power async mode
 PRODUCT_PROPERTY_OVERRIDES +=  vendor.display.enable_async_powermode=1
 
+# Soong Namespace
+SOONG_CONFIG_NAMESPACES += qtidisplay
+
+# Soong Keys
+SOONG_CONFIG_qtidisplay := gralloc_handle_has_no_reserved_size
+
+# Soong Values
+SOONG_CONFIG_qtidisplay_gralloc_handle_has_no_reserved_size := false
+
+ifeq ($(TARGET_GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE),true)
+    SOONG_CONFIG_qtidisplay_gralloc_handle_has_no_reserved_size := true
+endif
+
 QMAA_ENABLED_HAL_MODULES += display
 ifeq ($(TARGET_USES_QMAA),true)
 ifeq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)

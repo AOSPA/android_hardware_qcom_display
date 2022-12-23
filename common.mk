@@ -35,6 +35,10 @@ ifeq ($(TARGET_USES_HWC2), true)
     common_flags += -DVIDEO_MODE_DEFER_RETIRE_FENCE
 endif
 
+ifneq ($(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE),false)
+    common_flags += -DGRALLOC_HANDLE_HAS_RESERVED_SIZE
+endif
+
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
     common_flags += -DUSER_DEBUG
 endif

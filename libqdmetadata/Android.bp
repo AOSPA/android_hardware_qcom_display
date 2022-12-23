@@ -14,6 +14,9 @@ cc_library_shared {
         "libgralloc.qti",
         "libgralloctypes",
     ],
+    defaults: [
+        "qtidisplay_defaults",
+    ],
     header_libs: ["libhardware_headers", "display_intf_headers"],
     srcs: ["qdMetaData.cpp", "qd_utils.cpp"],
     export_header_lib_headers: ["display_intf_headers"],

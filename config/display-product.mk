@@ -145,6 +145,19 @@ endif
 # Properties using default value:
 #    vendor.display.disable_hw_recovery=0
 
+# Soong Namespace
+SOONG_CONFIG_NAMESPACES += qtidisplay
+
+# Soong Keys
+SOONG_CONFIG_qtidisplay := gralloc_handle_has_reserved_size
+
+# Soong Values
+SOONG_CONFIG_qtidisplay_gralloc_handle_has_reserved_size := true
+
+ifeq ($(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE),false)
+    SOONG_CONFIG_qtidisplay_gralloc_handle_has_reserved_size := false
+endif
+
 # This matrix should be in column major order, per SurfaceFlinger requirement
 #  1.0   0.0   0.0
 #  0.0   1.0   0.0

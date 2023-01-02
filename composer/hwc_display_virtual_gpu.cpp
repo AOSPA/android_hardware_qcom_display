@@ -132,7 +132,7 @@ HWC2::Error HWCDisplayVirtualGPU::SetOutputBuffer(buffer_handle_t buf,
 
   // Update active dimensions.
   if (qtigralloc::getMetadataState(hnd, android::gralloc4::MetadataType_Crop.value)) {
-    int32_t slice_width, slice_height;
+    int32_t slice_width = 0, slice_height = 0;
     if (!buffer_allocator_->GetBufferGeometry(hnd, slice_width, slice_height)) {
       output_buffer_.unaligned_width = slice_width;
       output_buffer_.unaligned_height = slice_height;

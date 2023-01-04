@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "88507ec0_c3de97b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000092
+      },
+      "writtenOn": "2023-01-04T07:50:40Z",
+      "side": 1,
+      "message": "Did a similar revert before.\nhttps://gerrit.aospa.co/c/AOSPA/android_hardware_qcom_display/+/24930",
+      "revId": "8f8e108245f7e7891b6ff68e50bc10e6bfc2fd3b",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

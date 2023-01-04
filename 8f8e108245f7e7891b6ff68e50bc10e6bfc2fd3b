@@ -51,6 +51,24 @@
       "message": "doesn\u0027t boot, well fuck",
       "revId": "8f8e108245f7e7891b6ff68e50bc10e6bfc2fd3b",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "48c3cf36_66777ae9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000092
+      },
+      "writtenOn": "2023-01-04T16:20:37Z",
+      "side": 1,
+      "message": "weird, booted for me with TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE :\u003d false",
+      "parentUuid": "2c196f63_c42b3ddb",
+      "revId": "8f8e108245f7e7891b6ff68e50bc10e6bfc2fd3b",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

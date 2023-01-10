@@ -104,7 +104,7 @@ static uint64_t getMetaDataSize(uint64_t reserved_region_size) {
 }
 
 static void unmapAndReset(private_handle_t *handle
-#ifndef GRALLOC_HANDLE_HAS_RESERVED_SIZE
+#ifdef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
 , uint64_t reserved_region_size = 0) {
 #else
 ) {
@@ -117,7 +117,7 @@ static void unmapAndReset(private_handle_t *handle
 }
 
 static int validateAndMap(private_handle_t *handle
-#ifndef GRALLOC_HANDLE_HAS_RESERVED_SIZE
+#ifdef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
 , uint64_t reserved_region_size = 0) {
 #else
 ) {
@@ -141,7 +141,7 @@ static int validateAndMap(private_handle_t *handle
       return -1;
     }
     handle->base_metadata = (uintptr_t)base;
-#ifndef GRALLOC_HANDLE_HAS_RESERVED_SIZE
+#ifdef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
     // The allocator process gets the reserved region size from the BufferDescriptor.
     // When importing to another process, the reserved size is unknown until mapping the metadata,
     // hence the re-mapping below
@@ -777,7 +777,7 @@ Error BufferManager::FreeBuffer(std::shared_ptr<Buffer> buf) {
   }
 
   auto meta_size = getMetaDataSize(
-#ifdef GRALLOC_HANDLE_HAS_RESERVED_SIZE
+#ifndef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
     hnd->reserved_size
 #else
     buf->reserved_size
@@ -1117,7 +1117,7 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
       data.fd, e_data.fd, INT(flags), INT(alignedw), INT(alignedh), descriptor.GetWidth(),
       descriptor.GetHeight(), format, buffer_type, data.size, usage);
 
-#ifdef GRALLOC_HANDLE_HAS_RESERVED_SIZE
+#ifndef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
   hnd->reserved_size = descriptor.GetReservedSize();
 #endif
   hnd->id = ++next_id_;
@@ -1131,7 +1131,7 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   }
 
   auto error = validateAndMap(hnd
-#ifndef GRALLOC_HANDLE_HAS_RESERVED_SIZE
+#ifdef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
     , descriptor.GetReservedSize()
 #endif
   );
@@ -1157,7 +1157,7 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
   metadata->crop.bottom = hnd->height;
 
   unmapAndReset(hnd
-#ifndef GRALLOC_HANDLE_HAS_RESERVED_SIZE
+#ifdef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
     , descriptor.GetReservedSize()
 #endif
   );

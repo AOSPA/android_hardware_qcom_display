@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35d4357b_d0353943",
+        "filename": "gralloc/gr_buf_mgr.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 830,
+      "author": {
+        "id": 1000469
+      },
+      "writtenOn": "2023-01-11T18:07:43Z",
+      "side": 1,
+      "message": "Missing guard here, check https://github.com/ArrowOS/android_hardware_qcom_display/commit/e1124daad77d3e042cad26db0cdc0b1cb6d6d872#diff-0bf755f8916e208eee43d5160d32580db053536afdbf50f6e3cb73b4abe154fdR830",
+      "revId": "6425851c21213c14c202d9ac1e8dbb3c8af90eb5",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

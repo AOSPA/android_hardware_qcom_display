@@ -27,6 +27,12 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #ifndef __GR_DMA_LEGACY_MGR_H__
 #define __GR_DMA_LEGACY_MGR_H__
 
@@ -51,9 +57,9 @@ class DmaLegacyManager : public AllocInterface {
   virtual int CleanBuffer(void *base, unsigned int size, unsigned int offset, int handle, int op,
                           int fd);
   virtual int SecureMemPerms(AllocData *data);
-  virtual void GetHeapInfo(uint64_t usage, bool sensor_flag, std::string *heap_name,
-                           std::vector<std::string> *vm_names, unsigned int *alloc_type,
-                           unsigned int *flags, unsigned int *alloc_size);
+  virtual void GetHeapInfo(uint64_t usage, bool sensor_flag, bool use_uncached,
+                           std::string *heap_name, std::vector<std::string> *vm_names,
+                           unsigned int *alloc_type, unsigned int *flags, unsigned int *alloc_size);
 
   static DmaLegacyManager *GetInstance();
 

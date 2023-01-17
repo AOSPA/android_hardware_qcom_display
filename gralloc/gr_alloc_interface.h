@@ -27,6 +27,12 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #ifndef __GR_ALLOC_INTERFACE_H__
 #define __GR_ALLOC_INTERFACE_H__
 
@@ -137,9 +143,9 @@ class AllocInterface {
     @param[out] alloc_size - align the size to be allocated based on alignment requirement of heap
 
   */
-  virtual void GetHeapInfo(uint64_t usage, bool sensor_flag, std::string *heap_name,
-                           std::vector<std::string> *vm_names, unsigned int *alloc_type,
-                           unsigned int *flags, unsigned int *alloc_size);
+  virtual void GetHeapInfo(uint64_t usage, bool sensor_flag, bool use_uncached,
+                           std::string *heap_name, std::vector<std::string> *vm_names,
+                           unsigned int *alloc_type, unsigned int *flags, unsigned int *alloc_size);
 
  protected:
   virtual ~AllocInterface() {}

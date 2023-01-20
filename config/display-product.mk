@@ -184,20 +184,23 @@ endif
 
 QMAA_ENABLED_HAL_MODULES += display
 ifeq ($(TARGET_USES_QMAA),true)
-    ifeq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)
-        TARGET_IS_HEADLESS := false
-        PRODUCT_PROPERTY_OVERRIDES += \
-            vendor.display.enable_null_display=0
-        #Modules that shouldn't be enabled in QMAA go here
-        PRODUCT_PACKAGES += libdrmutils
-        PRODUCT_PACKAGES += libsdedrm
-        PRODUCT_PACKAGES += libgpu_tonemapper
-    else
-    TARGET_IS_HEADLESS := true
+    ifneq ($(TARGET_USES_QMAA_OVERRIDE_DISPLAY),true)
+        #QMAA Mode is enabled
+        TARGET_IS_HEADLESS := true
+    endif
+endif
+
+ifeq ($(TARGET_IS_HEADLESS), true)
     SOONG_CONFIG_qtidisplay_headless := true
     PRODUCT_PROPERTY_OVERRIDES += \
         vendor.display.enable_null_display=1
-    endif
+else
+    PRODUCT_PROPERTY_OVERRIDES += \
+            vendor.display.enable_null_display=0
+    #Modules that shouldn't be enabled in QMAA go here
+    PRODUCT_PACKAGES += libdrmutils
+    PRODUCT_PACKAGES += libsdedrm
+    PRODUCT_PACKAGES += libgpu_tonemapper
 endif
 
 # Properties using default value:

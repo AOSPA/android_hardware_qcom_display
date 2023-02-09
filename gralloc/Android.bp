@@ -5,7 +5,6 @@ package {
 cc_library_shared {
     name: "libgrallocutils",
     vendor: true,
-    defaults: ["display_go_defaults"],
     srcs: [
         "gr_utils.cpp",
         "gr_adreno_info.cpp",

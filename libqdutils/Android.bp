@@ -12,7 +12,6 @@ cc_library_shared {
     vendor: true,
     defaults: [
         "display_defaults",
-        "display_go_defaults",
     ],
     header_libs: [
         "libhardware_headers",

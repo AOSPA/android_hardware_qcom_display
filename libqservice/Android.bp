@@ -14,7 +14,6 @@ cc_library_shared {
     vendor: true,
     defaults: [
         "display_defaults",
-        "display_go_defaults",
     ],
     shared_libs: ["libbinder"],
     cflags: [

@@ -33,13 +33,8 @@ license {
     ],
 }
 
-display_go_defaults {
-    name: "display_go_defaults",
-}
-
 cc_defaults {
     name: "display_defaults",
-    defaults: ["display_go_defaults"],
     cflags: [
         "-Wno-missing-field-initializers",
         "-Wconversion",
@@ -58,7 +53,6 @@ cc_defaults {
 
 cc_library_headers {
     name: "display_headers",
-    defaults: ["display_go_defaults"],
     vendor: true,
     export_include_dirs: [
         "include",

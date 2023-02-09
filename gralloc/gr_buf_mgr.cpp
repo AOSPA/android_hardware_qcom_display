@@ -856,7 +856,12 @@ void BufferManager::RegisterHandleLocked(const private_handle_t *hnd, int ion_ha
 
   if (hnd->base_metadata) {
 #ifdef METADATA_V2
+#ifdef GRALLOC_HANDLE_HAS_NO_RESERVED_SIZE
+    auto metadata = reinterpret_cast<MetaData_t *>(hnd->base_metadata);
+    buffer->reserved_size = metadata->reservedSize;
+#else
     buffer->reserved_size = hnd->reserved_size;
+#endif
     if (buffer->reserved_size > 0) {
       buffer->reserved_region_ptr =
           reinterpret_cast<void *>(hnd->base_metadata + sizeof(MetaData_t));

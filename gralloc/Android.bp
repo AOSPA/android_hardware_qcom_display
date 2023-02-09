@@ -22,7 +22,7 @@ cc_library_shared {
         "libcutils",
         "libdl",
         "liblog",
-        "//vendor/qcom/sm8150:libqdMetaData",
+        "libqdMetaData",
     ],
     header_libs: [
         "display_headers",
@@ -32,4 +32,26 @@ cc_library_shared {
         "device_kernel_headers",
     ],
     export_include_dirs: ["."],
+}
+
+cc_library_shared {
+    name: "libgralloc.qti",
+    vendor: true,
+    cflags: [
+        "-Wno-sign-conversion",
+        "-DLOG_TAG=\"qtigralloc\"",
+    ],
+    shared_libs: [
+         "liblog",
+         "libcutils",
+         "libutils",
+         "libgralloctypes",
+         "libhidlbase",
+         "libhardware",
+         "android.hardware.graphics.mapper@4.0",
+    ],
+
+    srcs: ["QtiGralloc.cpp"],
+
+    header_libs: ["display_intf_headers"],
 }

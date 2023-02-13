@@ -16,6 +16,7 @@ LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_HEADER_LIBRARIES := display_headers
+LOCAL_HEADER_LIBRARIES += qti_kernel_headers
 LOCAL_MODULE := libhistogram
 LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
 LOCAL_LICENSE_CONDITIONS := notice

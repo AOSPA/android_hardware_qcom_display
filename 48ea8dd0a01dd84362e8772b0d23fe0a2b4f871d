@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e45e2628_cd32a7f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000541
+      },
+      "writtenOn": "2023-02-13T04:12:18Z",
+      "side": 1,
+      "message": "im not sure what the point of this is except silencing a harmless warning? this is included in the next SMxxx0 tag as well anyway",
+      "revId": "48ea8dd0a01dd84362e8772b0d23fe0a2b4f871d",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

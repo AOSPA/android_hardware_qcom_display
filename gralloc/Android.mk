@@ -1,9 +1,7 @@
 # Gralloc module
 LOCAL_PATH := $(call my-dir)
-LIBION_HEADER_PATH_WRAPPER := $(QC_OPEN_PATH)/core-utils/build/libion_header_paths/libion_path.mk
 
 include $(LOCAL_PATH)/../common.mk
-include $(LIBION_HEADER_PATH_WRAPPER)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE                  := gralloc.$(TARGET_BOARD_PLATFORM)
@@ -38,7 +36,8 @@ LOCAL_NOTICE_FILE             := $(LOCAL_PATH)/../LICENSE
 LOCAL_VENDOR_MODULE           := true
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes) \
-                                 $(LIBION_HEADER_PATHS) \
+                                 system/memory/libion/include \
+                                 system/memory/libion/kernel-headers \
                                  $(kernel_includes)
 
 LOCAL_HEADER_LIBRARIES        := display_headers

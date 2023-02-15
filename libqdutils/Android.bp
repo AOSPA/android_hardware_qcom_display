@@ -30,14 +30,3 @@ cc_library_shared {
     ],
     srcs: ["qdMetaData.cpp","qd_utils.cpp"],
 }
-
-// Remove after WFD moves to use libqdMetaData directly
-cc_library_shared {
-    name: "libqdMetaData.system",
-    defaults: ["display_defaults"],
-    cflags: [
-        "-Wno-sign-conversion",
-        "-DLOG_TAG=\"qdmetadata\"",
-    ],
-    srcs: ["qdMetaData.cpp","qd_utils.cpp"],
-}

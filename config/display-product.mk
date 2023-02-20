@@ -199,3 +199,7 @@ endif
 ifeq ($(TARGET_NEEDS_RAW10_BUFFER_FIX),true)
 $(call soong_config_set,qtidisplay,needs_raw10_buffer_fix,true)
 endif
+
+ifeq ($(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE),true)
+$(call soong_config_set,qtidisplay,gralloc_handle_has_reserved_size,true)
+endif

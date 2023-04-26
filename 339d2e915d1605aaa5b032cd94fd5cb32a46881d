@@ -103,6 +103,23 @@
       "parentUuid": "80a16422_ffa0ddf5",
       "revId": "339d2e915d1605aaa5b032cd94fd5cb32a46881d",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "483cdb54_ad68cc23",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2023-04-26T11:42:17Z",
+      "side": 1,
+      "message": "we shouldn\u0027t break boot for all devices using this soc by default.",
+      "revId": "339d2e915d1605aaa5b032cd94fd5cb32a46881d",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

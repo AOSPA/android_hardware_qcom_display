@@ -33,6 +33,24 @@
       "message": "why was it even removed?",
       "revId": "339d2e915d1605aaa5b032cd94fd5cb32a46881d",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd24adf3_c1592957",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000842
+      },
+      "writtenOn": "2023-04-26T09:19:34Z",
+      "side": 1,
+      "message": "I dont see the point of removing it in the first place",
+      "parentUuid": "f5b8ba80_6c60867d",
+      "revId": "339d2e915d1605aaa5b032cd94fd5cb32a46881d",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

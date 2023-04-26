@@ -2,8 +2,11 @@ sdm-libs := sdm/libs
 display-hals := include $(sdm-libs)/utils $(sdm-libs)/core libdebug gpu_tonemapper
 
 ifneq ($(TARGET_IS_HEADLESS), true)
-    display-hals += libcopybit liblight libmemtrack hdmi_cec \
-                    libdrmutils libhistogram drm.vendor
+    display-hals += libcopybit liblight hdmi_cec \
+                    libdrmutils libhistogram drm.vendor \
+ifneq ($(TARGET_DISABLE_MEMTRACK), true)
+    display-hals += libmemtrack
+endif
 endif
 
 display-hals += gralloc

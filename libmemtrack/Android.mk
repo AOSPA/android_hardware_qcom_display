@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifneq ($(TARGET_ENABLE_MEMTRACK), false)
 enable_memtrack := true
+else
+enable_memtrack := false
+endif
+
 ifeq ($(TARGET_USES_QMAA),true)
 #memtrack requires graphics to work
 ifeq ($(TARGET_USES_QMAA_OVERRIDE_GFX),false)

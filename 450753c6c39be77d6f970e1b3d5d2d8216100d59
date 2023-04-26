@@ -18,6 +18,24 @@
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8320afbd_ad39247f",
+        "filename": "Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1000498
+      },
+      "writtenOn": "2023-04-26T20:57:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "26839091_6036fa5e",
+      "revId": "450753c6c39be77d6f970e1b3d5d2d8216100d59",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "59ebe9a7_44b0db6b",
@@ -35,6 +53,24 @@
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2467060c_7ed63af0",
+        "filename": "Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000498
+      },
+      "writtenOn": "2023-04-26T20:57:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "59ebe9a7_44b0db6b",
+      "revId": "450753c6c39be77d6f970e1b3d5d2d8216100d59",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "995b614c_e72e8bf7",
@@ -48,6 +84,24 @@
       "writtenOn": "2023-04-26T20:51:54Z",
       "side": 1,
       "message": "not necessary",
+      "revId": "450753c6c39be77d6f970e1b3d5d2d8216100d59",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "49d6f634_ff1e7d70",
+        "filename": "config/display-board.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000498
+      },
+      "writtenOn": "2023-04-26T20:57:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "995b614c_e72e8bf7",
       "revId": "450753c6c39be77d6f970e1b3d5d2d8216100d59",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }

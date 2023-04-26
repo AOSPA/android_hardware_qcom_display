@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26839091_6036fa5e",
+        "filename": "Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2023-04-26T20:51:54Z",
+      "side": 1,
+      "message": "skip the \\ here",
+      "revId": "450753c6c39be77d6f970e1b3d5d2d8216100d59",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59ebe9a7_44b0db6b",
+        "filename": "Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2023-04-26T20:51:54Z",
+      "side": 1,
+      "message": "move this under line 15.",
+      "revId": "450753c6c39be77d6f970e1b3d5d2d8216100d59",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "995b614c_e72e8bf7",
+        "filename": "config/display-board.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2023-04-26T20:51:54Z",
+      "side": 1,
+      "message": "not necessary",
+      "revId": "450753c6c39be77d6f970e1b3d5d2d8216100d59",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

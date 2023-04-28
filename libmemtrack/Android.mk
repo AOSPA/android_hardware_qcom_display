@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifneq ($(TARGET_DISABLE_MEMTRACK), true)
+enable_memtrack := true
+else
+enable_memtrack := false
+endif
+
+ifeq ($(enable_memtrack),true)
 LOCAL_PATH := $(call my-dir)
 
 # HAL module implemenation stored in
@@ -28,3 +35,4 @@ LOCAL_HEADER_LIBRARIES := libhardware_headers
 LOCAL_SRC_FILES := memtrack_msm.c kgsl.c
 LOCAL_MODULE := memtrack.$(TARGET_BOARD_PLATFORM)
 include $(BUILD_SHARED_LIBRARY)
+endif

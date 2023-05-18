@@ -1232,7 +1232,8 @@ int32_t HWCSession::GetDozeSupport(hwc2_display_t display, int32_t *out_support)
     return HWC2_ERROR_NONE;
   }
 
-  *out_support = hwc_display_[display]->HasSmartPanelConfig() ? 1 : 0;
+  *out_support = (hwc_session->override_doze_mode_ ||
+                  hwc_session->hwc_display_[display]->HasSmartPanelConfig()) ? 1 : 0;
 
   return HWC2_ERROR_NONE;
 }

@@ -3545,7 +3545,7 @@ void HWCSession::HandleSecureSession() {
     }
   }
   if (is_active_virtual_display) {
-    auto error = DestroyVirtualDisplay(client_id);
+    [[maybe_unused]] auto error = DestroyVirtualDisplay(client_id);
   }
 
   // If it is called during primary prepare/commit, we need to pause any ongoing commit on
@@ -4088,7 +4088,7 @@ HWC3::Error HWCSession::WaitForResources(bool wait_for_resources, Display active
             cached_retire_fence_) {
           Fence::Wait(cached_retire_fence_);
         }
-        cached_retire_fence_ == nullptr;
+        cached_retire_fence_ = nullptr;
       }
       {
         SCOPE_LOCK(locker_[display_id]);

@@ -124,7 +124,7 @@ static int validateAndMap(private_handle_t *handle
   uint64_t reserved_region_size = handle->reserved_size;
 #endif
   if (private_handle_t::validate(handle)) {
-    ALOGE("%s: Private handle is invalid - handle:%p", __func__, handle);
+    ALOGW("%s: Private handle is invalid - handle:%p", __func__, handle);
     return -1;
   }
   if (handle->fd_metadata < 0) {

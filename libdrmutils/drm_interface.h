@@ -30,7 +30,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -77,10 +77,6 @@
 #include <drm/msm_drm.h>
 #include <display/drm/msm_drm_pp.h>
 #include <display/drm/sde_drm.h>
-
-#ifdef KERNEL_5_4
-#include <drm/sde_drm.h>
-#endif
 
 namespace sde_drm {
 
@@ -253,7 +249,7 @@ enum struct DRMOps {
    *      uint32_t - core_ab
    */
   CRTC_SET_CORE_AB,
-   /*
+  /*
    * Op: Sets MNOC bus instantaneous bandwidth
    * Arg: uint32_t - CRTC ID
    *      uint32_t - core_ib
@@ -460,6 +456,11 @@ enum struct DRMOps {
    *      uint64_t - bit clk value
    */
   CONNECTOR_SET_DYN_BIT_CLK,
+  /*
+   * Op: Sets currently chosen panel mode on this connector
+   * Arg: uint32_t - Video/Command Mode Bitmask
+   */
+  CONNECTOR_SET_PANEL_MODE,
 };
 
 enum struct DRMRotation {
@@ -673,6 +674,8 @@ struct DRMModeInfo {
   uint32_t transfer_time_us;
   std::vector<uint64_t> dyn_bitclk_list;
   uint64_t curr_bit_clk_rate;
+  uint32_t panel_mode_caps;
+  uint32_t cur_panel_mode;
 };
 
 /* Per Connector Info*/

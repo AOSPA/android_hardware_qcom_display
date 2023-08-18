@@ -171,8 +171,9 @@ HWC2::Error HWCDisplayVirtualDPU::SetOutputBuffer(buffer_handle_t buf,
 HWC2::Error HWCDisplayVirtualDPU::PreValidateDisplay(bool *exit_validate) {
   // Draw method gets set as part of first commit.
   SetDrawMethod();
+  bool res_exhausted = false;
 
-  if (NeedsGPUBypass()) {
+  if (NeedsGPUBypass() || CheckResourceState(&res_exhausted)) {
     MarkLayersForGPUBypass();
     *exit_validate = true;
     bypass_drawcycle_ = true;
@@ -197,6 +198,10 @@ HWC2::Error HWCDisplayVirtualDPU::PreValidateDisplay(bool *exit_validate) {
         layer->flags.skip = true;
       }
     }
+  }
+
+  if (force_gpu_comp_ && !layer_stack_.flags.secure_present) {
+    MarkLayersForClientComposition();
   }
 
   *exit_validate = false;
@@ -272,6 +277,12 @@ HWC2::Error HWCDisplayVirtualDPU::SetPanelLuminanceAttributes(float min_lum, flo
   if (err != kErrorNone) {
     return HWC2::Error::BadParameter;
   }
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplayVirtualDPU::SetColorTransform(const float *matrix,
+                                                    android_color_transform_t hint) {
+  force_gpu_comp_ = (hint != HAL_COLOR_TRANSFORM_IDENTITY) ? true : false;
   return HWC2::Error::None;
 }
 

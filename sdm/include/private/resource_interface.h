@@ -22,6 +22,13 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+* Changes from Qualcomm Innovation Center are provided under the following license:
+*
+* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* SPDX-License-Identifier: BSD-3-Clause-Clear
+*/
+
 #ifndef __RESOURCE_INTERFACE_H__
 #define __RESOURCE_INTERFACE_H__
 
@@ -52,6 +59,7 @@ class ResourceInterface {
     kCmdMax,
   };
 
+  virtual DisplayError ReserveDisplay(DisplayType type) = 0;
   virtual DisplayError RegisterDisplay(int32_t display_id, DisplayType type,
                                        const HWDisplayAttributes &display_attributes,
                                        const HWPanelInfo &hw_panel_info,
@@ -98,6 +106,7 @@ class ResourceInterface {
   virtual DisplayError SetMaxSDEClk(Handle display_ctx, uint32_t clk) = 0;
   virtual DisplayError ForceToneMapConfigure(Handle display_ctx,
                                              DispLayerStack *disp_layer_stack) = 0;
+  virtual bool IsDisplayHWAvailable() = 0;
 };
 
 }  // namespace sdm

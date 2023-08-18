@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -57,6 +57,11 @@
 * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #include <stdio.h>
 #include <malloc.h>
@@ -247,6 +252,11 @@ DisplayError DisplayBase::Init() {
   InitBorderLayers();
   // Assume unified draw is supported.
   unified_draw_supported_ = true;
+
+  prop = 0;
+  Debug::GetProperty(TRACK_INPUT_FENCES, &prop);
+  track_input_fences_ = (prop == 1);
+  DLOGI("track_input_fences_:%d %d-%d", track_input_fences_, display_id_, display_type_);
 
   return kErrorNone;
 
@@ -1331,6 +1341,13 @@ DisplayError DisplayBase::CommitOrPrepare(LayerStack *layer_stack) {
     } else {
       DLOGE("Prepare failed: %d", error);
     }
+    // Clear fences
+    DLOGI("Clearing fences on input layers on display %d-%d", display_id_, display_type_);
+    for (auto &layer : layer_stack->layers) {
+      layer->input_buffer.release_fence = nullptr;
+    }
+    layer_stack->retire_fence = nullptr;
+
     return error;
   }
 
@@ -1471,6 +1488,7 @@ DisplayError DisplayBase::SetUpCommit(LayerStack *layer_stack) {
 
 DisplayError DisplayBase::PerformCommit(HWLayersInfo *hw_layers_info) {
   DTRACE_SCOPED();
+  TrackInputFences();
   DisplayError error = hw_intf_->Commit(hw_layers_info);
   if (error != kErrorNone) {
     DLOGE("COMMIT failed: %d ", error);
@@ -1571,7 +1589,7 @@ DisplayError DisplayBase::PostCommit(HWLayersInfo *hw_layers_info) {
   }
 
   int level = 0;
-  if (hw_intf_->GetPanelBrightness(&level) == kErrorNone) {
+  if (first_cycle_ && (hw_intf_->GetPanelBrightness(&level) == kErrorNone)) {
     comp_manager_->SetBacklightLevel(display_comp_ctx_, level);
   }
 
@@ -1967,7 +1985,12 @@ DisplayError DisplayBase::SetActiveConfig(uint32_t index) {
   validated_ = false;
   hw_intf_->GetActiveConfig(&active_index);
 
+  // Cache the last refresh rate set by SF
+  HWDisplayAttributes display_attributes = {};
+  hw_intf_->GetDisplayAttributes(index, &display_attributes);
+
   if (active_index == index) {
+    active_refresh_rate_ = display_attributes.fps;
     return kErrorNone;
   }
 
@@ -1977,10 +2000,6 @@ DisplayError DisplayBase::SetActiveConfig(uint32_t index) {
   }
 
   avoid_qync_mode_change_ = true;
-
-  // Cache last refresh rate set by SF
-  HWDisplayAttributes display_attributes = {};
-  hw_intf_->GetDisplayAttributes(index, &display_attributes);
   active_refresh_rate_ = display_attributes.fps;
 
   return ReconfigureDisplay();
@@ -3834,6 +3853,9 @@ DisplayError DisplayBase::HandleSecureEvent(SecureEvent secure_event, bool *need
         return err;
       }
     }
+    if (state == kStateOff) {
+      *needs_refresh = false;
+    }
   }
   if (*needs_refresh) {
     validated_ = false;
@@ -3952,6 +3974,16 @@ void DisplayBase::ProcessPowerEvent() {
   std::unique_lock<std::mutex> lck(power_mutex_);
   transition_done_ = true;
   cv_.notify_one();
+}
+
+void DisplayBase::Abort() {
+  std::unique_lock<std::mutex> lck(power_mutex_);
+
+  if (display_type_ == kHDMI && first_cycle_) {
+    DLOGI("Abort!");
+    transition_done_ = true;
+    cv_.notify_one();
+  }
 }
 
 void DisplayBase::CacheRetireFence() {
@@ -4133,9 +4165,11 @@ DisplayError DisplayBase::SetDimmingMinBl(int min_bl) {
 
 /* this func is called by DC dimming feature only after PCC updates */
 void DisplayBase::ScreenRefresh() {
-  ClientLock lock(disp_mutex_);
-  /* do not skip validate */
-  validated_ = false;
+  {
+    ClientLock lock(disp_mutex_);
+    /* do not skip validate */
+    validated_ = false;
+  }
   event_handler_->Refresh();
 }
 
@@ -4192,6 +4226,44 @@ DisplayError DisplayBase::ConfigureCwbForIdleFallback(LayerStack *layer_stack) {
   }
 
   return error;
+}
+
+void DisplayBase::TrackInputFences() {
+  if (!track_input_fences_) {
+    return;
+  }
+  // Check if async task is in progress.
+  // Wait until it finishes.
+  if (fence_wait_future_.valid()) {
+    fence_wait_future_.get();
+  }
+
+  lock_guard<mutex> scope_lock(fence_track_mutex_);
+  // Copy & Wait on all fences.
+  acquire_fences_ = {};
+  for (auto &hw_layer : disp_layer_stack_.info.hw_layers) {
+    acquire_fences_.push_back(hw_layer.input_buffer.acquire_fence);
+  }
+  // Start async task to wait on fences.
+  fence_wait_future_ = std::async(std::launch::async, [&](){
+                                  WaitOnFences();
+                                  });
+}
+
+void DisplayBase::WaitOnFences() {
+  lock_guard<mutex> scope_lock(fence_track_mutex_);
+  const int kFenceWaitTimeoutMs = 500;
+  for (auto &acquire_fence : acquire_fences_) {
+    if (Fence::Wait(acquire_fence, kFenceWaitTimeoutMs) == kErrorNone) {
+      continue;
+    }
+    // Fence did not signal in 500 ms.
+    DLOGI("Dumping stack trace for %d-%d", display_id_, display_type_);
+    event_handler_->HandleEvent(kDumpStacktrace);
+    usleep(kFenceWaitTimeoutMs * 1000);
+    DLOGI("Dumping stack trace after 500 ms sleep %d-%d", display_id_, display_type_);
+    event_handler_->HandleEvent(kDumpStacktrace);
+  }
 }
 
 }  // namespace sdm

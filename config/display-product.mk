@@ -81,7 +81,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
     debug.sf.hw=0 \
     debug.egl.hw=0 \
     debug.sf.latch_unsignaled=1 \
-    debug.sf.high_fps_late_app_phase_offset_ns=1000000 \
     debug.mdpcomp.logs=0 \
     vendor.gralloc.disable_ubwc=0 \
     vendor.display.disable_scaler=0 \
@@ -96,6 +95,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.disable_idle_time_video=1 \
     vendor.display.disable_idle_time_hdr=1 \
     debug.sf.predict_hwc_composition_strategy=0
+
+ifneq ($(filter kona, $(TARGET_BOARD_PLATFORM)),$(TARGET_BOARD_PLATFORM))
+PRODUCT_PROPERTY_OVERRIDES += \
+    debug.sf.high_fps_late_app_phase_offset_ns=1000000
+endif
 
 # Enable offline rotator for Bengal, Monaco, Khaje.
 ifneq ($(filter bengal monaco khaje, $(TARGET_BOARD_PLATFORM)),$(TARGET_BOARD_PLATFORM))
@@ -125,9 +129,13 @@ ifeq ($(TARGET_BOARD_PLATFORM),kona)
 PRODUCT_PROPERTY_OVERRIDES += \
     debug.sf.enable_gl_backpressure=1 \
     debug.sf.enable_advanced_sf_phase_offset=1 \
-    debug.sf.high_fps_late_sf_phase_offset_ns=-4000000 \
-    debug.sf.high_fps_early_phase_offset_ns=-4000000 \
-    debug.sf.high_fps_early_gl_phase_offset_ns=-4000000
+    debug.sf.use_phase_offsets_as_durations=1 \
+    debug.sf.late.app.duration=13666666 \
+    debug.sf.early.app.duration=13666666 \
+    debug.sf.earlyGl.app.duration=13666666 \
+    debug.sf.early.sf.duration=15666666 \
+    debug.sf.earlyGl.sf.duration=15666666 \
+    debug.sf.late.sf.duration=15666666
 endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),lito)

@@ -89,7 +89,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
     debug.sf.hw=0 \
     debug.egl.hw=0 \
     debug.sf.latch_unsignaled=1 \
-    debug.sf.high_fps_late_app_phase_offset_ns=1000000 \
     debug.sf.auto_latch_unsignaled=0 \
     debug.mdpcomp.logs=0 \
     vendor.gralloc.disable_ubwc=0 \
@@ -100,12 +99,16 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.enable_optimize_refresh=1 \
     vendor.display.use_smooth_motion=1 \
     debug.sf.enable_advanced_sf_phase_offset=1 \
-    debug.sf.high_fps_late_sf_phase_offset_ns=-2000000 \
-    debug.sf.high_fps_early_phase_offset_ns=-4000000 \
-    debug.sf.high_fps_early_gl_phase_offset_ns=-2000000 \
     debug.sf.disable_client_composition_cache=1 \
     debug.sf.enable_gl_backpressure=1 \
     debug.sf.predict_hwc_composition_strategy=0
+    debug.sf.use_phase_offsets_as_durations=1 \
+    debug.sf.late.app.duration=13666666 \
+    debug.sf.early.app.duration=13666666 \
+    debug.sf.earlyGl.app.duration=13666666 \
+    debug.sf.early.sf.duration=15666666 \
+    debug.sf.earlyGl.sf.duration=15666666 \
+    debug.sf.late.sf.duration=15666666
 
 # Enable offline rotator for Bengal.
 ifneq ($(TARGET_BOARD_PLATFORM),bengal)

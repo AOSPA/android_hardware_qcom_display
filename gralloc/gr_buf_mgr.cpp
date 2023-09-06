@@ -316,11 +316,11 @@ Error BufferManager::FreeBuffer(std::shared_ptr<Buffer> buf) {
 
 Error BufferManager::ValidateBufferSize(private_handle_t const *hnd, BufferInfo info) {
   unsigned int size, alignedw, alignedh;
-  unsigned int max_bpp =
-      gralloc::GetBppForUncompressedRGB(static_cast<int>(PixelFormat::RGBA_FP16));
+  int bpp = gralloc::GetBpp(static_cast<int>(info.format));
+  bpp = (bpp == -1 || bpp == 0) ? 1 : bpp;
   info.format = GetImplDefinedFormat(info.usage, info.format);
   int ret = GetBufferSizeAndDimensions(info, &size, &alignedw, &alignedh);
-  if ((ret < 0) || (OVERFLOW((alignedw * max_bpp), alignedh))) {
+  if ((ret < 0) || (OVERFLOW((alignedw * bpp), alignedh))) {
     return Error::BAD_BUFFER;
   }
   auto ion_fd_size = static_cast<unsigned int>(lseek(hnd->fd, 0, SEEK_END));

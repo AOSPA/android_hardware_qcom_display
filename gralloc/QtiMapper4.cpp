@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -61,9 +61,9 @@ QtiMapper::QtiMapper() {
 }
 
 bool QtiMapper::ValidDescriptor(const BufferDescriptorInfo_4_0 &bd) {
-  unsigned int max_bpp =
-      gralloc::GetBppForUncompressedRGB(static_cast<int>(PixelFormat::RGBA_FP16));
-  if (bd.width == 0 || bd.height == 0 || (OVERFLOW((bd.width * max_bpp), bd.height)) ||
+  int bpp = gralloc::GetBpp(static_cast<int>(bd.format));
+  bpp = (bpp == -1 || bpp == 0) ? 1 : bpp;
+  if (bd.width == 0 || bd.height == 0 || (OVERFLOW((bd.width * bpp), bd.height)) ||
       (static_cast<int32_t>(bd.format) <= 0) || bd.layerCount <= 0) {
     return false;
   }

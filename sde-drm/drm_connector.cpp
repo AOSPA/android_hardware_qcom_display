@@ -30,7 +30,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -655,6 +655,7 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
   const string bit_clk_rate = "bit_clk_rate=";
   const string mdp_transfer_time_us = "mdp_transfer_time_us=";
   const string dyn_bitclk_list = "dyn_bitclk_list=";
+  const string panel_mode_caps = "panel_mode_capabilities=";
 
   DRMModeInfo *mode_item = &info->modes.at(0);
   unsigned int index = 0;
@@ -692,6 +693,8 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
       mode_item->transfer_time_us = std::stoi(string(line, mdp_transfer_time_us.length()));
     } else if (line.find(dyn_bitclk_list) != string::npos) {
       mode_item->dyn_bitclk_list = GetBitClkRates(string(line, dyn_bitclk_list.length()));
+    } else if (line.find(panel_mode_caps) != string::npos) {
+      mode_item->panel_mode_caps = std::stoi(string(line, panel_mode_caps.length()));
     }
   }
 
@@ -1034,6 +1037,16 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       } else {
         DRM_LOGD("Connector %d: Setting dynamic bit clk rate %" PRIu64, obj_id, drm_bit_clk_rate);
       }
+    } break;
+
+    case DRMOps::CONNECTOR_SET_PANEL_MODE: {
+      if (!prop_mgr_.IsPropertyAvailable(DRMProperty::PANEL_MODE)) {
+        return;
+      }
+      uint32_t drm_panel_mode = va_arg(args, uint32_t);
+      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::PANEL_MODE),
+                               drm_panel_mode);
+      DRM_LOGD("Connector %d: Setting Panel mode 0x%x", obj_id, drm_panel_mode);
     } break;
 
     default:

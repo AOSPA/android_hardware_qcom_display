@@ -612,9 +612,9 @@ void HWDeviceDRM::InitializeConfigs() {
   for (uint32_t mode_index = 0; mode_index < modes_count; mode_index++) {
     if (panel_mode_pref & connector_info_.modes[mode_index].panel_mode_caps) {
       connector_info_.modes[mode_index].cur_panel_mode = panel_mode_pref;
-    } else if (panel_mode_pref == DRM_MODE_FLAG_VID_MODE_PANEL) {
+    } else if (connector_info_.modes[mode_index].panel_mode_caps & DRM_MODE_FLAG_VID_MODE_PANEL) {
       connector_info_.modes[mode_index].cur_panel_mode = DRM_MODE_FLAG_VID_MODE_PANEL;
-    } else if (panel_mode_pref == DRM_MODE_FLAG_CMD_MODE_PANEL) {
+    } else if (connector_info_.modes[mode_index].panel_mode_caps & DRM_MODE_FLAG_CMD_MODE_PANEL) {
       connector_info_.modes[mode_index].cur_panel_mode = DRM_MODE_FLAG_CMD_MODE_PANEL;
      }
     // Add mode variant if both panel modes are supported

@@ -58,6 +58,7 @@ cc_binary {
         "android.hardware.graphics.allocator@3.0",
         "libdisplayconfig.qti",
         "libdrm",
+        "libprocessgroup",
     ],
     srcs: composer_srcs,
 

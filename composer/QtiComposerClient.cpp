@@ -1541,6 +1541,16 @@ Error QtiComposerClient::CommandReader::presentDisplay(Display display,
                                                   shared_ptr<Fence>* presentFence,
                                                   std::vector<Layer>& layers,
                                                   std::vector<shared_ptr<Fence>>& releaseFences) {
+
+  thread_local bool setTaskProfileDone = false;
+
+  if (setTaskProfileDone == false) {
+      if (!SetTaskProfiles(gettid(), {"SFMainPolicy"})) {
+          ALOGW("Failed to add `%d` into SFMainPolicy", gettid());
+      }
+      setTaskProfileDone = true;
+  }
+
   int32_t err = mClient.hwc_session_->PresentDisplay(display, presentFence);
   if (err != HWC2_ERROR_NONE) {
     return static_cast<Error>(err);

@@ -35,6 +35,7 @@
  */
 
 #include "DisplayConfigAIDL.h"
+#include "hwc_callbacks.h"
 
 using sdm::Locker;
 using ::aidl::android::hardware::common::NativeHandle;
@@ -403,6 +404,11 @@ ScopedAStatus DisplayConfigAIDL::isWCGSupported(int dispId, bool* supported) {
 }
 
 ScopedAStatus DisplayConfigAIDL::setLayerAsMask(int dispId, long layerId) {
+  if (dispId < 0 || dispId >= sdm::HWCCallbacks::kNumDisplays) {
+    ALOGE("Not valid display");
+    return ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+  }
+
   SCOPE_LOCK(hwc_session_->locker_[dispId]);
   sdm::HWCDisplay *hwc_display = hwc_session_->hwc_display_[dispId];
   if (!hwc_display) {
@@ -553,6 +559,11 @@ ScopedAStatus DisplayConfigAIDL::createVirtualDisplay(int width, int height, int
 }
 
 ScopedAStatus DisplayConfigAIDL::getSupportedDSIBitClks(int dispId, std::vector<long>* bitClks) {
+  if (dispId < 0 || dispId >= sdm::HWCCallbacks::kNumDisplays) {
+    ALOGE("Not valid display");
+    return ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+  }
+
   SCOPE_LOCK(hwc_session_->locker_[dispId]);
   if (!hwc_session_->hwc_display_[dispId]) {
     ALOGW("%s: Display:%d is not connected", __FUNCTION__, dispId);
@@ -564,6 +575,11 @@ ScopedAStatus DisplayConfigAIDL::getSupportedDSIBitClks(int dispId, std::vector<
 }
 
 ScopedAStatus DisplayConfigAIDL::getDSIClk(int dispId, long* bitClk) {
+  if (dispId < 0 || dispId >= sdm::HWCCallbacks::kNumDisplays) {
+    ALOGE("Not valid display");
+    return ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+  }
+
   SCOPE_LOCK(hwc_session_->locker_[dispId]);
   if (!hwc_session_->hwc_display_[dispId]) {
     ALOGW("%s: Invalid display:%d", __FUNCTION__, dispId);
@@ -575,6 +591,11 @@ ScopedAStatus DisplayConfigAIDL::getDSIClk(int dispId, long* bitClk) {
 }
 
 ScopedAStatus DisplayConfigAIDL::setDSIClk(int dispId, long bitClk) {
+  if (dispId < 0 || dispId >= sdm::HWCCallbacks::kNumDisplays) {
+    ALOGE("Not valid display");
+    return ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+  }
+
    SCOPE_LOCK(hwc_session_->locker_[dispId]);
    if (!hwc_session_->hwc_display_[dispId]) {
      ALOGW("%s: Invalid display:%d", __FUNCTION__, dispId);
@@ -586,6 +607,11 @@ ScopedAStatus DisplayConfigAIDL::setDSIClk(int dispId, long bitClk) {
 }
 
 ScopedAStatus DisplayConfigAIDL::setQsyncMode(int dispId, QsyncMode mode) {
+  if (dispId < 0 || dispId >= sdm::HWCCallbacks::kNumDisplays) {
+    ALOGE("Not valid display");
+    return ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+  }
+
   SEQUENCE_WAIT_SCOPE_LOCK(hwc_session_->locker_[dispId]);
   if (!hwc_session_->hwc_display_[dispId]) {
     ALOGW("%s: Invalid display:%d", __FUNCTION__, dispId);
@@ -616,6 +642,11 @@ ScopedAStatus DisplayConfigAIDL::setQsyncMode(int dispId, QsyncMode mode) {
 }
 
 ScopedAStatus DisplayConfigAIDL::isSmartPanelConfig(int dispId, int configId, bool* isSmart) {
+  if (dispId < 0 || dispId >= sdm::HWCCallbacks::kNumDisplays) {
+    ALOGE("Not valid display");
+    return ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+  }
+
   SCOPE_LOCK(hwc_session_->locker_[dispId]);
   if (!hwc_session_->hwc_display_[dispId]) {
     ALOGE("%s: Display %d is not created yet.", __FUNCTION__, dispId);
@@ -683,6 +714,11 @@ ScopedAStatus DisplayConfigAIDL::sendTUIEvent(DisplayType dpy, TUIEventType even
 }
 
 ScopedAStatus DisplayConfigAIDL::getDisplayHwId(int dispId, int* displayHwId) {
+  if (dispId < 0 || dispId >= sdm::HWCCallbacks::kNumDisplays) {
+    ALOGE("Not valid display");
+    return ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+  }
+
   int disp_idx = hwc_session_->GetDisplayIndex(dispId);
   if (disp_idx == -1) {
     ALOGE("%s: Invalid display = %d", __FUNCTION__, dispId);

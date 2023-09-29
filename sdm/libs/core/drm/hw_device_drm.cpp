@@ -612,9 +612,9 @@ void HWDeviceDRM::InitializeConfigs() {
   for (uint32_t mode_index = 0; mode_index < modes_count; mode_index++) {
     if (panel_mode_pref & connector_info_.modes[mode_index].panel_mode_caps) {
       connector_info_.modes[mode_index].cur_panel_mode = panel_mode_pref;
-    } else if (panel_mode_pref == DRM_MODE_FLAG_VID_MODE_PANEL) {
+    } else if (connector_info_.modes[mode_index].panel_mode_caps & DRM_MODE_FLAG_VID_MODE_PANEL) {
       connector_info_.modes[mode_index].cur_panel_mode = DRM_MODE_FLAG_VID_MODE_PANEL;
-    } else if (panel_mode_pref == DRM_MODE_FLAG_CMD_MODE_PANEL) {
+    } else if (connector_info_.modes[mode_index].panel_mode_caps & DRM_MODE_FLAG_CMD_MODE_PANEL) {
       connector_info_.modes[mode_index].cur_panel_mode = DRM_MODE_FLAG_CMD_MODE_PANEL;
      }
     // Add mode variant if both panel modes are supported
@@ -937,8 +937,6 @@ void HWDeviceDRM::SetDisplaySwitchMode(uint32_t index) {
   uint64_t target_bit_clk = connector_info_.modes[current_mode_index_].curr_bit_clk_rate;
   uint32_t switch_index  = 0;
 
-  bit_clk_rate_ = GetSupportedBitClkRate(index, target_bit_clk);
-
   if (to_set.cur_panel_mode & DRM_MODE_FLAG_CMD_MODE_PANEL) {
     mode_flag = DRM_MODE_FLAG_CMD_MODE_PANEL;
     switch_mode_flag = DRM_MODE_FLAG_VID_MODE_PANEL;
@@ -963,6 +961,7 @@ void HWDeviceDRM::SetDisplaySwitchMode(uint32_t index) {
         (to_set.mode.vrefresh == connector_info_.modes[mode_index].mode.vrefresh) &&
         (mode_flag & connector_info_.modes[mode_index].cur_panel_mode)) {
       index = mode_index;
+      to_set.curr_bit_clk_rate = GetSupportedBitClkRate(index, target_bit_clk);
       break;
     }
   }

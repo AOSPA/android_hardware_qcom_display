@@ -4128,16 +4128,18 @@ DisplayError DisplayBase::GetPanelBlMaxLvl(uint32_t *max_level) {
 }
 
 DisplayError DisplayBase::SetPPConfig(void *payload, size_t size) {
-  ClientLock lock(disp_mutex_);
-
-  DisplayError err = hw_intf_->SetPPConfig(payload, size);
-  if (err) {
-    DLOGE("Failed to set PP Event %d", err);
-  } else {
-    DLOGI_IF(kTagDisplay, "PP Event is set successfully");
-    event_handler_->Refresh();
+  {
+    ClientLock lock(disp_mutex_);
+    DisplayError err = hw_intf_->SetPPConfig(payload, size);
+    if (err) {
+      DLOGE("Failed to set PP Event %d", err);
+      return err;
+    }
   }
-  return err;
+
+  DLOGI_IF(kTagDisplay, "PP Event is set successfully");
+  event_handler_->Refresh();
+  return kErrorNone;
 }
 
 DisplayError DisplayBase::SetDimmingEnable(int int_enabled) {

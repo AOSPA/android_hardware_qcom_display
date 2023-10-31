@@ -4067,6 +4067,19 @@ DisplayError DisplayBase::SetHWDetailedEnhancerConfig(void *params) {
         }
       }
 
+      switch (de_tuning_cfg_data->params.content_type) {
+        case kDeContentTypeVideo:
+          de_data.content_type = kContentTypeVideo;
+          break;
+        case kDeContentTypeGraphics:
+          de_data.content_type = kContentTypeGraphics;
+          break;
+        case kDeContentTypeUnknown:
+        default:
+          de_data.content_type = kContentTypeUnknown;
+          break;
+      }
+
       if (de_tuning_cfg_data->params.flags & kDeTuningFlagDeBlend) {
         de_data.override_flags |= kOverrideDEBlend;
         de_data.de_blend = de_tuning_cfg_data->params.de_blend;
@@ -4115,16 +4128,18 @@ DisplayError DisplayBase::GetPanelBlMaxLvl(uint32_t *max_level) {
 }
 
 DisplayError DisplayBase::SetPPConfig(void *payload, size_t size) {
-  ClientLock lock(disp_mutex_);
-
-  DisplayError err = hw_intf_->SetPPConfig(payload, size);
-  if (err) {
-    DLOGE("Failed to set PP Event %d", err);
-  } else {
-    DLOGI_IF(kTagDisplay, "PP Event is set successfully");
-    event_handler_->Refresh();
+  {
+    ClientLock lock(disp_mutex_);
+    DisplayError err = hw_intf_->SetPPConfig(payload, size);
+    if (err) {
+      DLOGE("Failed to set PP Event %d", err);
+      return err;
+    }
   }
-  return err;
+
+  DLOGI_IF(kTagDisplay, "PP Event is set successfully");
+  event_handler_->Refresh();
+  return kErrorNone;
 }
 
 DisplayError DisplayBase::SetDimmingEnable(int int_enabled) {

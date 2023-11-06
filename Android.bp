@@ -10,6 +10,7 @@ soong_config_module_type {
         "udfps",
         "default",
         "var3",
+        "panel_dimension_extra_precision",
         "sdmcore_has_is_display_hw_available_func",
     ],
     properties: [
@@ -108,6 +109,9 @@ qtidisplay_cc_defaults {
             conditions_default: {
                 enabled: true,
             },
+        },
+        panel_dimension_extra_precision: {
+            cflags: ["-DTARGET_PANEL_DIMENSION_HAS_EXTRA_PRECISION"],
         },
         sdmcore_has_is_display_hw_available_func: {
             cflags: ["-DSDMCORE_HAS_IS_DISPLAY_HW_AVAILABLE_FUNC"],

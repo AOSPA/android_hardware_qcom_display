@@ -783,6 +783,11 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes(uint32_t index) {
     DLOGW("Driver doesn't report panel physical width and height - defaulting to 320dpi");
   }
 
+#ifdef TARGET_PANEL_DIMENSION_HAS_EXTRA_PRECISION
+  mm_width = UINT32(mm_width * 0.1f);
+  mm_height = UINT32(mm_height * 0.1f);
+#endif
+
   display_attributes_[index].x_dpi = (FLOAT(mode.hdisplay) * 25.4f) / FLOAT(mm_width);
   display_attributes_[index].y_dpi = (FLOAT(mode.vdisplay) * 25.4f) / FLOAT(mm_height);
   SetTopology(topology, &display_attributes_[index].topology);

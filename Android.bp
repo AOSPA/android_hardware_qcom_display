@@ -10,6 +10,7 @@ soong_config_module_type {
         "default",
         "var3",
         "llvmcov",
+        "panel_dimension_extra_precision",
     ],
     properties: [
         "cflags",
@@ -107,6 +108,9 @@ qtidisplay_cc_defaults {
             conditions_default: {
                 enabled: true,
             },
+        },
+        panel_dimension_extra_precision: {
+            cflags: ["-DTARGET_PANEL_DIMENSION_HAS_EXTRA_PRECISION"],
         },
     },
 }

@@ -154,7 +154,7 @@ endif
 SOONG_CONFIG_NAMESPACES += qtidisplay
 
 # Soong Keys
-SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4 displayconfig_enabled default var1 var2 var3 llvmcov
+SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4 displayconfig_enabled default var1 var2 var3 llvmcov panel_dimension_extra_precision
 
 # Soong Values
 SOONG_CONFIG_qtidisplay_drmpp := true
@@ -167,9 +167,14 @@ SOONG_CONFIG_qtidisplay_var1 := false
 SOONG_CONFIG_qtidisplay_var2 := false
 SOONG_CONFIG_qtidisplay_var3 := false
 SOONG_CONFIG_qtidisplay_llvmcov := false
+SOONG_CONFIG_qtidisplay_panel_dimension_extra_precision := false
 
 ifeq ($(call is-vendor-board-platform,QCOM),true)
     SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
+endif
+
+ifeq ($(TARGET_PANEL_DIMENSION_HAS_EXTRA_PRECISION), true)
+    SOONG_CONFIG_qtidisplay_panel_dimension_extra_precision := true
 endif
 
 # Techpack values

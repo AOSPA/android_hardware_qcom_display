@@ -2452,6 +2452,9 @@ Error ColorMetadataToDataspace(ColorMetaData color_metadata, Dataspace *dataspac
     case Transfer_HLG:
       transfer = Dataspace::TRANSFER_HLG;
       break;
+    case Transfer_SMPTE_ST2084:
+      transfer = Dataspace::TRANSFER_ST2084;
+      break;
     default:
       return Error::UNSUPPORTED;
       /*
@@ -2463,7 +2466,6 @@ Error ColorMetadataToDataspace(ColorMetaData color_metadata, Dataspace *dataspac
       Transfer_sYCC
       Transfer_BT2020_2_1
       Transfer_BT2020_2_2
-      Transfer_SMPTE_ST2084
       Transfer_ST_428
       */
   }

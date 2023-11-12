@@ -83,7 +83,7 @@ case "$target" in
     case "$soc_hwid" in
         415|439|456)
         # Set property for lahaina
-        setprop vendor.display.target.version 1
+        setprop vendor.display.target.version 4
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_perf_hint_large_comp_cycle 1
         setprop vendor.display.enable_allow_idle_fallback 1
@@ -106,7 +106,7 @@ case "$target" in
         # SOC ID for Kodiak IOT 497, Kodiak IOT with modem 498
         475|497|498|499|515)
         # Set property for Yupik
-        setprop vendor.display.target.version 2
+        setprop vendor.display.target.version 4
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_perf_hint_large_comp_cycle 1
         setprop vendor.display.enable_qsync_idle 1

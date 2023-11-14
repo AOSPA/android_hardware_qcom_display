@@ -86,6 +86,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
     debug.egl.hw=0 \
     debug.sf.latch_unsignaled=1 \
     debug.sf.high_fps_late_app_phase_offset_ns=1000000 \
+    debug.sf.auto_latch_unsignaled=0 \
     debug.mdpcomp.logs=0 \
     vendor.gralloc.disable_ubwc=0 \
     vendor.display.disable_scaler=0 \
@@ -162,6 +163,7 @@ PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.set_touch_timer_ms=200
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.force_hwc_copy_for_virtual_displays=true
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.max_frame_buffer_acquired_buffers=3
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.max_virtual_display_dimension=4096
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.surface_flinger.clear_slots_with_set_layer_buffer=false
 
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
 # Recovery is enabled, logging is enabled

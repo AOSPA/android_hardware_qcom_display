@@ -562,10 +562,14 @@ DisplayError CompManager::GetHDRCapability(bool *hdr_plus_support, bool *dolby_v
     if (error != kErrorNone) {
       DLOGW("Failed to get HDR10+ capability");
     } else {
+#ifdef TARGET_OVERRIDES_DOLBY_VISION
+      *dolby_vision_supported = true;
+#else
       error = cap_intf_->GetCapability(kDolbyVisionCapability, dolby_vision_supported);
       if (error != kErrorNone) {
         DLOGW("Failed to get Dolby vision capability");
       }
+#endif /* TARGET_OVERRIDES_DOLBY_VISION */
     }
   } else {
     DLOGW("Failed to get HDR capabilities");

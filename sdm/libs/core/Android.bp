@@ -1,6 +1,25 @@
+soong_config_module_type {
+    name: "dolby_vision_cc_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "dolby_vision",
+    bool_variables: ["override"],
+    properties: ["cflags"],
+}
+
+dolby_vision_cc_defaults {
+    name: "dolby_vision_defaults",
+    soong_config_variables: {
+        override: {
+            cflags: [
+                "-DTARGET_OVERRIDES_DOLBY_VISION",
+            ],
+        },
+    },
+}
+
 cc_library_shared {
     name: "libsdmcore",
-    defaults: ["qtidisplay_defaults"],
+    defaults: ["qtidisplay_defaults", "dolby_vision_defaults"],
     sanitize: {
         integer_overflow: true,
     },

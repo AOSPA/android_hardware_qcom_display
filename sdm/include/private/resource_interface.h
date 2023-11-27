@@ -106,7 +106,9 @@ class ResourceInterface {
   virtual DisplayError SetMaxSDEClk(Handle display_ctx, uint32_t clk) = 0;
   virtual DisplayError ForceToneMapConfigure(Handle display_ctx,
                                              DispLayerStack *disp_layer_stack) = 0;
+#ifdef SDMCORE_HAS_IS_DISPLAY_HW_AVAILABLE_FUNC
   virtual bool IsDisplayHWAvailable() = 0;
+#endif
 };
 
 }  // namespace sdm

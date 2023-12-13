@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3cb79e2d_0e94d068",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000911
+      },
+      "writtenOn": "2023-12-13T14:37:27Z",
+      "side": 1,
+      "message": "Test: Build passed and dolby vision support shown",
+      "revId": "efc4013794c2863a1bfd7b8e3d60f90190e24c0c",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

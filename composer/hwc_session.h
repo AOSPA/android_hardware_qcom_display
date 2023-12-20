@@ -20,7 +20,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -361,6 +361,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, public qClient::BnQClient,
                        hwc2_display_t display_type, int dpy_index);
     bool IsCwbActiveOnDisplay(hwc2_display_t disp_type);
     int OnCWBDone(int dpy_index, int32_t status, uint64_t handle_id);
+    void TerminateCwbStatusThread();
 
    private:
     enum CWBNotifiedStatus {

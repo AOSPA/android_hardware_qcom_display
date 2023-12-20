@@ -30,7 +30,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -1049,10 +1049,11 @@ int32_t HWCSession::CWB::PostBuffer(std::weak_ptr<DisplayConfig::ConfigCallback>
         }
       }
 
-      // Ensure that async task runs only until all queued CWB requests have been fulfilled.
+      // Async task runs only on receiving 1st cwb request and processes all queued CWB requests.
       // If cwb queue is empty, async task has not either started or async task has finished
-      // processing previously queued cwb requests. Start new async task on such a case as
-      // currently running async task will automatically desolve without processing more requests.
+      // processing previously queued cwb requests. If async task is already running but the
+      // queue is empty then, thread waits till the session map queue has new request.
+      // Wake up async task thread if queue was empty before current cwb request.
       if (error == HWC2::Error::None) {
         session_map.queue.push_back(node);
       }
@@ -1076,6 +1077,11 @@ int32_t HWCSession::CWB::PostBuffer(std::weak_ptr<DisplayConfig::ConfigCallback>
 
   if (error == HWC2::Error::None) {
     DLOGV_IF(kTagCwb, "Successfully configured CWB buffer(handle id: %lu).", node_handle_id);
+    std::unique_lock<std::mutex> lock(session_map.lock);
+    if (session_map.async_thread_running == true && session_map.queue.size() == 1) {
+      // Queue is no longer empty, Wake up thread to process cwb status
+      session_map.cv.notify_one();
+    }
   } else {
     // Need to close and delete the cloned native handle on CWB request rejection/failure and
     // if node is created and pushed, then need to remove from queue.
@@ -1092,12 +1098,10 @@ int32_t HWCSession::CWB::PostBuffer(std::weak_ptr<DisplayConfig::ConfigCallback>
   std::unique_lock<std::mutex> lock(session_map.lock);
   if (!session_map.async_thread_running && !session_map.queue.empty()) {
     session_map.async_thread_running = true;
-    // No need to do future.get() here for previously running async task. Async method will
-    // guarantee to exit after cwb for all queued requests is indeed complete i.e. the respective
-    // fences have signaled and client is notified through registered callbacks. This will make
-    // sure that the new async task does not concurrently work with previous task. Let async
-    // running thread dissolve on its own.
-    // Check, If thread is not running, then need to re-execute the async thread.
+    // Async thread creation happens only for the 1st CWB request, and
+    // destroyed as part of HWCSession DeInit sequence.
+    // Thread is suspended in case there are no requests to handle.
+    // Wakeup thread again on receiving new request node in queue.
     session_map.future = std::async(HWCSession::CWB::AsyncTaskToProcessCWBStatus,
                                     this, dpy_index);
   }
@@ -1151,10 +1155,14 @@ void HWCSession::CWB::ProcessCWBStatus(int dpy_index) {
     std::shared_ptr<QueueNode> cwb_node = nullptr;
     {
       std::unique_lock<std::mutex> lock(session_map.lock);
-      // Exit thread in case of no pending CWB request in queue.
+      // Suspend thread in case there are no pending CWB request in queue.
+      // Thread will wakup when new node is available to process in queue.
       if (session_map.queue.empty()) {
-        // Update thread exiting status.
-        session_map.async_thread_running = false;
+        session_map.cv.wait(lock);
+      }
+
+      if (session_map.async_thread_running == false) {
+        // Terminate async thread
         break;
       }
 
@@ -1180,6 +1188,15 @@ void HWCSession::CWB::ProcessCWBStatus(int dpy_index) {
     NotifyCWBStatus(cwb_node->notified_status , cwb_node);
   }
   DLOGI("CWB queue is empty. display_index: %d", dpy_index);
+}
+
+void HWCSession::CWB::TerminateCwbStatusThread() {
+  for (auto &itr: display_cwb_session_map_) {
+    auto& session_map = display_cwb_session_map_[itr.first];
+    std::unique_lock<std::mutex> lock(session_map.lock);
+    itr.second.async_thread_running = false;
+    session_map.cv.notify_one();
+  }
 }
 
 void HWCSession::CWB::NotifyCWBStatus(int status, std::shared_ptr<QueueNode> cwb_node) {

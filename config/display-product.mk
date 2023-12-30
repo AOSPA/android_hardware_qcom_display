@@ -121,6 +121,10 @@ endif
 PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.vds_allow_hwc=1
 
+# Disabled to avoid HWC for VDS.
+PRODUCT_PROPERTY_OVERRIDES += \
+    debug.sf.enable_hwc_vds=0
+
 ifeq ($(TARGET_BOARD_PLATFORM),holi)
 PRODUCT_PROPERTY_OVERRIDES += \
     vendor.display.secure_preview_buffer_format=420_sp \

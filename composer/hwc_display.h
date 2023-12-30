@@ -18,40 +18,11 @@
  */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted (subject to the limitations in the
-* disclaimer below) provided that the following conditions are met:
-*
-*    * Redistributions of source code must retain the above copyright
-*      notice, this list of conditions and the following disclaimer.
-*
-*    * Redistributions in binary form must reproduce the above
-*      copyright notice, this list of conditions and the following
-*      disclaimer in the documentation and/or other materials provided
-*      with the distribution.
-*
-*    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
-*      contributors may be used to endorse or promote products derived
-*      from this software without specific prior written permission.
-*
-* NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-* GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-* HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-* MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-* IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-* ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-* GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-* IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-* OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-* IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #ifndef __HWC_DISPLAY_H__
 #define __HWC_DISPLAY_H__
@@ -70,7 +41,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "display_null.h"
 #include "histogram_collector.h"
 #include "hwc_buffer_allocator.h"
 #include "hwc_callbacks.h"
@@ -244,7 +214,8 @@ class HWCDisplay : public DisplayEventHandler {
   virtual int Perform(uint32_t operation, ...);
   virtual int HandleSecureSession(const std::bitset<kSecureMax> &secure_sessions,
                                   bool *power_on_pending, bool is_active_secure_display);
-  virtual DisplayError HandleSecureEvent(SecureEvent secure_event, bool *needs_refresh);
+  virtual DisplayError HandleSecureEvent(SecureEvent secure_event, bool *needs_refresh,
+                                         bool update_event_only);
   virtual DisplayError PostHandleSecureEvent(SecureEvent secure_event);
   virtual int GetActiveSecureSession(std::bitset<kSecureMax> *secure_sessions) { return 0; };
   virtual DisplayError SetMixerResolution(uint32_t width, uint32_t height);
@@ -311,9 +282,6 @@ class HWCDisplay : public DisplayEventHandler {
   virtual int GetSupportedDisplayRefreshRates(std::vector<uint32_t> *supported_refresh_rates);
   bool IsModeSwitchAllowed(uint32_t config);
 
-  virtual int SetState(bool connected) {
-    return kErrorNotSupported;
-  }
   virtual DisplayError Flush() {
     return kErrorNotSupported;
   }
@@ -417,9 +385,6 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::Error SetCursorPosition(hwc2_layer_t layer, int x, int y);
   virtual HWC2::Error SetVsyncEnabled(HWC2::Vsync enabled);
   virtual HWC2::Error SetPowerMode(HWC2::PowerMode mode, bool teardown);
-  virtual HWC2::Error UpdatePowerMode(HWC2::PowerMode mode) {
-    return HWC2::Error::None;
-  }
   virtual HWC2::Error CreateLayer(hwc2_layer_t *out_layer_id);
   virtual HWC2::Error DestroyLayer(hwc2_layer_t layer_id);
   virtual HWC2::Error SetLayerZOrder(hwc2_layer_t layer_id, uint32_t z);
@@ -508,6 +473,7 @@ class HWCDisplay : public DisplayEventHandler {
   virtual void SetConfigInfo(std::map<uint32_t, DisplayConfigVariableInfo>& variable_config_map,
                              int active_config_index, uint32_t num_configs) {};
   virtual void MarkClientActive(bool is_client_up);
+  virtual void Abort();
 
  protected:
   static uint32_t throttling_refresh_rate_;
@@ -678,14 +644,15 @@ class HWCDisplay : public DisplayEventHandler {
   shared_ptr<Fence> client_acquire_fence_ = nullptr;
   int32_t client_dataspace_ = 0;
   hwc_region_t client_damage_region_ = {};
+  bool validate_done_ = false;
 
  private:
   bool CanSkipSdmPrepare(uint32_t *num_types, uint32_t *num_requests);
   void WaitOnPreviousFence();
+  void DumpStacktrace();
   qService::QService *qservice_ = NULL;
   DisplayClass display_class_;
   uint32_t geometry_changes_on_doze_suspend_ = GeometryChanges::kNone;
-  int null_display_mode_ = 0;
   bool first_cycle_ = true;  // false if a display commit has succeeded on the device.
   shared_ptr<Fence> release_fence_ = nullptr;
   hwc2_config_t pending_config_index_ = 0;
@@ -693,9 +660,7 @@ class HWCDisplay : public DisplayEventHandler {
   hwc2_config_t pending_first_commit_config_index_ = 0;
   bool game_supported_ = false;
   uint64_t elapse_timestamp_ = 0;
-  int async_power_mode_ = 0;
   bool draw_method_set_ = false;
-  bool validate_done_ = false;
   bool client_target_3_1_set_ = false;
   bool is_client_up_ = false;
 };

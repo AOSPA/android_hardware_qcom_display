@@ -29,7 +29,7 @@
 
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -58,6 +58,13 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #define __STDC_FORMAT_MACROS
 
@@ -631,6 +638,19 @@ void HWDeviceDRM::GetCWBCapabilities() {
   }
 }
 
+void HWDeviceDRM::OverrideConnectorInfo() {
+  // Overriding panel orientation
+  int value = 0;
+  if ((Debug::GetProperty(ENABLE_PANEL_INVERSE_MOUNT, &value) == kErrorNone) &&
+      connector_info_.is_primary) {
+    if (value == 1) {
+      connector_info_.panel_orientation = DRMRotation::ROT_180;
+      DLOGI("Panel_Orientation:%d -- %d-%d",
+      connector_info_.panel_orientation, display_id_, disp_type_);
+    }
+  }
+}
+
 DisplayError HWDeviceDRM::GetDisplayId(int32_t *display_id) {
   *display_id = display_id_;
   return kErrorNone;
@@ -877,6 +897,8 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   hw_panel_info_.primaries.blue[0] = connector_info_.panel_hdr_prop.display_primaries[6];
   hw_panel_info_.primaries.blue[1] = connector_info_.panel_hdr_prop.display_primaries[7];
   hw_panel_info_.dyn_bitclk_support = connector_info_.dyn_bitclk_support;
+
+  OverrideConnectorInfo();
 
   // no supprt for 90 rotation only flips or 180 supported
   hw_panel_info_.panel_orientation.rotation = 0;
@@ -1200,7 +1222,7 @@ DisplayError HWDeviceDRM::PowerOff(bool teardown, SyncPoints *sync_points) {
     return kErrorNone;
   }
 
-  if (tui_state_ != kTUIStateNone && tui_state_ != kTUIStateEnd) {
+  if (tui_state_ != kTUIStateNone) {
     DLOGI("Request deferred TUI state %d", tui_state_);
     pending_power_state_ = kPowerStateOff;
     return kErrorDeferred;
@@ -1926,6 +1948,9 @@ DisplayError HWDeviceDRM::Flush(HWLayersInfo *hw_layers_info) {
   sync_commit = true;
 #endif
 
+  // dpps commit feature ops doesn't use the obj id, set it as -1
+  drm_atomic_intf_->Perform(DRMOps::DPPS_COMMIT_FEATURE, -1);
+
   int ret = NullCommit(sync_commit /* synchronous */, false /* retain_planes*/);
   if (ret) {
     DLOGE("failed with error %d", ret);
@@ -2185,7 +2210,21 @@ DisplayError HWDeviceDRM::SetRefreshRate(uint32_t refresh_rate) {
   return kErrorNotSupported;
 }
 
-
+DisplayError HWDeviceDRM::GetConfigIndexForFps(uint32_t refresh_rate, uint32_t *config) {
+  // Check if requested refresh rate is valid
+  drmModeModeInfo current_mode = connector_info_.modes[current_mode_index_].mode;
+  for (uint32_t mode_index = 0; mode_index < connector_info_.modes.size(); mode_index++) {
+    if ((current_mode.vdisplay == connector_info_.modes[mode_index].mode.vdisplay) &&
+        (current_mode.hdisplay == connector_info_.modes[mode_index].mode.hdisplay) &&
+        (current_mode.flags == connector_info_.modes[mode_index].mode.flags) &&
+        (refresh_rate == connector_info_.modes[mode_index].mode.vrefresh)) {
+      *config = mode_index;
+      DLOGV_IF(kTagDriverConfig, "Config index for fps %d is %d", refresh_rate, *config);
+      return kErrorNone;
+    }
+  }
+  return kErrorNotSupported;
+}
 
 DisplayError HWDeviceDRM::GetHWScanInfo(HWScanInfo *scan_info) {
   return kErrorNotSupported;
@@ -3130,14 +3169,25 @@ DisplayError HWDeviceDRM::GetPanelBlMaxLvl(uint32_t *bl_max) {
   return kErrorNone;
 }
 
-DisplayError HWDeviceDRM::SetDimmingConfig(void *payload, size_t size) {
+DisplayError HWDeviceDRM::SetPPConfig(void *payload, size_t size) {
   if (!payload || size != sizeof(DRMPPFeatureInfo)) {
     DLOGE("Invalid input params payload %pK, size %zd expect size %zd", payload, size,
         sizeof(DRMPPFeatureInfo));
       return kErrorParameters;
   }
 
-  drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POST_PROC, token_.conn_id, payload);
+  struct DRMPPFeatureInfo *info = reinterpret_cast<struct DRMPPFeatureInfo *> (payload);
+
+  if (info->object_type == DRM_MODE_OBJECT_CONNECTOR && token_.conn_id) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POST_PROC, token_.conn_id, payload);
+  } else if (info->object_type == DRM_MODE_OBJECT_CRTC && token_.crtc_id) {
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_POST_PROC, token_.crtc_id, payload);
+  } else {
+    DLOGE("Invalid feature input, obj_type: 0x%x , feature_id: %d, event_type: 0x%x",
+          info->object_type, info->id, info->event_type);
+    return kErrorParameters;
+  }
+
   return kErrorNone;
 }
 

@@ -18,40 +18,11 @@
  */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted (subject to the limitations in the
-* disclaimer below) provided that the following conditions are met:
-*
-*    * Redistributions of source code must retain the above copyright
-*      notice, this list of conditions and the following disclaimer.
-*
-*    * Redistributions in binary form must reproduce the above
-*      copyright notice, this list of conditions and the following
-*      disclaimer in the documentation and/or other materials provided
-*      with the distribution.
-*
-*    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
-*      contributors may be used to endorse or promote products derived
-*      from this software without specific prior written permission.
-*
-* NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-* GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-* HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-* MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-* IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-* ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-* GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-* IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-* OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-* IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #include <QService.h>
 #include <binder/Parcel.h>
@@ -95,7 +66,6 @@ namespace sdm {
 static HWCUEvent g_hwc_uevent_;
 Locker HWCSession::locker_[HWCCallbacks::kNumDisplays];
 bool HWCSession::pending_power_mode_[HWCCallbacks::kNumDisplays];
-Locker HWCSession::power_state_[HWCCallbacks::kNumDisplays];
 Locker HWCSession::hdr_locker_[HWCCallbacks::kNumDisplays];
 std::bitset<HWCSession::kClientMax>
     HWCSession::clients_waiting_for_commit_[HWCCallbacks::kNumDisplays];
@@ -104,7 +74,6 @@ int HWCSession::commit_error_[HWCCallbacks::kNumDisplays] = { 0 };
 Locker HWCSession::display_config_locker_;
 std::mutex HWCSession::command_seq_mutex_;
 static const int kSolidFillDelay = 100 * 1000;
-int HWCSession::null_display_mode_ = 0;
 static const uint32_t kBrightnessScaleMax = 100;
 static const uint32_t kSvBlScaleMax = 65535;
 Locker HWCSession::vm_release_locker_[HWCCallbacks::kNumDisplays];
@@ -235,8 +204,6 @@ int HWCSession::Init() {
     HWCDebugHandler::DebugAll(value, value);
   }
 
-  HWCDebugHandler::Get()->GetProperty(ENABLE_NULL_DISPLAY_PROP, &null_display_mode_);
-  DLOGI("null_display_mode_: %d", null_display_mode_);
   HWCDebugHandler::Get()->GetProperty(DISABLE_HOTPLUG_BWCHECK, &disable_hotplug_bwcheck_);
   DLOGI("disable_hotplug_bwcheck_: %d", disable_hotplug_bwcheck_);
   HWCDebugHandler::Get()->GetProperty(DISABLE_MASK_LAYER_HINT, &disable_mask_layer_hint_);
@@ -245,17 +212,8 @@ int HWCSession::Init() {
                                       &enable_primary_reconfig_req_);
   DLOGI("enable_primary_reconfig_req_: %d", enable_primary_reconfig_req_);
 
-  if (!null_display_mode_) {
-    g_hwc_uevent_.Register(this);
-    DLOGI("Registered HWCSession as the HWCUEvent handler");
-  } else {
-    DLOGI("Did not register HWCSession as the HWCUEvent handler");
-  }
-
-  value = 0;  // Default value when property is not present.
-  Debug::Get()->GetProperty(ENABLE_ASYNC_POWERMODE, &value);
-  async_powermode_ = (value == 1);
-  DLOGI("builtin_powermode_override: %d", async_powermode_);
+  g_hwc_uevent_.Register(this);
+  DLOGI("Registered HWCSession as the HWCUEvent handler");
 
   value = 0;
   Debug::Get()->GetProperty(ENABLE_ASYNC_VDS_CREATION, &value);
@@ -298,10 +256,6 @@ int HWCSession::Init() {
 }
 
 void HWCSession::PostInit() {
-  if (null_display_mode_) {
-    return;
-  }
-
   // Start services which need IDisplayConfig to be up.
   // This avoids deadlock between composer and its clients.
   auto hwc_display = hwc_display_[HWC_DISPLAY_PRIMARY];
@@ -328,13 +282,11 @@ int HWCSession::Deinit() {
     color_mgr_->DestroyColorManager();
   }
 
-  if (!null_display_mode_) {
-    g_hwc_uevent_.Register(nullptr);
+  g_hwc_uevent_.Register(nullptr);
 
-    DisplayError error = CoreInterface::DestroyCore();
-    if (error != kErrorNone) {
-      DLOGE("Display core de-initialization failed. Error = %d", error);
-    }
+  DisplayError error = CoreInterface::DestroyCore();
+  if (error != kErrorNone) {
+    DLOGE("Display core de-initialization failed. Error = %d", error);
   }
 
   return 0;
@@ -351,11 +303,6 @@ void HWCSession::InitSupportedDisplaySlots() {
 
   map_info_primary_.client_id = qdutils::DISPLAY_PRIMARY;
 
-  if (null_display_mode_) {
-    InitSupportedNullDisplaySlots();
-    return;
-  }
-
   ipc_intf_ = std::make_shared<IPCImpl>(IPCImpl());
   ipc_intf_->Init();
 
@@ -367,10 +314,10 @@ void HWCSession::InitSupportedDisplaySlots() {
   }
 
   HWDisplayInterfaceInfo hw_disp_info = {};
-  error = core_intf_->GetFirstDisplayInterfaceType(&hw_disp_info);
+  error = WaitForPrimaryHotplug(&hw_disp_info);
   if (error != kErrorNone) {
     CoreInterface::DestroyCore();
-    DLOGE("Primary display type not recognized. Error = %d", error);
+    DLOGE("Primary display is not plugged. Error = %d", error);
     return;
   }
 
@@ -414,6 +361,11 @@ void HWCSession::InitSupportedDisplaySlots() {
   // Init slots in accordance to h/w capability.
   uint32_t disp_count = UINT32(std::min(max_pluggable, HWCCallbacks::kNumPluggable));
   hwc2_display_t base_id = qdutils::DISPLAY_EXTERNAL;
+  // if external displays are ZERO, then initialize it to 2 as 1 is reserved for external.
+  if (!disp_count) {
+    base_id = qdutils::DISPLAY_BUILTIN_2 - 1;
+  }
+
   map_info_pluggable_.resize(disp_count);
   for (auto &map_info : map_info_pluggable_) {
     map_info.client_id = base_id++;
@@ -433,40 +385,6 @@ void HWCSession::InitSupportedDisplaySlots() {
 
   // resize HDR supported map to total number of displays.
   is_hdr_display_.resize(UINT32(base_id));
-
-  if (!async_powermode_) {
-    return;
-  }
-
-  int start_index = HWCCallbacks::kNumRealDisplays;
-  std::vector<DisplayMapInfo> map_info = {map_info_primary_};
-  std::copy(map_info_builtin_.begin(), map_info_builtin_.end(), std::back_inserter(map_info));
-  std::copy(map_info_pluggable_.begin(), map_info_pluggable_.end(), std::back_inserter(map_info));
-  for (auto &map : map_info) {
-    DLOGI("Display Pairs: map.client_id: %d, start_index: %d", INT32(map.client_id),
-          INT32(start_index));
-    map_hwc_display_.insert(std::make_pair(map.client_id, start_index++));
-  }
-}
-
-void HWCSession::InitSupportedNullDisplaySlots() {
-  if (!null_display_mode_) {
-    DLOGE("Should only be invoked during null display");
-    return;
-  }
-
-  map_info_primary_.client_id = 0;
-  // Resize HDR supported map to total number of displays
-  is_hdr_display_.resize(1);
-
-  if (!async_powermode_) {
-    return;
-  }
-
-  DLOGI("Display Pairs: map.client_id: %d, start_index: %d", INT32(map_info_primary_.client_id),
-                                                             HWCCallbacks::kNumRealDisplays);
-  map_hwc_display_.insert(std::make_pair(map_info_primary_.client_id,
-                                         HWCCallbacks::kNumRealDisplays));
 }
 
 int HWCSession::GetDisplayIndex(int dpy) {
@@ -549,10 +467,6 @@ int32_t HWCSession::CreateVirtualDisplay(uint32_t width, uint32_t height, int32_
 
   if (!out_display_id || !width || !height || !format) {
     return  HWC2_ERROR_BAD_PARAMETER;
-  }
-
-  if (null_display_mode_) {
-    return 0;
   }
 
   if (async_vds_creation_ && virtual_id_ != HWCCallbacks::kNumDisplays) {
@@ -908,21 +822,10 @@ int32_t HWCSession::PresentDisplay(hwc2_display_t display, shared_ptr<Fence> *ou
 
   HandleSecureSession();
 
-
-  hwc2_display_t target_display = display;
-
   {
-    SCOPE_LOCK(power_state_[display]);
-    if (power_state_transition_[display]) {
-      // Route all interactions with client to dummy display.
-      target_display = map_hwc_display_.find(display)->second;
-    }
-  }
-
-  {
-    SEQUENCE_EXIT_SCOPE_LOCK(locker_[target_display]);
-    if (!hwc_display_[target_display]) {
-      DLOGW("Removed Display : display = %" PRIu64, target_display);
+    SEQUENCE_EXIT_SCOPE_LOCK(locker_[display]);
+    if (!hwc_display_[display]) {
+      DLOGW("Removed Display : display = %" PRIu64, display);
       return HWC2_ERROR_BAD_DISPLAY;
     }
 
@@ -933,24 +836,24 @@ int32_t HWCSession::PresentDisplay(hwc2_display_t display, shared_ptr<Fence> *ou
     if (pending_power_mode_[display]) {
       status = HWC2::Error::None;
     } else {
-      hwc_display_[target_display]->ProcessActiveConfigChange();
-      status = hwc_display_[target_display]->Present(out_retire_fence);
+      hwc_display_[display]->ProcessActiveConfigChange();
+      status = hwc_display_[display]->Present(out_retire_fence);
       if (status == HWC2::Error::None) {
-        PostCommitLocked(target_display, *out_retire_fence);
+        PostCommitLocked(display, *out_retire_fence);
       }
     }
   }
 
   if (status != HWC2::Error::None && status != HWC2::Error::NotValidated) {
-    if (clients_waiting_for_commit_[target_display].any()) {
-      retire_fence_[target_display] = nullptr;
-      commit_error_[target_display] = -EINVAL;
-      clients_waiting_for_commit_[target_display].reset();
+    if (clients_waiting_for_commit_[display].any()) {
+      retire_fence_[display] = nullptr;
+      commit_error_[display] = -EINVAL;
+      clients_waiting_for_commit_[display].reset();
     }
-    SEQUENCE_CANCEL_SCOPE_LOCK(locker_[target_display]);
+    SEQUENCE_CANCEL_SCOPE_LOCK(locker_[display]);
   }
 
-  PostCommitUnlocked(target_display, *out_retire_fence, status);
+  PostCommitUnlocked(display, *out_retire_fence, status);
 
   return INT32(status);
 }
@@ -1298,50 +1201,18 @@ int32_t HWCSession::SetPowerMode(hwc2_display_t display, int32_t int_mode) {
     return HWC2_ERROR_UNSUPPORTED;
   }
 
-  // async_powermode supported for power on and off
-  bool override_mode = async_powermode_ && display_ready_.test(UINT32(display)) &&
-                       async_power_mode_triggered_;
   HWC2::PowerMode last_power_mode = hwc_display_[display]->GetCurrentPowerMode();
 
   if (last_power_mode == mode) {
     return HWC2_ERROR_NONE;
   }
 
-  // 1. For power transition cases other than Off->On or On->Off, async power mode
-  // will not be used. Hence, set override_mode to false for them.
-  // 2. When SF requests Doze mode transition on panels where Doze mode is not supported
-  // (like video mode), HWComposer.cpp will override the request to "On". Handle such cases
-  // in main thread path.
-  if (!((last_power_mode == HWC2::PowerMode::Off && mode == HWC2::PowerMode::On) ||
-     (last_power_mode == HWC2::PowerMode::On && mode == HWC2::PowerMode::Off)) ||
-     (last_power_mode == HWC2::PowerMode::Off && mode == HWC2::PowerMode::On)) {
-    override_mode = false;
+  auto error = CallDisplayFunction(display, &HWCDisplay::SetPowerMode, mode,
+                                   false /* teardown */);
+  if (INT32(error) != HWC2_ERROR_NONE) {
+    return INT32(error);
   }
 
-  if (!override_mode) {
-    if (mode == HWC2::PowerMode::Off || mode == HWC2::PowerMode::DozeSuspend) {
-      active_displays_.erase(display);
-    } else {
-      active_displays_.insert(display);
-    }
-    auto error = CallDisplayFunction(display, &HWCDisplay::SetPowerMode, mode,
-                                     false /* teardown */);
-    if (INT32(error) != HWC2_ERROR_NONE) {
-      return INT32(error);
-    } else if (mode == HWC2::PowerMode::Off && cwb_.IsCwbActiveOnDisplay(display)) {
-      cwb_.PresentDisplayDone(display);
-    }
-  } else {
-    Locker::ScopeLock lock_disp(locker_[display]);
-    if (hwc_display_[display]) {
-      // Update hwc state for now. Actual poweron will handled through DisplayConfig.
-      hwc_display_[display]->UpdatePowerMode(mode);
-    }
-    else {
-      DLOGW("Display %d no longer available.", display);
-      return HWC2_ERROR_BAD_DISPLAY;
-    }
-  }
   // Reset idle pc ref count on suspend, as we enable idle pc during suspend.
   if (mode == HWC2::PowerMode::Off) {
     idle_pc_ref_cnt_ = 0;
@@ -1435,6 +1306,11 @@ HWC2::Error HWCSession::CreateVirtualDisplayObj(uint32_t width, uint32_t height,
     return error;
   }
 
+  core_intf_->ReserveDisplay(kVirtual);
+  // Trigger Refresh.
+  callbacks_.Refresh(HWC_DISPLAY_PRIMARY);
+  // Ideally we need to wait on all connected displays.
+  WaitForCommitDoneAsync(HWC_DISPLAY_PRIMARY, kClientVirtualDisplay);
   // Lock confined to this scope
   int status = -EINVAL;
   for (auto &map_info : map_info_virtual_) {
@@ -2789,20 +2665,10 @@ int HWCSession::CreatePrimaryDisplay() {
   int status = -EINVAL;
   HWDisplaysInfo hw_displays_info = {};
 
-  if (null_display_mode_) {
-    HWDisplayInfo hw_info = {};
-    hw_info.display_type = kBuiltIn;
-    hw_info.is_connected = 1;
-    hw_info.is_primary = 1;
-    hw_info.is_wb_ubwc_supported = 0;
-    hw_info.display_id = 1;
-    hw_displays_info[hw_info.display_id] = hw_info;
-  } else {
-    DisplayError error = core_intf_->GetDisplaysStatus(&hw_displays_info);
-    if (error != kErrorNone) {
-      DLOGE("Failed to get connected display list. Error = %d", error);
-      return status;
-    }
+  DisplayError error = core_intf_->GetDisplaysStatus(&hw_displays_info);
+  if (error != kErrorNone) {
+    DLOGE("Failed to get connected display list. Error = %d", error);
+    return status;
   }
 
   SCOPE_LOCK(primary_display_lock_);
@@ -2847,7 +2713,6 @@ int HWCSession::CreatePrimaryDisplay() {
 
         map_info_primary_.disp_type = info.display_type;
         map_info_primary_.sdm_id = info.display_id;
-        CreateDummyDisplay(HWC_DISPLAY_PRIMARY);
         color_mgr_ = HWCColorManager::CreateColorManager(&buffer_allocator_);
         if (!color_mgr_) {
           DLOGW("Failed to load HWCColorManager.");
@@ -2876,26 +2741,7 @@ int HWCSession::CreatePrimaryDisplay() {
   return status;
 }
 
-void HWCSession::CreateDummyDisplay(hwc2_display_t client_id) {
-  if (!async_powermode_) {
-    return;
-  }
-
-  hwc2_display_t dummy_disp_id = map_hwc_display_.find(client_id)->second;
-  auto hwc_display_dummy = &hwc_display_[dummy_disp_id];
-  HWCDisplayDummy::Create(core_intf_, &buffer_allocator_, &callbacks_, this, qservice_,
-                    0, 0, hwc_display_dummy);
-  if (!*hwc_display_dummy) {
-    DLOGE("Dummy display creation failed for %d display\n", UINT32(client_id));
-  }
-}
-
 int HWCSession::HandleBuiltInDisplays() {
-  if (null_display_mode_) {
-    DLOGW("Skipped BuiltIn display handling in null-display mode");
-    return 0;
-  }
-
   SCOPE_LOCK(primary_display_lock_);
   while (primary_pending_) {
     primary_display_lock_.Wait();
@@ -2946,13 +2792,15 @@ int HWCSession::HandleBuiltInDisplays() {
               UINT32(client_id));
         map_info.disp_type = info.display_type;
         map_info.sdm_id = info.display_id;
-        CreateDummyDisplay(client_id);
 
       }
 
       DLOGI("Hotplugging builtin display, sdm id = %d, client id = %d", info.display_id,
             UINT32(client_id));
+      // Free lock before the callback
+      primary_display_lock_.Unlock();
       callbacks_.Hotplug(client_id, HWC2::Connection::Connected);
+      primary_display_lock_.Lock();
       break;
     }
   }
@@ -2961,33 +2809,36 @@ int HWCSession::HandleBuiltInDisplays() {
 }
 
 int HWCSession::HandlePluggableDisplays(bool delay_hotplug) {
-  SCOPE_LOCK(pluggable_handler_lock_);
-  if (null_display_mode_) {
-    DLOGW("Skipped pluggable display handling in null-display mode");
-    return 0;
-  }
-  hwc2_display_t virtual_display_index =
-      (hwc2_display_t)GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
-  std::bitset<kSecureMax> secure_sessions = 0;
-  hwc2_display_t active_builtin_disp_id = GetActiveBuiltinDisplay();
-  if (active_builtin_disp_id < HWCCallbacks::kNumDisplays) {
-    Locker::ScopeLock lock_a(locker_[active_builtin_disp_id]);
-    hwc_display_[active_builtin_disp_id]->GetActiveSecureSession(&secure_sessions);
-  }
-  if (secure_sessions.any() || hwc_display_[virtual_display_index]) {
-    // Defer hotplug handling.
-    DLOGI("Marking hotplug pending...");
-    pending_hotplug_event_ = kHotPlugEvent;
-    return -EAGAIN;
+  HWDisplaysInfo hw_displays_info = {};
+  {
+    SCOPE_LOCK(pluggable_handler_lock_);
+
+    hwc2_display_t virtual_display_index =
+        (hwc2_display_t)GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
+    std::bitset<kSecureMax> secure_sessions = 0;
+
+    hwc2_display_t active_builtin_disp_id = GetActiveBuiltinDisplay();
+    if (active_builtin_disp_id < HWCCallbacks::kNumDisplays) {
+      Locker::ScopeLock lock_a(locker_[active_builtin_disp_id]);
+      hwc_display_[active_builtin_disp_id]->GetActiveSecureSession(&secure_sessions);
+    }
+
+    if (secure_sessions.any() || hwc_display_[virtual_display_index]) {
+      // Defer hotplug handling.
+      DLOGI("Marking hotplug pending...");
+      pending_hotplug_event_ = kHotPlugEvent;
+      return -EAGAIN;
+    }
+
+    DLOGI("Handling hotplug...");
+    DisplayError error = core_intf_->GetDisplaysStatus(&hw_displays_info);
+    if (error != kErrorNone) {
+      DLOGE("Failed to get connected display list. Error = %d", error);
+      return -EINVAL;
+    }
   }
 
-  DLOGI("Handling hotplug...");
-  HWDisplaysInfo hw_displays_info = {};
-  DisplayError error = core_intf_->GetDisplaysStatus(&hw_displays_info);
-  if (error != kErrorNone) {
-    DLOGE("Failed to get connected display list. Error = %d", error);
-    return -EINVAL;
-  }
+  HandlePluggablePrimaryDisplay(&hw_displays_info);
 
   int status = HandleDisconnectedDisplays(&hw_displays_info);
   if (status) {
@@ -3119,7 +2970,6 @@ int HWCSession::HandleConnectedDisplays(HWDisplaysInfo *hw_displays_info, bool d
         DLOGI("Created pluggable display successfully: sdm id = %d, client id = %d",
               info.display_id, UINT32(client_id));
 
-        CreateDummyDisplay(client_id);
       }
 
       map_info.disp_type = info.display_type;
@@ -3188,13 +3038,12 @@ int HWCSession::HandleDisconnectedDisplays(HWDisplaysInfo *hw_displays_info) {
     if (disconnect) {
       hwc2_display_t client_id = map_info.client_id;
       bool is_valid_pluggable_display = false;
-      {
-        SCOPE_LOCK(locker_[client_id]);
-        auto &hwc_display = hwc_display_[client_id];
-        if (hwc_display) {
-          is_valid_pluggable_display = true;
-        }
+      auto &hwc_display = hwc_display_[client_id];
+      if (hwc_display) {
+        is_valid_pluggable_display = true;
+        hwc_display->Abort();
       }
+
       DestroyDisplay(&map_info);
       if (enable_primary_reconfig_req_ && is_valid_pluggable_display) {
         hwc2_display_t active_builtin_id = GetActiveBuiltinDisplay();
@@ -3253,16 +3102,6 @@ void HWCSession::DestroyPluggableDisplay(DisplayMapInfo *map_info) {
       HWCDisplayPluggableTest::Destroy(hwc_display);
     }
 
-    if (async_powermode_) {
-      hwc2_display_t dummy_disp_id = map_hwc_display_.find(client_id)->second;
-      auto &hwc_display_dummy = hwc_display_[dummy_disp_id];
-      display_ready_.reset(UINT32(dummy_disp_id));
-      if (hwc_display_dummy) {
-        HWCDisplayDummy::Destroy(hwc_display_dummy);
-        hwc_display_dummy = nullptr;
-      }
-    }
-
     active_displays_.erase(client_id);
     display_ready_.reset(UINT32(client_id));
     pending_power_mode_[client_id] = false;
@@ -3295,15 +3134,6 @@ void HWCSession::DestroyNonPluggableDisplay(DisplayMapInfo *map_info) {
       break;
     }
 
-    if (async_powermode_ && map_info->disp_type == kBuiltIn) {
-      hwc2_display_t dummy_disp_id = map_hwc_display_.find(client_id)->second;
-      auto &hwc_display_dummy = hwc_display_[dummy_disp_id];
-      display_ready_.reset(UINT32(dummy_disp_id));
-      if (hwc_display_dummy) {
-        HWCDisplayDummy::Destroy(hwc_display_dummy);
-        hwc_display_dummy = nullptr;
-      }
-    }
     active_displays_.erase(client_id);
 
     pending_power_mode_[client_id] = false;
@@ -3397,11 +3227,6 @@ void HWCSession::HandleSecureSession() {
     hwc2_display_t active_builtin_disp_id = GetActiveBuiltinDisplay();
     if (active_builtin_disp_id >= HWCCallbacks::kNumDisplays) {
       return;
-    }
-    Locker::ScopeLock lock_pwr(power_state_[active_builtin_disp_id]);
-    if (power_state_transition_[active_builtin_disp_id]) {
-      // Route all interactions with client to dummy display.
-      active_builtin_disp_id = map_hwc_display_.find(active_builtin_disp_id)->second;
     }
     Locker::ScopeLock lock_d(locker_[active_builtin_disp_id]);
     hwc_display_[active_builtin_disp_id]->GetActiveSecureSession(&secure_sessions);
@@ -3733,7 +3558,8 @@ int32_t HWCSession::GetDisplayConnectionType(hwc2_display_t display,
     return HWC2_ERROR_BAD_DISPLAY;
   }
   *type = HwcDisplayConnectionType::EXTERNAL;
-  if (hwc_display_[display]->GetDisplayClass() == DISPLAY_CLASS_BUILTIN) {
+  if (display == HWC_DISPLAY_PRIMARY ||
+      hwc_display_[display]->GetDisplayClass() == DISPLAY_CLASS_BUILTIN) {
     *type = HwcDisplayConnectionType::INTERNAL;
   }
 
@@ -3842,11 +3668,6 @@ hwc2_display_t HWCSession::GetActiveBuiltinDisplay() {
 
   for (auto &info : map_info) {
     hwc2_display_t target_display = info.client_id;
-    SCOPE_LOCK(power_state_[target_display]);
-    if (power_state_transition_[target_display]) {
-      // Route all interactions with client to dummy display.
-      target_display = map_hwc_display_.find(target_display)->second;
-    }
     Locker::ScopeLock lock_d(locker_[target_display]);
     auto &hwc_display = hwc_display_[target_display];
     if (hwc_display && hwc_display->GetCurrentPowerMode() != HWC2::PowerMode::Off) {
@@ -3906,17 +3727,6 @@ int HWCSession::WaitForResources(bool wait_for_resources, hwc2_display_t active_
   std::vector<DisplayMapInfo> map_info = {map_info_primary_};
   std::copy(map_info_builtin_.begin(), map_info_builtin_.end(), std::back_inserter(map_info));
 
-  for (auto &info : map_info) {
-    hwc2_display_t target_display = info.client_id;
-    {
-      SCOPE_LOCK(power_state_[target_display]);
-      if (power_state_transition_[target_display]) {
-        // Route all interactions with client to dummy display.
-        target_display = map_hwc_display_.find(target_display)->second;
-      }
-    }
-  }
-
   if (wait_for_resources) {
     bool res_wait = true;
     bool needs_active_builtin_reconfig = false;
@@ -3964,7 +3774,14 @@ int HWCSession::WaitForResources(bool wait_for_resources, hwc2_display_t active_
       {
         std::unique_lock<std::mutex> caller_lock(hotplug_mutex_);
         resource_ready_ = false;
-        hotplug_cv_.wait(caller_lock);
+
+        const uint32_t min_vsync_period_ms = 100;
+        auto timeout = std::chrono::system_clock::now() +
+                         std::chrono::milliseconds(min_vsync_period_ms);
+        if (hotplug_cv_.wait_until(caller_lock, timeout) == std::cv_status::timeout) {
+          DLOGW("hotplug timeout");
+        }
+
         if (active_display_id_ == active_builtin_id && needs_active_builtin_reconfig &&
             cached_retire_fence_) {
           Fence::Wait(cached_retire_fence_);
@@ -4012,12 +3829,26 @@ int32_t HWCSession::SetActiveConfigWithConstraints(
 
 int HWCSession::WaitForCommitDoneAsync(hwc2_display_t display, int client_id) {
   std::chrono::milliseconds span(5000);
-  commit_done_future_ = std::async([](HWCSession* session, hwc2_display_t display, int client_id) {
-                                      return session->WaitForCommitDone(display, client_id);
-                                     }, this, display, client_id);
-  auto ret = (commit_done_future_.wait_for(span) == std::future_status::timeout) ?
-             -EINVAL : commit_done_future_.get();
-  return ret;
+  auto &future = client_id == kClientVirtualDisplay ? wfd_refresh_future_ : commit_done_future_[display];
+  if (future.valid()) {
+    if (client_id == kClientVirtualDisplay) {
+      return 0;	
+    }
+    std::future_status status = future.wait_for(std::chrono::milliseconds(0));
+    if (status != std::future_status::ready) {
+      // Previous task is stuck. Bail out early.
+      return -ETIMEDOUT;
+    }
+  }
+
+  future = std::async([](HWCSession* session, hwc2_display_t display, int client_id) {
+                         return session->WaitForCommitDone(display, client_id);
+                         }, this, display, client_id);
+  if (future.wait_for(span) == std::future_status::timeout) {
+    DLOGW("WaitForCommitDoneAsync timed out");
+    return -ETIMEDOUT;
+  }
+  return future.get();
 }
 
 int HWCSession::WaitForCommitDone(hwc2_display_t display, int client_id) {
@@ -4108,11 +3939,9 @@ android::status_t HWCSession::TUITransitionPrepare(int disp_id) {
   for (auto &info : map_info) {
     SEQUENCE_WAIT_SCOPE_LOCK(locker_[info.client_id]);
     if (hwc_display_[info.client_id]) {
-      if (info.client_id == target_display) {
-        continue;
-      }
-      if (hwc_display_[info.client_id]->HandleSecureEvent(kTUITransitionPrepare,
-                                                          &needs_refresh) != kErrorNone) {
+      if (hwc_display_[info.client_id]->HandleSecureEvent(kTUITransitionPrepare, &needs_refresh,
+                                                           info.client_id == target_display) !=
+                                                           kErrorNone) {
         return -EINVAL;
       }
     }
@@ -4153,16 +3982,19 @@ android::status_t HWCSession::TUITransitionStart(int disp_id) {
 
   int ret = WaitForCommitDoneAsync(target_display, kClientTrustedUI);
   if (ret != 0) {
-    DLOGE("WaitForCommitDone failed with error = %d", ret);
+    if (ret != -ETIMEDOUT) {
+      DLOGE("WaitForCommitDone failed with error = %d", ret);
+    }
     return -EINVAL;
   }
 
   int timeout_ms = -1;
   {
-    SEQUENCE_WAIT_SCOPE_LOCK(locker_[target_display]);
+    std::lock_guard<std::mutex> command_seq_lock(command_seq_mutex_);
+    SCOPE_LOCK(locker_[target_display]);
     if (hwc_display_[target_display]) {
-      if (hwc_display_[target_display]->HandleSecureEvent(kTUITransitionStart,
-                                                          &needs_refresh) != kErrorNone) {
+      if (hwc_display_[target_display]->HandleSecureEvent(kTUITransitionStart, &needs_refresh,
+                                                          false) != kErrorNone) {
         return -EINVAL;
       }
       uint32_t config = 0;
@@ -4227,8 +4059,8 @@ android::status_t HWCSession::TUITransitionEnd(int disp_id) {
     hwc_display_[target_display]->SetIdleTimeoutMs(idle_time_active_ms_, idle_time_inactive_ms_);
     hwc_display_[target_display]->SetQSyncMode(hwc_display_qsync_[target_display]);
     if (hwc_display_[target_display]) {
-      if (hwc_display_[target_display]->HandleSecureEvent(kTUITransitionEnd,
-                                                          &needs_refresh) != kErrorNone) {
+      if (hwc_display_[target_display]->HandleSecureEvent(kTUITransitionEnd, &needs_refresh,
+                                                          false) != kErrorNone) {
         return -EINVAL;
       }
     } else {
@@ -4241,7 +4073,10 @@ android::status_t HWCSession::TUITransitionEnd(int disp_id) {
     DLOGI("Waiting for device unassign");
     int ret = WaitForCommitDoneAsync(target_display, kClientTrustedUI);
     if (ret != 0) {
-      DLOGE("Device unassign failed with error %d", ret);
+      if (ret != -ETIMEDOUT) {
+        DLOGE("Device unassign failed with error %d", ret);
+      }
+      TUITransitionUnPrepare(disp_id);
       tui_start_success_ = false;
       return -EINVAL;
     }
@@ -4284,14 +4119,12 @@ android::status_t HWCSession::TUITransitionUnPrepare(int disp_id) {
     {
       SEQUENCE_WAIT_SCOPE_LOCK(locker_[info.client_id]);
       if (hwc_display_[info.client_id]) {
-        if (info.client_id == target_display) {
-          continue;
-        }
         if (info.disp_type == kPluggable && pending_hotplug_event_ == kHotPlugEvent) {
           continue;
         }
-        if (hwc_display_[info.client_id]->HandleSecureEvent(kTUITransitionUnPrepare,
-                                                            &needs_refresh) != kErrorNone) {
+        if (hwc_display_[info.client_id]->HandleSecureEvent(kTUITransitionUnPrepare, &needs_refresh,
+                                                            info.client_id == target_display) !=
+                                                            kErrorNone) {
           return -EINVAL;
         }
       }
@@ -4300,9 +4133,12 @@ android::status_t HWCSession::TUITransitionUnPrepare(int disp_id) {
   }
   if (trigger_refresh) {
     for (int i = 0; i < 2; i++) {
-      int ret = WaitForCommitDone(target_display, kClientTrustedUI);
+      int ret = WaitForCommitDoneAsync(target_display, kClientTrustedUI);
       if (ret != 0) {
-        DLOGE("WaitForCommitDone failed with error %d", ret);
+        if (ret != -ETIMEDOUT) {
+          DLOGE("WaitForCommitDone failed with error %d", ret);
+        }
+        tui_start_success_ = false;
         return -EINVAL;
       }
     }
@@ -4463,6 +4299,43 @@ void HWCSession::NotifyDisplayAttributes(hwc2_display_t display, hwc2_config_t c
     attributes.panelType = DisplayPortType::DEFAULT;
     attributes.isYuv = var_info.is_yuv;
     NotifyResolutionChange(display, attributes);
+  }
+}
+
+DisplayError HWCSession::WaitForPrimaryHotplug(HWDisplayInterfaceInfo *hw_disp_info) {
+  int wait_for_hotplug = 0;  // Default value when property is not present.
+  HWCDebugHandler::Get()->GetProperty(WAIT_FOR_PRIMARY_DISPLAY, &wait_for_hotplug);
+  DLOGI("wait_for_primary_display :%d", wait_for_hotplug);
+
+  const uint32_t kMaxAttempts = wait_for_hotplug ? 60 : 1;
+  uint32_t attempts;
+  for (attempts = 0; attempts < kMaxAttempts; attempts++) {
+    DisplayError error = core_intf_->GetFirstDisplayInterfaceType(hw_disp_info);
+    if (error != kErrorNone) {
+      return error;
+    }
+    if (hw_disp_info->is_connected) {
+      DLOGI("Primary display of type-%d is connected after %u %s",
+            hw_disp_info->type, (attempts + 1), attempts ? "attempts" : "attempt");
+      break;
+    }
+    usleep(1000000);    // sleep for 1 second
+  }
+
+  if (attempts == kMaxAttempts) {
+    LOG_ALWAYS_FATAL("Primary display of type-%d is not yet connected after %u %s",
+                     hw_disp_info->type, kMaxAttempts, kMaxAttempts == 1 ? "attempt" : "attempts");
+  }
+
+  return kErrorNone;
+}
+
+void HWCSession::HandlePluggablePrimaryDisplay(HWDisplaysInfo *hw_displays_info) {
+  for (auto &iter : *hw_displays_info) {
+    auto &info = iter.second;
+    if (info.is_primary && (info.display_type == kPluggable) && !info.is_connected) {
+      LOG_ALWAYS_FATAL("Primary pluggable display is disconnected");
+    }
   }
 }
 }  // namespace sdm

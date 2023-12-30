@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -77,6 +77,7 @@
 #include <condition_variable>  // NOLINT
 #include <string>
 #include <vector>
+#include <future>
 
 #include "hw_interface.h"
 #include "comp_manager.h"
@@ -217,7 +218,7 @@ class DisplayBase : public DisplayInterface {
   virtual DisplayError GetRefreshRate(uint32_t *refresh_rate) { return kErrorNotSupported; }
   virtual DisplayError SetBLScale(uint32_t level) { return kErrorNotSupported; }
   DisplayError GetPanelBlMaxLvl(uint32_t *bl_max);
-  DisplayError SetDimmingConfig(void *payload, size_t size);
+  DisplayError SetPPConfig(void *payload, size_t size);
   DisplayError SetDimmingEnable(int int_enabled);
   DisplayError SetDimmingMinBl(int min_bl);
   void ScreenRefresh();
@@ -350,6 +351,7 @@ class DisplayBase : public DisplayInterface {
   void PrepareForAsyncTransition();
   virtual void IdleTimeout() {}
   std::chrono::system_clock::time_point WaitUntil();
+  virtual void Abort();
 
   DisplayMutex disp_mutex_;
   std::thread commit_thread_;
@@ -455,9 +457,11 @@ class DisplayBase : public DisplayInterface {
   void UpdateFrameBuffer();
   void CleanupOnError();
   bool IsValidateNeeded();
+  void TrackInputFences();
   DisplayError InitBorderLayers();
   std::vector<LayerRect> GetBorderRects();
   void GenerateBorderLayers(const std::vector<LayerRect> &border_rects);
+  void WaitOnFences();
   unsigned int rc_cached_res_width_ = 0;
   unsigned int rc_cached_res_height_ = 0;
   unsigned int rc_cached_mixer_width_ = 0;
@@ -484,6 +488,10 @@ class DisplayBase : public DisplayInterface {
   bool windowed_display_ = false;
   LayerRect window_rect_ = {};
   bool enable_win_rect_mask_ = false;
+  std::future<void> fence_wait_future_;
+  bool track_input_fences_ = false;
+  std::vector<shared_ptr<Fence>> acquire_fences_;
+  std::mutex fence_track_mutex_;
 };
 
 }  // namespace sdm

@@ -27,40 +27,10 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
- *  Changes from Qualcomm Innovation Center are provided under the following license:
+/* Changes from Qualcomm Innovation Center are provided under the following license:
  *
- *  Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted (subject to the limitations in the
- *  disclaimer below) provided that the following conditions are met:
- *
- *      * Redistributions of source code must retain the above copyright
- *        notice, this list of conditions and the following disclaimer.
- *
- *      * Redistributions in binary form must reproduce the above
- *        copyright notice, this list of conditions and the following
- *        disclaimer in the documentation and/or other materials provided
- *        with the distribution.
- *
- *      * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *        contributors may be used to endorse or promote products derived
- *        from this software without specific prior written permission.
- *
- *  NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- *  GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- *  HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- *   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- *  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- *  IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- *  IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
 #ifndef __DISPLAY_PROPERTIES_H__
@@ -96,6 +66,7 @@
 #define DISABLE_PARTIAL_SPLIT_PROP           DISPLAY_PROP("disable_partial_split")
 #define PREFER_SOURCE_SPLIT_PROP             DISPLAY_PROP("prefer_source_split")
 #define MIXER_RESOLUTION_PROP                DISPLAY_PROP("mixer_resolution")
+#define NULL_DISPLAY_RESOLUTION_PROP         DISPLAY_PROP("null_display_resolution")
 #define SIMULATED_CONFIG_PROP                DISPLAY_PROP("simulated_config")
 #define MAX_SECONDARY_FETCH_LAYERS_PROP      DISPLAY_PROP("max_secondary_fetch_layers")
 #define ENABLE_EXTERNAL_DOWNSCALE_PROP       DISPLAY_PROP("enable_external_downscale")
@@ -135,6 +106,7 @@
 #define DROP_SKEWED_VSYNC                    DISPLAY_PROP("drop_skewed_vsync")
 #define DISABLE_FAST_PATH                    DISPLAY_PROP("disable_fast_path")
 #define DISABLE_SYSTEM_LOAD_CHECK            DISPLAY_PROP("disable_system_load_check")
+#define SUPPORTS_BACKGROUND_BLUR             DISPLAY_PROP("supports_background_blur")
 // Disable microidle condition
 #define DISABLE_SINGLE_LM_SPLIT_PROP         DISPLAY_PROP("disable_single_lm_split")
 // Enable posted start dynamic
@@ -145,11 +117,11 @@
 // Disable 3d tonemap support for UI layers
 #define DISABLE_UI_3D_TONEMAP                DISPLAY_PROP("disable_ui_3d_tonemap")
 #define QDCM_DISABLE_FACTORY_MODE_PROP       DISPLAY_PROP("qdcm.disable_factory_mode")
-#define ENABLE_ASYNC_POWERMODE               DISPLAY_PROP("enable_async_powermode")
 #define ENABLE_GPU_TONEMAPPER_PROP           DISPLAY_PROP("enable_gpu_tonemapper")
 #define ENABLE_FORCE_SPLIT                   DISPLAY_PROP("enable_force_split")
 #define DISABLE_GPU_COLOR_CONVERT            DISPLAY_PROP("disable_gpu_color_convert")
 #define ENABLE_ASYNC_VDS_CREATION            DISPLAY_PROP("enable_async_vds_creation")
+#define MAX_PRIMARY_LAYERS                   DISPLAY_PROP("max_primary_layers")
 #define ENABLE_HISTOGRAM_INTR                DISPLAY_PROP("enable_hist_intr")
 #define DISABLE_MMRM_PROP                    DISPLAY_PROP("disable_mmrm_prop")
 #define DEFER_FPS_FRAME_COUNT                DISPLAY_PROP("defer_fps_frame_count")
@@ -200,6 +172,8 @@
 #define ENABLE_VERBOSE_LOG                   DISPLAY_PROP("enable_verbose_log")
 // HDR10 GPU Target
 #define ENABLE_HDR10_GPU_TARGET              DISPLAY_PROP("enable_hdr10_gpu_target")
+// Restrict max powered on displays
+#define RESTRICT_MAX_POWERON_DISPLAYS        DISPLAY_PROP("restrict_max_poweron_displays")
 
 // Add all vendor.display properties above
 
@@ -222,6 +196,11 @@
 #define DISABLE_IDLE_SCALING_LAYERS          DISPLAY_PROP("disable_idle_scaling_layers")
 #define DISABLE_CWB_IDLE_FALLBACK            DISPLAY_PROP("disable_cwb_idle_fallback")
 #define TRANSIENT_FPS_CYCLE_COUNT            DISPLAY_PROP("transient_fps_cycle_count")
+#define ENABLE_PANEL_INVERSE_MOUNT           DISPLAY_PROP("enable_panel_inverse_mount")
+#define WAIT_FOR_PRIMARY_DISPLAY             DISPLAY_PROP("wait_for_primary_display")
+#define TRACK_INPUT_FENCES                   DISPLAY_PROP("track_input_fences")
+#define ENABLE_ROTATOR_CONCURRENCY           DISPLAY_PROP("enable_rotator_concurrency")
+#define FORCE_GPU_COMPOSITION                DISPLAY_PROP("force_gpu_composition")
 
 // Add all other.properties above
 // End of property

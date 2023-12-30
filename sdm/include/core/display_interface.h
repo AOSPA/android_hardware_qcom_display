@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -200,6 +200,7 @@ enum DisplayEvent {
   kSyncInvalidateDisplay,   // Event triggered by Non-DrawCycle threads to Invalidate display.
   kPostIdleTimeout,         // Event triggered after entering idle.
   kVmReleaseDone,           // Event triggered after releasing the mdp hw to secondary vm.
+  kDumpStacktrace,          // Event triggered by commit thread to dump stack trace.
 };
 
 /*! @brief This enum represents the secure events received by Display HAL. */
@@ -1149,14 +1150,14 @@ class DisplayInterface {
   */
   virtual DisplayError GetPanelBlMaxLvl(uint32_t *max_level) = 0;
 
-  /*! @brief Method to set display dimming config.
+  /*! @brief Method to enable/disable or config PP event/feature.
 
-    @param[in] payload of dimming config.
+    @param[in] payload of PP event/feature
     @param[in] size of the payload.
 
     @return \link DisplayError \endlink
   */
-  virtual DisplayError SetDimmingConfig(void *payload, size_t size) = 0;
+  virtual DisplayError SetPPConfig(void *payload, size_t size) = 0;
 
   /*! @brief Method to trigger a screen refresh and mark needs validate.
 
@@ -1307,6 +1308,8 @@ class DisplayInterface {
     @return \link DisplayError \endlink
   */
   virtual DisplayError PostHandleSecureEvent(SecureEvent secure_event) = 0;
+
+  virtual void Abort() = 0;
 
  protected:
   virtual ~DisplayInterface() { }

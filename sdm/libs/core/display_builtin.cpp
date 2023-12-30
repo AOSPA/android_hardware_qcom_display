@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -162,9 +162,13 @@ DisplayError DisplayBuiltIn::Init() {
 
   current_refresh_rate_ = hw_panel_info_.max_fps;
 
-  initColorSamplingState();
-
   int value = 0;
+  Debug::Get()->GetProperty(ENABLE_HISTOGRAM_INTR, &value);
+  if (value == 1) {
+    initColorSamplingState();
+  }
+
+  value = 0;
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
 
@@ -290,7 +294,6 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
     }
   } else {
     if (CanSkipDisplayPrepare(layer_stack)) {
-      UpdateQsyncMode();
       return kErrorNone;
     }
   }
@@ -328,10 +331,12 @@ DisplayError DisplayBuiltIn::Prepare(LayerStack *layer_stack) {
 
   DisplayError error = PrePrepare(layer_stack);
   if (error == kErrorNone) {
+    UpdateQsyncMode();
     return kErrorNone;
   }
 
   if (error == kErrorNeedsLutRegen && (ForceToneMapUpdate(layer_stack) == kErrorNone)) {
+    UpdateQsyncMode();
     return kErrorNone;
   }
 
@@ -784,7 +789,7 @@ DisplayError DisplayBuiltIn::PostCommit(HWLayersInfo *hw_layers_info) {
     dpps_pu_nofiy_pending_ = false;
     dpps_pu_lock_.Broadcast();
   }
-  dpps_info_.Init(this, hw_panel_info_.panel_name);
+  dpps_info_.Init(this, hw_panel_info_.panel_name, this);
 
   HandleQsyncPostCommit();
 
@@ -984,6 +989,7 @@ DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness) {
   if (err == kErrorNone) {
     level_remainder_ = level_remainder;
     pending_brightness_ = false;
+    comp_manager_->SetBacklightLevel(display_comp_ctx_, level);
     DLOGI_IF(kTagDisplay, "Setting brightness to level %d (%f percent)", level,
              brightness * 100);
   } else if (err == kErrorDeferred) {
@@ -1702,12 +1708,13 @@ std::string DisplayBuiltIn::Dump() {
 DppsInterface* DppsInfo::dpps_intf_ = NULL;
 std::vector<int32_t> DppsInfo::display_id_ = {};
 
-void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name) {
+void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name,
+                    DisplayInterface *display_intf) {
   std::lock_guard<std::mutex> guard(lock_);
   int error = 0;
 
-  if (!intf) {
-    DLOGE("Invalid intf is null");
+  if (!intf || !display_intf) {
+    DLOGE("Invalid intf %pK display_intf %pK", intf, display_intf);
     return;
   }
 
@@ -1741,7 +1748,7 @@ void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name) {
       goto exit;
     }
   }
-  error = dpps_intf_->Init(intf, panel_name);
+  error = dpps_intf_->Init(intf, panel_name, display_intf);
   if (error) {
     DLOGE("DPPS Interface init failure with err %d", error);
     goto exit;
@@ -2123,8 +2130,9 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
   const bool display_unchanged = (display_attributes == display_attributes_);
   const bool mixer_unchanged = (mixer_attributes == mixer_attributes_);
   const bool panel_unchanged = (hw_panel_info == hw_panel_info_);
-  if (!dirty && display_unchanged && mixer_unchanged && panel_unchanged) {
-    return kErrorNone;
+  const bool fps_switch = display_unchanged && (display_attributes.fps != current_refresh_rate_);
+  if (!dirty && display_unchanged && mixer_unchanged && panel_unchanged && !fps_switch) {
+     return kErrorNone;
   }
 
   if (CanDeferFpsConfig(display_attributes.fps)) {
@@ -2135,6 +2143,17 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
     GetFpsConfig(&display_attributes, &hw_panel_info);
   }
 
+  if (fps_switch) {
+    uint32_t config;
+    error = hw_intf_->GetConfigIndexForFps(current_refresh_rate_, &config);
+    if (error == kErrorNone) {
+      hw_intf_->GetDisplayAttributes(config, &display_attributes);
+    }
+  } else {
+    current_refresh_rate_ = display_attributes.fps;
+  }
+
+  fb_config_.fps = display_attributes.fps;
   error = comp_manager_->ReconfigureDisplay(display_comp_ctx_, display_attributes, hw_panel_info,
                                             mixer_attributes, fb_config_,
                                             &cached_qos_data_);

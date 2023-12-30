@@ -22,41 +22,11 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted (subject to the limitations in the
-* disclaimer below) provided that the following conditions are met:
-*
-*    * Redistributions of source code must retain the above copyright
-*      notice, this list of conditions and the following disclaimer.
-*
-*    * Redistributions in binary form must reproduce the above
-*      copyright notice, this list of conditions and the following
-*      disclaimer in the documentation and/or other materials provided
-*      with the distribution.
-*
-*    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
-*      contributors may be used to endorse or promote products derived
-*      from this software without specific prior written permission.
-*
-* NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-* GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-* HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-* MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-* IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-* ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-* GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-* IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-* OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-* IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/* Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #include <core/buffer_allocator.h>
 #include <utils/constants.h>
@@ -102,6 +72,12 @@ DisplayError CompManager::Init(const HWResourceInfo &hw_res_info,
   buffer_allocator_ = buffer_allocator;
   extension_intf_ = extension_intf;
 
+  int value = 0;
+  if (DebugHandler::Get()->GetProperty(MAX_PRIMARY_LAYERS, &value) == kErrorNone) {
+    max_primary_layers_ = value;
+    DLOGI("Max layers on primary limited to %d", max_primary_layers_);
+  }
+
   return error;
 }
 
@@ -117,6 +93,12 @@ DisplayError CompManager::Deinit() {
   }
 
   return kErrorNone;
+}
+
+DisplayError CompManager::ReserveDisplay(DisplayType type) {
+  std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
+
+  return resource_intf_->ReserveDisplay(type);
 }
 
 DisplayError CompManager::RegisterDisplay(int32_t display_id, DisplayType type,
@@ -204,6 +186,22 @@ DisplayError CompManager::RegisterDisplay(int32_t display_id, DisplayType type,
   DLOGV_IF(kTagCompManager, "Registered displays [%s], display %d-%d",
            StringDisplayList(registered_displays_).c_str(), display_comp_ctx->display_id,
            display_comp_ctx->display_type);
+
+
+  int force_gpu_comp = 0;
+  if (DebugHandler::Get()->GetProperty(FORCE_GPU_COMPOSITION, &force_gpu_comp) == kErrorNone) {
+    DLOGV_IF(kTagCompManager, "Force GPU composition: %d", force_gpu_comp);
+  }
+
+  if (force_gpu_comp) {
+    int display_count = registered_displays_.size();
+
+    // enable GPU comp for 1) mirror mode with two displays 2) dual LM
+    if ((display_count > 1 && display_attributes.topology == kSingleLM) ||
+        (display_attributes.topology == kDualLM)) {
+      force_gpu_comp_ = true;
+    }
+  }
 
   return kErrorNone;
 }
@@ -326,6 +324,9 @@ void CompManager::PrepareStrategyConstraints(Handle comp_handle,
     constraints->max_layers = display_comp_ctx->display_type == kBuiltIn ?
                               max_sde_builtin_fetch_layers_ : max_sde_secondary_fetch_layers_;
     constraints->safe_mode = (low_end_hw && !hw_res_info_.separate_rotator) ? true : safe_mode_;
+  } else {
+    constraints->max_layers = max_primary_layers_ > 0 ? max_primary_layers_ :
+                              hw_res_info_.num_blending_stages;
   }
 
   // If a strategy fails after successfully allocating resources, then set safe mode
@@ -354,6 +355,8 @@ void CompManager::PrepareStrategyConstraints(Handle comp_handle,
   if (app_layer_count == 1) {
      constraints->safe_mode = false;
   }
+
+  constraints->force_gpu_comp = force_gpu_comp_;
 }
 
 void CompManager::GenerateROI(Handle display_ctx, DispLayerStack *disp_layer_stack) {
@@ -593,11 +596,16 @@ DisplayError CompManager::ValidateAndSetCursorPosition(Handle display_ctx,
 
 DisplayError CompManager::SetMaxBandwidthMode(HWBwModes mode) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
+  DisplayError error = kErrorNotSupported;
   if (mode >= kBwModeMax) {
-    return kErrorNotSupported;
+    return error;
   }
 
-  return resource_intf_->SetMaxBandwidthMode(mode);
+  if (resource_intf_) {
+    return resource_intf_->SetMaxBandwidthMode(mode);
+  }
+
+  return error;
 }
 
 DisplayError CompManager::GetScaleLutConfig(HWScaleLutInfo *lut_info) {
@@ -802,6 +810,16 @@ bool CompManager::IsRotatorSupportedFormat(LayerBufferFormat format) {
 
   return false;
 }
+
+bool CompManager::IsDisplayHWAvailable() {
+  std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
+  if (resource_intf_) {
+    return resource_intf_->IsDisplayHWAvailable();
+  }
+
+  return false;
+}
+
 
 DisplayError CompManager::FreeDemuraFetchResources(const uint32_t &display_id) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);

@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -57,6 +57,11 @@
 * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #include <stdio.h>
 #include <malloc.h>
@@ -247,6 +252,11 @@ DisplayError DisplayBase::Init() {
   InitBorderLayers();
   // Assume unified draw is supported.
   unified_draw_supported_ = true;
+
+  prop = 0;
+  Debug::GetProperty(TRACK_INPUT_FENCES, &prop);
+  track_input_fences_ = (prop == 1);
+  DLOGI("track_input_fences_:%d %d-%d", track_input_fences_, display_id_, display_type_);
 
   return kErrorNone;
 
@@ -1331,6 +1341,13 @@ DisplayError DisplayBase::CommitOrPrepare(LayerStack *layer_stack) {
     } else {
       DLOGE("Prepare failed: %d", error);
     }
+    // Clear fences
+    DLOGI("Clearing fences on input layers on display %d-%d", display_id_, display_type_);
+    for (auto &layer : layer_stack->layers) {
+      layer->input_buffer.release_fence = nullptr;
+    }
+    layer_stack->retire_fence = nullptr;
+
     return error;
   }
 
@@ -1471,6 +1488,7 @@ DisplayError DisplayBase::SetUpCommit(LayerStack *layer_stack) {
 
 DisplayError DisplayBase::PerformCommit(HWLayersInfo *hw_layers_info) {
   DTRACE_SCOPED();
+  TrackInputFences();
   DisplayError error = hw_intf_->Commit(hw_layers_info);
   if (error != kErrorNone) {
     DLOGE("COMMIT failed: %d ", error);
@@ -1571,7 +1589,7 @@ DisplayError DisplayBase::PostCommit(HWLayersInfo *hw_layers_info) {
   }
 
   int level = 0;
-  if (hw_intf_->GetPanelBrightness(&level) == kErrorNone) {
+  if (first_cycle_ && (hw_intf_->GetPanelBrightness(&level) == kErrorNone)) {
     comp_manager_->SetBacklightLevel(display_comp_ctx_, level);
   }
 
@@ -1967,7 +1985,12 @@ DisplayError DisplayBase::SetActiveConfig(uint32_t index) {
   validated_ = false;
   hw_intf_->GetActiveConfig(&active_index);
 
+  // Cache the last refresh rate set by SF
+  HWDisplayAttributes display_attributes = {};
+  hw_intf_->GetDisplayAttributes(index, &display_attributes);
+
   if (active_index == index) {
+    active_refresh_rate_ = display_attributes.fps;
     return kErrorNone;
   }
 
@@ -1977,10 +2000,6 @@ DisplayError DisplayBase::SetActiveConfig(uint32_t index) {
   }
 
   avoid_qync_mode_change_ = true;
-
-  // Cache last refresh rate set by SF
-  HWDisplayAttributes display_attributes = {};
-  hw_intf_->GetDisplayAttributes(index, &display_attributes);
   active_refresh_rate_ = display_attributes.fps;
 
   return ReconfigureDisplay();
@@ -3834,6 +3853,9 @@ DisplayError DisplayBase::HandleSecureEvent(SecureEvent secure_event, bool *need
         return err;
       }
     }
+    if (state == kStateOff) {
+      *needs_refresh = false;
+    }
   }
   if (*needs_refresh) {
     validated_ = false;
@@ -3954,6 +3976,16 @@ void DisplayBase::ProcessPowerEvent() {
   cv_.notify_one();
 }
 
+void DisplayBase::Abort() {
+  std::unique_lock<std::mutex> lck(power_mutex_);
+
+  if (display_type_ == kHDMI && first_cycle_) {
+    DLOGI("Abort!");
+    transition_done_ = true;
+    cv_.notify_one();
+  }
+}
+
 void DisplayBase::CacheRetireFence() {
   if (draw_method_ == kDrawDefault) {
     retire_fence_ = disp_layer_stack_.info.retire_fence;
@@ -4032,6 +4064,19 @@ DisplayError DisplayBase::SetHWDetailedEnhancerConfig(void *params) {
         }
       }
 
+      switch (de_tuning_cfg_data->params.content_type) {
+        case kDeContentTypeVideo:
+          de_data.content_type = kContentTypeVideo;
+          break;
+        case kDeContentTypeGraphics:
+          de_data.content_type = kContentTypeGraphics;
+          break;
+        case kDeContentTypeUnknown:
+        default:
+          de_data.content_type = kContentTypeUnknown;
+          break;
+      }
+
       if (de_tuning_cfg_data->params.flags & kDeTuningFlagDeBlend) {
         de_data.override_flags |= kOverrideDEBlend;
         de_data.de_blend = de_tuning_cfg_data->params.de_blend;
@@ -4070,14 +4115,14 @@ DisplayError DisplayBase::GetPanelBlMaxLvl(uint32_t *max_level) {
   return err;
 }
 
-DisplayError DisplayBase::SetDimmingConfig(void *payload, size_t size) {
+DisplayError DisplayBase::SetPPConfig(void *payload, size_t size) {
   ClientLock lock(disp_mutex_);
 
-  DisplayError err = hw_intf_->SetDimmingConfig(payload, size);
+  DisplayError err = hw_intf_->SetPPConfig(payload, size);
   if (err) {
-    DLOGE("Failed to set dimming config %d", err);
+    DLOGE("Failed to set PP Event %d", err);
   } else {
-    DLOGI_IF(kTagDisplay, "Dimimng config is set successfully");
+    DLOGI_IF(kTagDisplay, "PP Event is set successfully");
     event_handler_->Refresh();
   }
   return err;
@@ -4095,6 +4140,7 @@ DisplayError DisplayBase::SetDimmingEnable(int int_enabled) {
   }
 
   *bl_ctrl = int_enabled? true : false;
+  info.object_type = DRM_MODE_OBJECT_CONNECTOR;
   info.id = sde_drm::kFeatureDimmingDynCtrl;
   info.type = sde_drm::kPropRange;
   info.version = 0;
@@ -4104,7 +4150,7 @@ DisplayError DisplayBase::SetDimmingEnable(int int_enabled) {
 
   DLOGV_IF(kTagDisplay, "Display %d-%d set dimming enable %d", display_id_,
     display_type_, int_enabled);
-  return SetDimmingConfig(reinterpret_cast<void *>(&info), sizeof(info));
+  return SetPPConfig(reinterpret_cast<void *>(&info), sizeof(info));
 }
 
 DisplayError DisplayBase::SetDimmingMinBl(int min_bl) {
@@ -4119,6 +4165,7 @@ DisplayError DisplayBase::SetDimmingMinBl(int min_bl) {
   }
 
   *bl = min_bl;
+  info.object_type = DRM_MODE_OBJECT_CONNECTOR;
   info.id = sde_drm::kFeatureDimmingMinBl;
   info.type = sde_drm::kPropRange;
   info.version = 0;
@@ -4128,14 +4175,16 @@ DisplayError DisplayBase::SetDimmingMinBl(int min_bl) {
 
   DLOGV_IF(kTagDisplay, "Display %d-%d set dimming min_bl %d", display_id_,
     display_type_, min_bl);
-  return SetDimmingConfig(reinterpret_cast<void *>(&info), sizeof(info));
+  return SetPPConfig(reinterpret_cast<void *>(&info), sizeof(info));
 }
 
 /* this func is called by DC dimming feature only after PCC updates */
 void DisplayBase::ScreenRefresh() {
-  ClientLock lock(disp_mutex_);
-  /* do not skip validate */
-  validated_ = false;
+  {
+    ClientLock lock(disp_mutex_);
+    /* do not skip validate */
+    validated_ = false;
+  }
   event_handler_->Refresh();
 }
 
@@ -4192,6 +4241,44 @@ DisplayError DisplayBase::ConfigureCwbForIdleFallback(LayerStack *layer_stack) {
   }
 
   return error;
+}
+
+void DisplayBase::TrackInputFences() {
+  if (!track_input_fences_) {
+    return;
+  }
+  // Check if async task is in progress.
+  // Wait until it finishes.
+  if (fence_wait_future_.valid()) {
+    fence_wait_future_.get();
+  }
+
+  lock_guard<mutex> scope_lock(fence_track_mutex_);
+  // Copy & Wait on all fences.
+  acquire_fences_ = {};
+  for (auto &hw_layer : disp_layer_stack_.info.hw_layers) {
+    acquire_fences_.push_back(hw_layer.input_buffer.acquire_fence);
+  }
+  // Start async task to wait on fences.
+  fence_wait_future_ = std::async(std::launch::async, [&](){
+                                  WaitOnFences();
+                                  });
+}
+
+void DisplayBase::WaitOnFences() {
+  lock_guard<mutex> scope_lock(fence_track_mutex_);
+  const int kFenceWaitTimeoutMs = 500;
+  for (auto &acquire_fence : acquire_fences_) {
+    if (Fence::Wait(acquire_fence, kFenceWaitTimeoutMs) == kErrorNone) {
+      continue;
+    }
+    // Fence did not signal in 500 ms.
+    DLOGI("Dumping stack trace for %d-%d", display_id_, display_type_);
+    event_handler_->HandleEvent(kDumpStacktrace);
+    usleep(kFenceWaitTimeoutMs * 1000);
+    DLOGI("Dumping stack trace after 500 ms sleep %d-%d", display_id_, display_type_);
+    event_handler_->HandleEvent(kDumpStacktrace);
+  }
 }
 
 }  // namespace sdm

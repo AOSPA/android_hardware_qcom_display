@@ -47,6 +47,7 @@ cc_binary {
         "libhardware",
         "libhistogram",
         "libutils",
+        "libutilscallstack",
         "libcutils",
         "libsync",
         "libc++",

@@ -1,5 +1,4 @@
 #!/vendor/bin/sh
-# Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 # Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,6 +26,13 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+#
+
+#
+# Changes from Qualcomm Innovation Center are provided under the following license:
+#
+# Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
 target=`getprop ro.board.platform`
@@ -92,8 +98,9 @@ case "$target" in
     ;;
     "crow")
     #SOC ID for Crow is 608
+    #SOC ID for Crow 4g is 644
     case "$soc_hwid" in
-       608)
+       608|644)
         #SOC ID for Crow is 608
         setprop vendor.display.enable_fb_scaling 0
         setprop vendor.display.target.version 5

@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -133,6 +133,7 @@ class CompManager : public CwbCallback {
   uint32_t GetMixerCount();
   uint32_t GetActiveDisplayCount();
   bool IsDisplayHWAvailable();
+  DisplayError SetCameraLaunchHint();
 
  private:
   static const int kMaxThermalLevel = 3;
@@ -180,6 +181,7 @@ class CompManager : public CwbCallback {
   bool demura_enabled_ = false;
   std::map<int32_t /* display_id */, bool> display_demura_status_;
   SecureEvent secure_event_ = kSecureEventMax;
+  bool high_bw_displays_present_ = false;
 };
 
 }  // namespace sdm

@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -393,6 +393,11 @@ DisplayError CoreImpl::HandleNullDisplay() {
   DLOGI("comp manager successfully initialized with default hw resources");
   enable_null_display_ = !comp_mgr_.IsDisplayHWAvailable();
   return kErrorNone;
+}
+
+DisplayError CoreImpl::SetCameraLaunchHint() {
+  SCOPE_LOCK(locker_);
+  return comp_mgr_.SetCameraLaunchHint();
 }
 
 DisplayError CoreImpl::SetMaxBandwidthMode(HWBwModes mode) {

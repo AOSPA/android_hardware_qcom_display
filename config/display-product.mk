@@ -230,6 +230,10 @@ ifeq ($(call is-vendor-board-platform,QCOM),true)
     SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
 endif
 
+ifeq ($(TARGET_USES_FOD_ZPOS), true)
+    SOONG_CONFIG_qtidisplay_udfps := true
+endif
+
 # Techpack values
 
 ifeq ($(TARGET_IS_HEADLESS), true)

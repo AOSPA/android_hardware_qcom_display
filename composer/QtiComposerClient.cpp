@@ -20,7 +20,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -1661,9 +1661,13 @@ bool QtiComposerClient::CommandReader::parsePresentOrValidateDisplay(uint16_t le
       }
       // Set result to 2.
       mWriter.setPresentOrValidateResult(2);
-    } else {
+    } else if (status == HWC2::Error::None) {
       // Set result to 1.
       mWriter.setPresentOrValidateResult(1);
+    } else {
+      ALOGE("CommitOrPrepare failed !needsCommit %d", status);
+      mWriter.setError(getCommandLoc(), static_cast<Error>(status));
+      return true;
     }
     // perform post present display.
     postPresentDisplay(&presentFence);

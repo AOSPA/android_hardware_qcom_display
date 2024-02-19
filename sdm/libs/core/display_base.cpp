@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -228,8 +228,8 @@ DisplayError DisplayBase::Deinit() {
       hw_intf_->UnsetScaleLutConfig();
     }
   }
-  HWEventsInterface::Destroy(hw_events_intf_);
   HWInterface::Destroy(hw_intf_);
+  HWEventsInterface::Destroy(hw_events_intf_);
   if (rc_panel_feature_init_) {
     rc_core_->Deinit();
     rc_panel_feature_init_ =  false;

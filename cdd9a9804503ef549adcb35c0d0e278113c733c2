@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e3c89c1_86f77d89",
+        "filename": "sdm/libs/core/comp_manager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 822,
+      "author": {
+        "id": 1000468
+      },
+      "writtenOn": "2024-03-01T18:50:20Z",
+      "side": 1,
+      "message": "A prop check would be fine",
+      "revId": "cdd9a9804503ef549adcb35c0d0e278113c733c2",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

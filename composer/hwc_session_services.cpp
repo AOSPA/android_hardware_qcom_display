@@ -532,6 +532,20 @@ int HWCSession::SetCameraLaunchStatus(uint32_t on) {
   }
 
   HWBwModes mode = on > 0 ? kBwVFEOn : kBwVFEOff;
+  if (mode == kBwVFEOn && core_intf_->SetCameraLaunchHint() == kErrorNone) {
+    for (hwc2_display_t display = HWC_DISPLAY_PRIMARY;
+        display < HWCCallbacks::kNumRealDisplays; display++) {
+      if (hwc_display_[display] == NULL ||
+          hwc_display_[display]->GetCurrentPowerMode() == HWC2::PowerMode::Off) {
+        continue;
+      }
+      int ret = WaitForCommitDone(display, kClientCameraLaunch);
+      if (ret != 0) {
+        DLOGW("WaitForCommitDone failed with error %d", ret);
+        return -EINVAL;
+      }
+    }
+  }
 
   if (core_intf_->SetMaxBandwidthMode(mode) != kErrorNone) {
     return -EINVAL;

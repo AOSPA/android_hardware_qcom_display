@@ -30,7 +30,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -265,6 +265,12 @@ class CoreInterface {
     @return \link DisplayError \endlink
   */
   virtual DisplayError SetMaxBandwidthMode(HWBwModes mode) = 0;
+
+  /*! @brief Method to set camera launch hint.
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetCameraLaunchHint() = 0;
 
   /*! @brief Method to get characteristics of the first display.
 

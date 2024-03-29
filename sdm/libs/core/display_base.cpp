@@ -4365,8 +4365,6 @@ DisplayError DisplayBase::CaptureCwb(const LayerBuffer &output_buffer, const Cwb
 }
 
 bool DisplayBase::HandleCwbTeardown() {
-  ClientLock lock(disp_mutex_);
-
   if (!hw_resource_info_.has_concurrent_writeback) {
     return false;
   }

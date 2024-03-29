@@ -1,7 +1,5 @@
 /* Copyright (c) 2015, 2020-2021, The Linux Foundataion. All rights reserved.
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
-*
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
 * met:
@@ -29,6 +27,13 @@
 *
 */
 
+/*
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #include <cutils/properties.h>
 #include <dlfcn.h>
 #include <thread>
@@ -53,8 +58,8 @@ DisplayError CPUHint::Init(HWCDebugHandler *debug_handler) {
                              reinterpret_cast<void **>(&fn_perf_hint_acq_rel_offload_)) ||
         !vendor_ext_lib_.Sym("perf_lock_rel_offload",
                              reinterpret_cast<void **>(&fn_perf_lock_rel_offload_)) ||
-        !vendor_ext_lib_.Sym("perf_hint",
-                             reinterpret_cast<void **>(&fn_perf_hint_)) ||
+        !vendor_ext_lib_.Sym("perf_hint_offload",
+                             reinterpret_cast<void **>(&fn_perf_hint_offload_)) ||
         !vendor_ext_lib_.Sym("perf_event",
                              reinterpret_cast<void **>(&fn_perf_event_))) {
       DLOGW("Failed to load symbols for Vendor Extension Library");
@@ -62,7 +67,7 @@ DisplayError CPUHint::Init(HWCDebugHandler *debug_handler) {
     }
     DLOGI("Successfully Loaded Vendor Extension Library symbols");
     enabled_ = (fn_perf_hint_acq_rel_offload_ != NULL &&
-                fn_perf_lock_rel_offload_ != NULL && fn_perf_hint_ != NULL &&
+                fn_perf_lock_rel_offload_ != NULL && fn_perf_hint_offload_ != NULL &&
                 fn_perf_event_ != NULL);
   } else {
     DLOGW("Failed to open %s : %s", path, vendor_ext_lib_.Error());
@@ -133,22 +138,16 @@ int CPUHint::ReqHintRelease() {
   return 0;
 }
 
-int CPUHint::ReqHint(PerfHintThreadType type, int tid) {
+int CPUHint::ReqTidChangeOffload(PerfHintThreadType type, int tid) {
   std::lock_guard<std::mutex> lock(tid_lock_);
 
-  std::thread worker(
-    [this](uint32_t tid, PerfHintThreadType type) {
-      int ret = fn_perf_hint_(kHintPassPid, nullptr, tid, type);
-      if (ret == kPassPidSuccess) {
-        DLOGV_IF(kTagCpuHint, "Successfully sent HWC's tid:%d", tid);
-        return 0;
-      } else {
-        DLOGW("Failed to send HWC's tid:%d", tid);
-        return -1;
-      }
-    }, tid, type);
+  int handle = fn_perf_hint_offload_(kHintPassPid, nullptr, tid, type, 0, nullptr);
+  if (handle < 0) {
+    DLOGW("Failed to send HWC's tid:%d", tid);
+    return -1;
+  }
 
-  worker.detach();
+  DLOGV_IF(kTagCpuHint, "Successfully sent HWC's tid:%d", tid);
   return 0;
 }
 

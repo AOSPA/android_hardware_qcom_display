@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -334,6 +334,10 @@ void CompManager::PrepareStrategyConstraints(Handle comp_handle,
   if (app_layer_count == 1) {
      constraints->safe_mode = false;
   }
+
+  if (high_bw_displays_present_) {
+    constraints->safe_mode = true;
+  }
 }
 
 void CompManager::GenerateROI(Handle display_ctx, DispLayerStack *disp_layer_stack) {
@@ -600,13 +604,26 @@ DisplayError CompManager::ValidateAndSetCursorPosition(Handle display_ctx,
                                                       &display_comp_ctx->fb_config);
 }
 
+DisplayError CompManager::SetCameraLaunchHint() {
+  std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
+
+  if (powered_on_displays_.size() > 1) {
+    high_bw_displays_present_ = true;
+    return kErrorNone;
+  }
+
+  return kErrorNotSupported;
+}
+
 DisplayError CompManager::SetMaxBandwidthMode(HWBwModes mode) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
   if (mode >= kBwModeMax) {
     return kErrorNotSupported;
   }
 
-  return resource_intf_->SetMaxBandwidthMode(mode);
+  DisplayError err = resource_intf_->SetMaxBandwidthMode(mode);
+  high_bw_displays_present_ = false;
+  return err;
 }
 
 DisplayError CompManager::GetScaleLutConfig(HWScaleLutInfo *lut_info) {
@@ -870,6 +887,11 @@ void CompManager::GetRetireFence(Handle display_ctx, shared_ptr<Fence> *retire_f
 
 void CompManager::NeedsValidate(Handle display_ctx, bool *needs_validate) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
+  if (high_bw_displays_present_) {
+    *needs_validate = true;
+    return;
+  }
+
   if (resource_intf_ == nullptr) {
     return;
   }

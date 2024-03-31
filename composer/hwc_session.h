@@ -146,6 +146,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, public qClient::BnQClient,
     kClientIdlepowerCollapse,
     kClientTeardownCWB,
     kClientTrustedUI,
+    kClientCameraLaunch,
     kClientMax
   };
 

@@ -173,6 +173,9 @@ case "$target" in
         setprop vendor.display.disable_offline_rotator 0
         setprop vendor.display.disable_rotator_ubwc 1
         setprop vendor.display.supports_background_blur 0
+        if [ "$soc_hwid" -eq 653 ] || [ "$soc_hwid" -eq 654 ]; then
+            setprop vendor.display.enable_latch_media_content 1
+        fi
         ;;
         581|582)
         # Set property for Montague

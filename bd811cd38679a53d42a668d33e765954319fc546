@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "093add3a_825a68fd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2024-04-18T03:16:17Z",
+      "side": 1,
+      "message": "this is only for certain HDR content btw\nmost of it is HLG is which handled well but apparently google asked them to support PQ as well",
+      "revId": "bd811cd38679a53d42a668d33e765954319fc546",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

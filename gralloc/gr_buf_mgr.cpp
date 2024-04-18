@@ -211,7 +211,6 @@ static Error dataspaceToColorMetadata(Dataspace dataspace, ColorMetaData *color_
       Transfer_sYCC
       Transfer_BT2020_2_1
       Transfer_BT2020_2_2
-      Transfer_SMPTE_ST2084
       Transfer_ST_428
       */
   }
@@ -291,6 +290,9 @@ static Error colorMetadataToDataspace(ColorMetaData color_metadata, Dataspace *d
       break;
     case Transfer_HLG:
       transfer = Dataspace::TRANSFER_HLG;
+      break;
+    case Transfer_SMPTE_ST2084:
+      transfer = Dataspace::TRANSFER_ST2084;
       break;
     default:
       return Error::UNSUPPORTED;

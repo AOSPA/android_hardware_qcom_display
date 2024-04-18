@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Not a Contribution
  *
  * Copyright (C) 2010 The Android Open Source Project
@@ -199,6 +200,9 @@ static Error dataspaceToColorMetadata(Dataspace dataspace, ColorMetaData *color_
       break;
     case (uint32_t)Dataspace::TRANSFER_HLG:
       out.transfer = Transfer_HLG;
+      break;
+    case (uint32_t)Dataspace::TRANSFER_ST2084:
+      out.transfer = Transfer_SMPTE_ST2084;
       break;
     default:
       return Error::UNSUPPORTED;

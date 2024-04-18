@@ -20,7 +20,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -223,6 +223,9 @@ static Error dataspaceToColorMetadata(Dataspace dataspace, ColorMetaData *color_
       break;
     case (uint32_t)Dataspace::TRANSFER_HLG:
       out.transfer = Transfer_HLG;
+      break;
+    case (uint32_t)Dataspace::TRANSFER_ST2084:
+      out.transfer = Transfer_SMPTE_ST2084;
       break;
     default:
       return Error::UNSUPPORTED;

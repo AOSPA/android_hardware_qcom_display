@@ -30,7 +30,7 @@
 
 # Changes from Qualcomm Innovation Center are provided under the following license:
 #
-# Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+# Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted (subject to the limitations in the
@@ -149,10 +149,12 @@ case "$target" in
         setprop vendor.display.disable_non_wfd_vds 1
         setprop vendor.display.supports_background_blur 0
         ;;
-        568|602)
+        568|602|653|654)
         # Set property for Ravelin
         # SOC ID for Ravelin is 568
         # SOC ID for Ravelin APQ is 602
+        # SOC ID for SG_RAVELIN is 653
+        # SOC ID for SG_RAVELINP is 654
         setprop vendor.gralloc.use_dma_buf_heaps 1
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_allow_idle_fallback 1
@@ -171,6 +173,9 @@ case "$target" in
         setprop vendor.display.disable_offline_rotator 0
         setprop vendor.display.disable_rotator_ubwc 1
         setprop vendor.display.supports_background_blur 0
+        if [ "$soc_hwid" -eq 653 ] || [ "$soc_hwid" -eq 654 ]; then
+            setprop vendor.display.enable_latch_media_content 1
+        fi
         ;;
         581|582)
         # Set property for Montague

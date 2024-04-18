@@ -1025,14 +1025,14 @@ void GetColorSpaceFromMetadata(private_handle_t *hnd, int *color_space) {
   if (getMetaData(hnd, GET_COLOR_METADATA, &color_metadata) == 0) {
     switch (color_metadata.colorPrimaries) {
       case ColorPrimaries_BT709_5:
-        *color_space = ((color_metadata.range) ? HAL_CSC_ITU_R_709_FR : HAL_CSC_ITU_R_709);
+        *color_space = ((color_metadata.range) ? ITU_R_709_FR : ITU_R_709);
         break;
       case ColorPrimaries_BT601_6_525:
       case ColorPrimaries_BT601_6_625:
-        *color_space = ((color_metadata.range) ? HAL_CSC_ITU_R_601_FR : HAL_CSC_ITU_R_601);
+        *color_space = ((color_metadata.range) ? ITU_R_601_FR : ITU_R_601);
         break;
       case ColorPrimaries_BT2020:
-        *color_space = (color_metadata.range) ? HAL_CSC_ITU_R_2020_FR : HAL_CSC_ITU_R_2020;
+        *color_space = (color_metadata.range) ? ITU_R_2020_FR : ITU_R_2020;
         break;
       default:
         ALOGW("Unknown Color primary = %d", color_metadata.colorPrimaries);

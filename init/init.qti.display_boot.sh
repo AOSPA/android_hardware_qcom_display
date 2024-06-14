@@ -56,7 +56,7 @@ case "$target" in
         setprop vendor.display.target.version 4
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_allow_idle_fallback 1
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_rotator_ui 1
         setprop vendor.display.enable_spec_fence 1
         setprop vendor.display.thermal.version 1
@@ -80,7 +80,7 @@ case "$target" in
         setprop vendor.gralloc.use_dma_buf_heaps 1
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_allow_idle_fallback 1
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_rotator_ui 1
         setprop vendor.display.enable_spec_fence 1
         setprop vendor.display.thermal.version 1
@@ -107,7 +107,7 @@ case "$target" in
         setprop vendor.gralloc.use_dma_buf_heaps 1
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_allow_idle_fallback 1
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_rotator_ui 1
         setprop vendor.display.enable_spec_fence 1
         setprop vendor.display.thermal.version 1
@@ -131,7 +131,7 @@ case "$target" in
         setprop vendor.gralloc.use_dma_buf_heaps 1
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_allow_idle_fallback 1
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_rotator_ui 1
         setprop vendor.display.enable_spec_fence 1
         setprop vendor.display.thermal.version 1
@@ -144,7 +144,7 @@ case "$target" in
         setprop vendor.gralloc.use_dma_buf_heaps 1
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_allow_idle_fallback 1
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_rotator_ui 1
         setprop vendor.display.enable_spec_fence 1
         setprop vendor.display.thermal.version 1
@@ -159,7 +159,7 @@ case "$target" in
         setprop vendor.gralloc.use_dma_buf_heaps 1
         setprop vendor.display.enable_posted_start_dyn 2
         setprop vendor.display.enable_allow_idle_fallback 1
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_rotator_ui 1
         setprop vendor.display.enable_spec_fence 1
         setprop vendor.display.thermal.version 1
@@ -177,13 +177,13 @@ case "$target" in
         # Set property for lahaina
         setprop vendor.display.target.version 1
         setprop vendor.display.enable_posted_start_dyn 2
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_allow_idle_fallback 1
         ;;
         450)
         # Set property for shima
         setprop vendor.display.target.version 2
-        setprop vendor.display.enable_perf_hint_large_comp_cycle 1
+        setprop vendor.display.enable_perf_hint_large_comp_cycle 0
         setprop vendor.display.enable_posted_start_dyn 1
         setprop vendor.display.enable_qsync_idle 1
         setprop vendor.display.enable_allow_idle_fallback 1

@@ -11,6 +11,7 @@ soong_config_module_type {
         "var3",
         "llvmcov",
         "panel_dimension_extra_precision",
+        "use_ycrcb_camera_encode",
     ],
     properties: [
         "cflags",
@@ -111,6 +112,9 @@ qtidisplay_cc_defaults {
         },
         panel_dimension_extra_precision: {
             cflags: ["-DTARGET_PANEL_DIMENSION_HAS_EXTRA_PRECISION"],
+        },
+        use_ycrcb_camera_encode: {
+            cflags: ["-DTARGET_USE_YCRCB_CAMERA_ENCODE"],
         },
     },
 }

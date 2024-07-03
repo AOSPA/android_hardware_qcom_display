@@ -168,6 +168,7 @@ SOONG_CONFIG_qtidisplay_var2 := false
 SOONG_CONFIG_qtidisplay_var3 := false
 SOONG_CONFIG_qtidisplay_llvmcov := false
 SOONG_CONFIG_qtidisplay_panel_dimension_extra_precision := false
+SOONG_CONFIG_qtidisplay_use_ycrcb_camera_encode := false
 
 ifeq ($(call is-vendor-board-platform,QCOM),true)
     SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
@@ -175,6 +176,10 @@ endif
 
 ifeq ($(TARGET_PANEL_DIMENSION_HAS_EXTRA_PRECISION), true)
     SOONG_CONFIG_qtidisplay_panel_dimension_extra_precision := true
+endif
+
+ifeq ($(TARGET_USE_YCRCB_CAMERA_ENCODE), true)
+    SOONG_CONFIG_qtidisplay_use_ycrcb_camera_encode := true
 endif
 
 # Techpack values

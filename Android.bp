@@ -9,6 +9,7 @@ soong_config_module_type {
         "gralloc4",
         "default",
         "var3",
+        "use_ycrcb_camera_encode",
     ],
     properties: [
         "cflags",
@@ -103,6 +104,9 @@ qtidisplay_cc_defaults {
             conditions_default: {
                 enabled: true,
             },
+        },
+        use_ycrcb_camera_encode: {
+            cflags: ["-DTARGET_USE_YCRCB_CAMERA_ENCODE"],
         },
     },
 }

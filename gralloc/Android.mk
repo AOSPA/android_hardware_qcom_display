@@ -45,6 +45,9 @@ endif
 ifeq ($(TARGET_USES_YCRCB_CAMERA_PREVIEW),true)
 LOCAL_CFLAGS                  += -DUSE_YCRCB_CAMERA_PREVIEW
 endif
+ifeq ($(TARGET_USES_YCRCB_CAMERA_ENCODE),true)
+LOCAL_CFLAGS                  += -DUSE_YCRCB_CAMERA_ENCODE
+endif
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
 LOCAL_SRC_FILES               := gr_utils.cpp gr_adreno_info.cpp
 include $(BUILD_SHARED_LIBRARY)

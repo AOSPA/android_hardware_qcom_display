@@ -1646,8 +1646,21 @@ int GetImplDefinedFormat(uint64_t usage, int format) {
         gr_format = HAL_PIXEL_FORMAT_NV21_ENCODEABLE;  // NV21
       } else if (usage & GRALLOC_USAGE_PRIVATE_HEIF) {
         gr_format = HAL_PIXEL_FORMAT_NV12_HEIF;
+<<<<<<< HEAD   (27aa69 init: Disable HWC large comp perf hint)
       } else if (format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;
+=======
+      } else if (format == static_cast<int>(PixelFormat::YCBCR_420_888)) {
+#ifdef TARGET_USE_YCRCB_CAMERA_ENCODE
+        if (usage & BufferUsage::CAMERA_OUTPUT) {
+          gr_format = HAL_PIXEL_FORMAT_YCrCb_420_SP_VENUS;
+        } else {
+          gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;
+        }
+#else
+       gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;
+#endif
+>>>>>>> CHANGE (d40d59 gralloc: Allow devices to opt-in for YCrCb camera video enco)
       } else {
         gr_format = HAL_PIXEL_FORMAT_NV12_ENCODEABLE;  // NV12
       }

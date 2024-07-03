@@ -225,7 +225,13 @@ SOONG_CONFIG_qtidisplay_default := true
 SOONG_CONFIG_qtidisplay_var1 := false
 SOONG_CONFIG_qtidisplay_var2 := false
 SOONG_CONFIG_qtidisplay_var3 := false
+<<<<<<< HEAD   (27aa69 init: Disable HWC large comp perf hint)
 SOONG_CONFIG_qtidisplay_sdmcore_has_is_display_hw_available_func := true
+=======
+SOONG_CONFIG_qtidisplay_llvmcov := false
+SOONG_CONFIG_qtidisplay_panel_dimension_extra_precision := false
+SOONG_CONFIG_qtidisplay_use_ycrcb_camera_encode := false
+>>>>>>> CHANGE (d40d59 gralloc: Allow devices to opt-in for YCrCb camera video enco)
 
 ifeq ($(call is-vendor-board-platform,QCOM),true)
     SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
@@ -237,6 +243,10 @@ endif
 
 ifeq ($(TARGET_USES_FOD_ZPOS), true)
     SOONG_CONFIG_qtidisplay_udfps := true
+endif
+
+ifeq ($(TARGET_USE_YCRCB_CAMERA_ENCODE), true)
+    SOONG_CONFIG_qtidisplay_use_ycrcb_camera_encode := true
 endif
 
 # Techpack values

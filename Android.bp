@@ -10,7 +10,13 @@ soong_config_module_type {
         "udfps",
         "default",
         "var3",
+<<<<<<< HEAD   (27aa69 init: Disable HWC large comp perf hint)
         "sdmcore_has_is_display_hw_available_func",
+=======
+        "llvmcov",
+        "panel_dimension_extra_precision",
+        "use_ycrcb_camera_encode",
+>>>>>>> CHANGE (d40d59 gralloc: Allow devices to opt-in for YCrCb camera video enco)
     ],
     properties: [
         "cflags",
@@ -111,6 +117,9 @@ qtidisplay_cc_defaults {
         },
         sdmcore_has_is_display_hw_available_func: {
             cflags: ["-DSDMCORE_HAS_IS_DISPLAY_HW_AVAILABLE_FUNC"],
+        },
+        use_ycrcb_camera_encode: {
+            cflags: ["-DTARGET_USE_YCRCB_CAMERA_ENCODE"],
         },
     },
 }

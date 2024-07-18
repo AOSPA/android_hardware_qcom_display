@@ -16,6 +16,24 @@
       "message": "derp?",
       "revId": "cc510360e99a029abec7d8711ad47412b275ea0a",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "daeac890_c76d7444",
+        "filename": "gralloc/gr_utils.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 1658,
+      "author": {
+        "id": 1000845
+      },
+      "writtenOn": "2024-07-18T13:41:13Z",
+      "side": 1,
+      "message": "Yeah, it was a mismerge. Fixed in latest patchset.",
+      "parentUuid": "13b81278_aded22d7",
+      "revId": "cc510360e99a029abec7d8711ad47412b275ea0a",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

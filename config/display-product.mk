@@ -5,12 +5,9 @@ PRODUCT_PACKAGES += \
     android.hardware.graphics.mapper@3.0-impl-qti-display \
     android.hardware.graphics.mapper@4.0-impl-qti-display \
     vendor.qti.hardware.display.allocator-service \
-    android.hardware.memtrack@1.0-impl \
-    android.hardware.memtrack@1.0-service \
     gralloc.$(TARGET_BOARD_PLATFORM) \
     lights.$(TARGET_BOARD_PLATFORM) \
     hwcomposer.$(TARGET_BOARD_PLATFORM) \
-    memtrack.$(TARGET_BOARD_PLATFORM) \
     libqdMetaData.vendor \
     libqdMetaData.system \
     libdisplayconfig \
@@ -33,6 +30,16 @@ PRODUCT_PACKAGES += \
     vendor.qti.hardware.display.mapper@3.0 \
     vendor.qti.hardware.display.mapper@4.0.vendor \
     modetest
+
+ifeq ($(TARGET_USE_AIDL_QTI_MEMTRACK), true)
+PRODUCT_PACKAGES += \
+    vendor.qti.hardware.memtrack-service
+else
+PRODUCT_PACKAGES += \
+    android.hardware.memtrack@1.0-impl \
+    android.hardware.memtrack@1.0-service \
+    memtrack.$(TARGET_BOARD_PLATFORM)
+endif
 
 #QDCM calibration xml file for 2k panel
 PRODUCT_COPY_FILES += hardware/qcom/display/config/qdcm_calib_data_nt35597_cmd_mode_dsi_truly_panel_with_DSC.xml:$(TARGET_COPY_OUT_VENDOR)/etc/qdcm_calib_data_nt35597_cmd_mode_dsi_truly_panel_with_DSC.xml

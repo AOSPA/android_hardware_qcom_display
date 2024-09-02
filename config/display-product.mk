@@ -6,7 +6,6 @@ PRODUCT_PACKAGES += \
     android.hardware.graphics.mapper@4.0-impl-qti-display \
     vendor.qti.hardware.display.allocator-service \
     gralloc.$(TARGET_BOARD_PLATFORM) \
-    lights.$(TARGET_BOARD_PLATFORM) \
     hwcomposer.$(TARGET_BOARD_PLATFORM) \
     libqdMetaData.vendor \
     libqdMetaData.system \

@@ -9,7 +9,6 @@ PRODUCT_PACKAGES += \
     vendor.qti.hardware.display.allocator-service \
     vendor.qti.hardware.display.composer-service \
     gralloc.$(TARGET_BOARD_PLATFORM) \
-    lights.$(TARGET_BOARD_PLATFORM) \
     hwcomposer.$(TARGET_BOARD_PLATFORM) \
     libsdmcore \
     libsdmutils \

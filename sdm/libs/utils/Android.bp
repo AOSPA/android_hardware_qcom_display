@@ -1,18 +1,14 @@
-
 cc_library_shared {
 
     name: "libsdmutils",
-    defaults: ["display_defaults"],
+    defaults: ["qtidisplay_defaults"],
     sanitize: {
         integer_overflow: true,
     },
     vendor: true,
 
     header_libs: ["display_headers"],
-    cflags: [
-        "-Wno-implicit-float-conversion",
-        "-DLOG_TAG=\"SDM\""
-    ],
+    cflags: ["-DLOG_TAG=\"SDM\""],
     srcs: [
         "debug.cpp",
         "rect.cpp",

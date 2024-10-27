@@ -192,13 +192,18 @@ endif
 SOONG_CONFIG_NAMESPACES += qtidisplay
 
 # Soong Keys
-SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4
+SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4 displayconfig_enabled
 
 # Soong Values
 SOONG_CONFIG_qtidisplay_drmpp := true
 SOONG_CONFIG_qtidisplay_headless := false
 SOONG_CONFIG_qtidisplay_llvmsa := false
 SOONG_CONFIG_qtidisplay_gralloc4 := true
+SOONG_CONFIG_qtidisplay_displayconfig_enabled := false
+
+ifeq ($(call is-vendor-board-platform,QCOM),true)
+    SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
+endif
 
 ifeq ($(TARGET_IS_HEADLESS), true)
     PRODUCT_SOONG_NAMESPACES += hardware/qcom/display/qmaa

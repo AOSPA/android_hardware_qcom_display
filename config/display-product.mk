@@ -192,7 +192,7 @@ endif
 SOONG_CONFIG_NAMESPACES += qtidisplay
 
 # Soong Keys
-SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4 displayconfig_enabled udfps
+SOONG_CONFIG_qtidisplay := drmpp headless llvmsa gralloc4 displayconfig_enabled udfps ycrcb_camera_encode
 
 # Soong Values
 SOONG_CONFIG_qtidisplay_drmpp := true
@@ -201,6 +201,7 @@ SOONG_CONFIG_qtidisplay_llvmsa := false
 SOONG_CONFIG_qtidisplay_gralloc4 := true
 SOONG_CONFIG_qtidisplay_displayconfig_enabled := false
 SOONG_CONFIG_qtidisplay_udfps := false
+SOONG_CONFIG_qtidisplay_ycrcb_camera_encode := false
 
 ifeq ($(call is-vendor-board-platform,QCOM),true)
     SOONG_CONFIG_qtidisplay_displayconfig_enabled := true
@@ -208,6 +209,10 @@ endif
 
 ifeq ($(TARGET_USES_FOD_ZPOS), true)
     SOONG_CONFIG_qtidisplay_udfps := true
+endif
+
+ifeq ($(TARGET_USES_YCRCB_CAMERA_ENCODE), true)
+    SOONG_CONFIG_qtidisplay_ycrcb_camera_encode := true
 endif
 
 ifeq ($(TARGET_IS_HEADLESS), true)

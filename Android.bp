@@ -15,6 +15,7 @@ soong_config_module_type {
         "llvmsa",
         "gralloc4",
         "udfps",
+        "ycrcb_camera_encode",
     ],
     properties: [
         "cflags",
@@ -52,6 +53,9 @@ qtidisplay_cc_defaults {
         },
         udfps: {
             cflags: ["-DUDFPS_ZPOS"],
+        },
+        ycrcb_camera_encode: {
+            cflags: ["-DUSE_YCRCB_CAMERA_ENCODE"],
         },
     },
 }

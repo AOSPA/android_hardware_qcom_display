@@ -16,6 +16,7 @@ soong_config_module_type {
         "gralloc4",
         "udfps",
         "ycrcb_camera_encode",
+        "no_raw10_custom_format",
     ],
     properties: [
         "cflags",
@@ -57,6 +58,9 @@ qtidisplay_cc_defaults {
         },
         ycrcb_camera_encode: {
             cflags: ["-DUSE_YCRCB_CAMERA_ENCODE"],
+        },
+        no_raw10_custom_format: {
+            cflags: ["-DNO_RAW10_CUSTOM_FORMAT"],
         },
     },
 }

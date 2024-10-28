@@ -20,3 +20,69 @@ cc_library_shared {
 
     header_libs: ["display_intf_headers"],
 }
+
+//libgrallocutils
+cc_library_shared {
+    name: "libgrallocutils",
+    vendor: true,
+    defaults: [
+        "libgrallocutils-defaults",
+    ],
+
+    header_libs: [
+        "display_headers",
+        "qti_kernel_headers",
+    ],
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libutils",
+        "libhardware",
+        "libqdMetaData",
+        "libdl",
+        "android.hardware.graphics.common@1.2",
+        "android.hardware.graphics.mapper@2.0",
+        "android.hardware.graphics.mapper@2.1",
+        "android.hardware.graphics.mapper@3.0",
+        "android.hardware.graphics.mapper@4.0",
+    ],
+    cflags: [
+        "-DLOG_TAG=\"qdgralloc\"",
+        "-D__QTI_DISPLAY_GRALLOC__",
+        "-Wno-sign-conversion",
+    ],
+    srcs: [
+        "gr_utils.cpp",
+        "gr_adreno_info.cpp",
+    ],
+}
+
+soong_config_module_type {
+    name: "gralloc_cc_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "gralloc",
+    bool_variables: [
+        "uses_ycrcb_camera_encode", // TARGET_USES_YCRCB_CAMERA_ENCODE
+        "uses_ycrcb_camera_preview", // TARGET_USES_YCRCB_CAMERA_PREVIEW
+        "needs_raw10_buffer_fix", // TARGET_NEEDS_RAW10_BUFFER_FIX
+    ],
+    properties: [
+        "cflags",
+        "cppflags",
+    ],
+}
+
+gralloc_cc_defaults {
+    name: "libgrallocutils-defaults",
+    soong_config_variables: {
+        uses_ycrcb_camera_encode: {
+            cflags: ["-DUSE_YCRCB_CAMERA_ENCODE"],
+        },
+        uses_ycrcb_camera_preview: {
+            cflags: ["-DUSE_YCRCB_CAMERA_PREVIEW"],
+        },
+        needs_raw10_buffer_fix: {
+            cflags: ["-DRAW10_BUFFER_FIX",],
+        },
+    },
+}

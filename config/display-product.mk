@@ -163,3 +163,16 @@ PRODUCT_PACKAGES += vendor.display.color@1.0.vendor \
                     vendor.display.color@1.0-service.rc \
                     ppd
 endif
+
+ifeq ($(TARGET_NEEDS_RAW10_BUFFER_FIX),true)
+$(call soong_config_set,gralloc,needs_raw10_buffer_fix,true)
+endif
+
+ifeq ($(TARGET_USES_YCRCB_CAMERA_PREVIEW),true)
+$(call soong_config_set,gralloc,uses_ycrcb_camera_preview,true)
+endif
+
+ifeq ($(TARGET_USES_YCRCB_CAMERA_ENCODE),true)
+$(call soong_config_set,gralloc,uses_ycrcb_camera_encode,true)
+endif
+

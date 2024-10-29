@@ -25,6 +25,9 @@ cc_library_shared {
 cc_library_shared {
     name: "libgrallocutils",
     vendor: true,
+    defaults: [
+        "libgrallocutils-defaults",
+    ],
     sanitize: {
         integer_overflow: true,
     },
@@ -56,4 +59,26 @@ cc_library_shared {
         "gr_adreno_info.cpp",
         "gr_camera_info.cpp",
     ],
+}
+
+soong_config_module_type {
+    name: "gralloc_cc_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "gralloc",
+    bool_variables: [
+        "uses_ycrcb_camera_encode", // TARGET_USES_YCRCB_CAMERA_ENCODE
+    ],
+    properties: [
+        "cflags",
+        "cppflags",
+    ],
+}
+
+gralloc_cc_defaults {
+    name: "libgrallocutils-defaults",
+    soong_config_variables: {
+        uses_ycrcb_camera_encode: {
+            cflags: ["-DUSE_YCRCB_CAMERA_ENCODE"],
+        },
+    },
 }

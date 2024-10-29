@@ -193,5 +193,9 @@ PRODUCT_PROPERTY_OVERRIDES += \
 endif
 endif
 
+ifeq ($(TARGET_USES_YCRCB_CAMERA_ENCODE),true)
+$(call soong_config_set,gralloc,uses_ycrcb_camera_encode,true)
+endif
+
 # Properties using default value:
 #    vendor.display.disable_hw_recovery=0

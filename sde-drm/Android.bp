@@ -1,0 +1,9 @@
+cc_library_shared {
+    name: "libsdedrm",
+    shared_libs: [
+        "libdrm",
+        "libdrmutils",
+        "libdisplaydebug",
+    ],
+    vendor: true,
+}

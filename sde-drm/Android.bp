@@ -1,0 +1,23 @@
+cc_library_shared {
+
+    name: "libsdedrm",
+    defaults: ["display_defaults"],
+    shared_libs: [
+        "libdrm",
+        "libdrmutils",
+        "libdisplaydebug",
+    ],
+    header_libs: [
+        "display_headers",
+        "qti_kernel_headers",
+    ],
+    cflags: [
+        "-Wno-missing-field-initializers",
+        "-Wall",
+        "-Werror",
+        "-fno-operator-names",
+        "-Wno-unused-parameter",
+        "-DLOG_TAG=\"SDE_DRM\"",
+    ],
+    vendor: true,
+}

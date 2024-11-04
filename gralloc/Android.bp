@@ -67,6 +67,8 @@ soong_config_module_type {
     config_namespace: "gralloc",
     bool_variables: [
         "uses_ycrcb_camera_encode", // TARGET_USES_YCRCB_CAMERA_ENCODE
+        "uses_no_raw10_custom_format", // TARGET_NO_RAW10_CUSTOM_FORMAT
+
     ],
     properties: [
         "cflags",
@@ -79,6 +81,9 @@ gralloc_cc_defaults {
     soong_config_variables: {
         uses_ycrcb_camera_encode: {
             cflags: ["-DUSE_YCRCB_CAMERA_ENCODE"],
+        },
+        uses_no_raw10_custom_format: {
+            cflags: ["-DNO_RAW10_CUSTOM_FORMAT"],
         },
     },
 }

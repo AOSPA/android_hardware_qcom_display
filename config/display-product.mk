@@ -197,5 +197,9 @@ ifeq ($(TARGET_USES_YCRCB_CAMERA_ENCODE),true)
 $(call soong_config_set,gralloc,uses_ycrcb_camera_encode,true)
 endif
 
+ifeq ($(TARGET_NO_RAW10_CUSTOM_FORMAT),true)
+$(call soong_config_set,gralloc,uses_no_raw10_custom_format,true)
+endif
+
 # Properties using default value:
 #    vendor.display.disable_hw_recovery=0

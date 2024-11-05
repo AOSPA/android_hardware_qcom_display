@@ -201,5 +201,9 @@ ifeq ($(TARGET_NO_RAW10_CUSTOM_FORMAT),true)
 $(call soong_config_set,gralloc,uses_no_raw10_custom_format,true)
 endif
 
+ifeq ($(TARGET_USES_DRM_PP),true)
+$(call soong_config_set,libsdedrm,uses_dpp_drp,true)
+endif
+
 # Properties using default value:
 #    vendor.display.disable_hw_recovery=0

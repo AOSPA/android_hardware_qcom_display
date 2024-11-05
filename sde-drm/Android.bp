@@ -1,0 +1,64 @@
+cc_library_shared {
+    name: "libsdedrm",
+    vendor: true,
+    sanitize: {
+        integer_overflow: true,
+    },
+    defaults: [
+        "libsdedrm-defaults",
+    ],
+    shared_libs: [
+        "libdrm",
+        "libdrmutils",
+        "libdisplaydebug",
+    ],
+    header_libs: [
+        "display_headers",
+        "qti_kernel_headers",
+    ],
+    include_dirs: [
+        "external/libdrm",
+    ],
+    cflags: [
+        "-Wno-missing-field-initializers",
+        "-Wall",
+        "-Werror",
+        "-fno-operator-names",
+        "-Wno-unused-parameter",
+        "-DLOG_TAG=\"SDE_DRM\"",
+    ],
+    srcs: [
+        "drm_manager.cpp",
+        "drm_connector.cpp",
+        "drm_encoder.cpp",
+        "drm_crtc.cpp",
+        "drm_plane.cpp",
+        "drm_atomic_req.cpp",
+        "drm_utils.cpp",
+        "drm_pp_manager.cpp",
+        "drm_property.cpp",
+        "drm_panel_feature_mgr.cpp",
+        "drm_dpps_mgr_imp.cpp",
+    ],
+}
+
+soong_config_module_type {
+    name: "libsdedrm_cc_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "libsdedrm",
+    bool_variables: [
+        "uses_dpp_drp", // TARGET_USES_DRM_PP
+    ],
+    properties: [
+        "cflags",
+        "cppflags",
+    ],
+}
+libsdedrm_cc_defaults {
+    name: "libsdedrm-defaults",
+    soong_config_variables: {
+        uses_dpp_drp: {
+            cflags: ["-DPP_DRM_ENABLE"],
+        },
+    },
+}

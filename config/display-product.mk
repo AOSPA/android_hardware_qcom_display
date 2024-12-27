@@ -6,7 +6,7 @@ PRODUCT_PACKAGES += \
     android.hardware.graphics.mapper@4.0-impl-qti-display \
     vendor.qti.hardware.display.allocator-service \
     gralloc.$(TARGET_BOARD_PLATFORM) \
-    hwcomposer.$(TARGET_BOARD_PLATFORM) \
+    hwcomposer.qcom \
     libqdMetaData.vendor \
     libqdMetaData.system \
     libdisplayconfig \
@@ -182,8 +182,13 @@ endif
 
 ifeq ($(TARGET_USES_FOD_ZPOS),true)
 $(call soong_config_set,sdmcore,uses_fod_zpos,true)
+$(call soong_config_set,hwcomposer,uses_fod_zpos,true)
 endif
 
 ifeq ($(ENABLE_HYP),true)
 $(call soong_config_set,sdmcore,enable_hyp,true)
+endif
+
+ifeq ($(TARGET_BOARD_AUTO),true)
+$(call soong_config_set,hwcomposer,board_auto,true)
 endif

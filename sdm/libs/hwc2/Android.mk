@@ -2,8 +2,6 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 include $(LOCAL_PATH)/../../../common.mk
 
-ifeq ($(use_hwc2),true)
-
 LOCAL_MODULE                  := hwcomposer.$(TARGET_BOARD_PLATFORM)
 LOCAL_VENDOR_MODULE           := true
 LOCAL_MODULE_RELATIVE_PATH    := hw
@@ -73,4 +71,3 @@ LOCAL_SRC_FILES               := hwc_session.cpp \
 LOCAL_VINTF_FRAGMENTS         := android.hardware.graphics.composer-qti-display.xml
 
 include $(BUILD_SHARED_LIBRARY)
-endif

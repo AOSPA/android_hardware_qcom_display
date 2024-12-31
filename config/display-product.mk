@@ -5,7 +5,7 @@ PRODUCT_PACKAGES += \
     android.hardware.graphics.mapper@3.0-impl-qti-display \
     android.hardware.graphics.mapper@4.0-impl-qti-display \
     vendor.qti.hardware.display.allocator-service \
-    gralloc.$(TARGET_BOARD_PLATFORM) \
+    gralloc.qcom \
     hwcomposer.qcom \
     libqdMetaData.vendor \
     libqdMetaData.system \
@@ -187,6 +187,10 @@ endif
 
 ifeq ($(TARGET_USES_YCRCB_CAMERA_PREVIEW),true)
 $(call soong_config_set,gralloc,uses_ycrcb_camera_preview,true)
+endif
+
+ifneq ($(TARGET_USES_GRALLOC4),false)
+$(call soong_config_set,gralloc,uses_gralloc4,true)
 endif
 
 ifeq ($(TARGET_USES_YCRCB_CAMERA_ENCODE),true)

@@ -43,10 +43,6 @@
 #include "hwc_tonemapper.h"
 #include "hwc_session.h"
 
-#ifdef QTI_BSP
-#include <hardware/display_defs.h>
-#endif
-
 #define __CLASS__ "HWCDisplay"
 
 namespace sdm {

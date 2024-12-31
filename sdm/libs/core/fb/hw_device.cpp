@@ -521,12 +521,10 @@ DisplayError HWDevice::Commit(HWLayers *hw_layers) {
 
   LayerStack *stack = hw_layer_info.stack;
   stack->retire_fence_fd = mdp_commit.retire_fence;
-#ifdef VIDEO_MODE_DEFER_RETIRE_FENCE
   if (hw_panel_info_.mode == kModeVideo) {
     stack->retire_fence_fd = stored_retire_fence;
     stored_retire_fence =  mdp_commit.retire_fence;
   }
-#endif
   // MDP returns only one release fence for the entire layer stack. Duplicate this fence into all
   // layers being composed by MDP.
 
@@ -1365,44 +1363,6 @@ DisplayError HWDevice::GetMixerAttributes(HWMixerAttributes *mixer_attributes) {
 
 DisplayError HWDevice::DumpDebugData() {
   DLOGW("Pingpong timeout occurred in the driver.");
-#ifdef USER_DEBUG
-  // Save the xlogs on ping pong time out
-  const char* xlog_path = "/data/vendor/display/mdp_xlog";
-  DLOGD("Dumping debugfs data to %s", xlog_path);
-  std::ostringstream  dst;
-  auto file = open(xlog_path, O_CREAT | O_TRUNC | O_DSYNC | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP);
-  if (file < 0) {
-    DLOGE("Couldn't open file: err:%d (%s)", errno, strerror(errno));
-    return kErrorResources;
-  }
-  dst << "+++ MDP:XLOG +++" << std::endl;
-  std::ifstream  src("/sys/kernel/debug/mdp/xlog/dump");
-  dst << src.rdbuf() << std::endl;
-  src.close();
-
-  dst << "+++ MDP:REG_XLOG +++" << std::endl;
-  src.open("/sys/kernel/debug/mdp/xlog/reg_xlog");
-  dst << src.rdbuf() << std::endl;
-  src.close();
-
-  dst << "+++ MDP:DBGBUS_XLOG +++" << std::endl;
-  src.open("/sys/kernel/debug/mdp/xlog/dbgbus_xlog");
-  dst << src.rdbuf() << std::endl;
-  src.close();
-
-  dst << "+++ MDP:VBIF_DBGBUS_XLOG +++" << std::endl;
-  src.open("/sys/kernel/debug/mdp/xlog/vbif_dbgbus_xlog");
-  dst << src.rdbuf() << std::endl;
-  src.close();
-  auto ret = write(file, dst.str().c_str(), dst.str().size());
-  if (ret < 0) {
-    DLOGE("Failed to write xlog data err: %d (%s)", errno, strerror(errno));
-  } else {
-    fsync(file);
-  }
-  close(file);
-  DLOGD("Finished dumping xlogs");;
-#endif
   return kErrorNone;
 }
 

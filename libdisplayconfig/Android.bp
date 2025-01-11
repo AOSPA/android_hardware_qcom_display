@@ -1,0 +1,19 @@
+cc_library_shared {
+    name: "libdisplayconfig",
+
+    header_libs: [
+        "display_headers",
+    ],
+
+    shared_libs: [
+        "libhidlbase",
+        "libutils",
+        "vendor.display.config@1.0",
+    ],
+
+    srcs: [
+        "DisplayConfig.cpp"
+    ],
+
+    export_include_dirs: ["."],
+}

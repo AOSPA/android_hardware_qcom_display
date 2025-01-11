@@ -48,13 +48,8 @@
 
 #define __CLASS__ "HWCSession"
 
-#ifdef TARGET_MIN_KERNEL_4_14
 #define HWC_UEVENT_SWITCH_HDMI "change@/devices/virtual/graphics/fb2"
 #define CONN_STATE "STATUS="
-#else
-#define HWC_UEVENT_SWITCH_HDMI "change@/devices/virtual/switch/hdmi"
-#define CONN_STATE "SWITCH_STATE="
-#endif
 
 #define HWC_UEVENT_GRAPHICS_FB0 "change@/devices/virtual/graphics/fb0"
 

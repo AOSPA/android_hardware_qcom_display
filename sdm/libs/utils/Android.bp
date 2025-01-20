@@ -1,10 +1,8 @@
 cc_library_shared {
 
     name: "libsdmutils",
-    defaults: ["display_defaults"],
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
-
-    header_libs: ["display_headers"],
     cflags: [
         "-Wno-implicit-float-conversion",
         "-DLOG_TAG=\"SDM\""

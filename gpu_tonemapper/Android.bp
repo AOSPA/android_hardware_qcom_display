@@ -1,28 +1,19 @@
 cc_library_shared {
     name: "libgpu_tonemapper",
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
-
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
+    header_libs: ["qti_kernel_headers"],
     shared_libs: [
         "libEGL",
         "libGLESv2",
         "libGLESv3",
         "libui",
-        "libutils",
-        "liblog",
     ],
-
     cflags: [
-        "-Wno-missing-field-initializers",
-        "-Wall",
         "-Wno-unused-parameter",
         "-Wno-unreachable-code-loop-increment",
         "-DLOG_TAG=\"GPU_TONEMAPPER\"",
     ],
-
     srcs: [
         "TonemapFactory.cpp",
         "glengine.cpp",
@@ -30,5 +21,4 @@ cc_library_shared {
         "EGLImageWrapper.cpp",
         "Tonemapper.cpp",
     ],
-
 }

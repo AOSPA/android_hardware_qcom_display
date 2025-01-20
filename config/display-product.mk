@@ -164,35 +164,38 @@ PRODUCT_PACKAGES += vendor.display.color@1.0.vendor \
                     ppd
 endif
 
-ifeq ($(TARGET_USES_DRM_PP),true)
-$(call soong_config_set,sdmcore,uses_drm_pp,true)
-endif
-
-ifeq ($(TARGET_USES_FOD_ZPOS),true)
-$(call soong_config_set,sdmcore,uses_fod_zpos,true)
-$(call soong_config_set,hwc2,uses_fod_zpos,true)
+ifeq ($(TARGET_BOARD_AUTO),true)
+$(call soong_config_set,qtidisplay,board_auto,true)
 endif
 
 ifeq ($(ENABLE_HYP),true)
-$(call soong_config_set,sdmcore,enable_hyp,true)
+$(call soong_config_set,qtidisplay,enable_hyp,true)
 endif
 
-ifeq ($(TARGET_BOARD_AUTO),true)
-$(call soong_config_set,hwc2,board_auto,true)
+ifeq ($(TARGET_IS_HEADLESS), true)
+$(call soong_config_set,qtidisplay,is_headless,true)
 endif
 
-ifeq ($(TARGET_NEEDS_RAW10_BUFFER_FIX),true)
-$(call soong_config_set,gralloc,needs_raw10_buffer_fix,true)
+ifeq ($(TARGET_USES_FOD_ZPOS),true)
+$(call soong_config_set,qtidisplay,uses_fod_zpos,true)
 endif
 
-ifeq ($(TARGET_USES_YCRCB_CAMERA_PREVIEW),true)
-$(call soong_config_set,gralloc,uses_ycrcb_camera_preview,true)
+ifeq ($(TARGET_USES_DRM_PP),true)
+$(call soong_config_set,qtidisplay,uses_drm_pp,true)
 endif
 
 ifneq ($(TARGET_USES_GRALLOC4),false)
-$(call soong_config_set,gralloc,uses_gralloc4,true)
+$(call soong_config_set,qtidisplay,uses_gralloc4,true)
 endif
 
 ifeq ($(TARGET_USES_YCRCB_CAMERA_ENCODE),true)
-$(call soong_config_set,gralloc,uses_ycrcb_camera_encode,true)
+$(call soong_config_set,qtidisplay,uses_ycrcb_camera_encode,true)
+endif
+
+ifeq ($(TARGET_USES_YCRCB_CAMERA_PREVIEW),true)
+$(call soong_config_set,qtidisplay,uses_ycrcb_camera_preview,true)
+endif
+
+ifeq ($(TARGET_NEEDS_RAW10_BUFFER_FIX),true)
+$(call soong_config_set,qtidisplay,needs_raw10_buffer_fix,true)
 endif

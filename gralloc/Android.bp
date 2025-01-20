@@ -23,13 +23,9 @@ cc_library_shared {
 
 cc_library_shared {
     name: "gralloc.qcom",
-    defaults: ["display_defaults"],
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
     relative_install_path: "hw",
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
     include_dirs: [
         "system/memory/libion/include",
         "system/memory/libion/kernel-headers",
@@ -56,18 +52,9 @@ cc_library_shared {
 //libgrallocutils
 cc_library_shared {
     name: "libgrallocutils",
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
-    defaults: [
-        "gralloc-defaults",
-    ],
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
     shared_libs: [
-        "liblog",
-        "libcutils",
-        "libutils",
         "libhardware",
         "libqdMetaData",
         "libdl",
@@ -91,15 +78,8 @@ cc_library_shared {
 //libgralloccore
 cc_library_shared {
     name: "libgralloccore",
-    defaults: [
-        "gralloc-defaults",
-        "display_defaults",
-    ],
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
     include_dirs: [
         "system/memory/libion/include",
         "system/memory/libion/kernel-headers",
@@ -133,17 +113,9 @@ cc_library_shared {
 //mapper3
 cc_library_shared {
     name: "android.hardware.graphics.mapper@3.0-impl-qti-display",
-    defaults: [
-        "gralloc-defaults",
-        "display_defaults",
-    ],
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
     relative_install_path: "hw",
-
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
     shared_libs: [
         "libhidlbase",
         "libqdMetaData",
@@ -172,20 +144,12 @@ cc_library_shared {
 //mapper4
 cc_library_shared {
     name: "android.hardware.graphics.mapper@4.0-impl-qti-display",
-    defaults: [
-        "gralloc-defaults",
-        "display_defaults",
-    ],
+    defaults: ["qtidisplay_defaults"],
     sanitize: {
         integer_overflow: true,
     },
     vendor: true,
     relative_install_path: "hw",
-
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
     shared_libs: [
         "libhidlbase",
         "libqdMetaData",
@@ -216,16 +180,9 @@ cc_library_shared {
 //allocator
 cc_binary {
     name: "vendor.qti.hardware.display.allocator-service",
-    defaults: [
-        "gralloc-defaults",
-        "display_defaults",
-    ],
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
     relative_install_path: "hw",
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
     shared_libs: [
         "libhidlbase",
         "libqdMetaData",
@@ -244,51 +201,11 @@ cc_binary {
         "vendor.qti.hardware.display.mapperextensions@1.0",
         "vendor.qti.hardware.display.mapperextensions@1.1",
     ],
-    cflags: [
-        "-DLOG_TAG=\"qdgralloc\"",
-    ],
+    cflags: ["-DLOG_TAG=\"qdgralloc\""],
     srcs: [
         "QtiAllocator.cpp",
         "service.cpp",
     ],
     init_rc: ["vendor.qti.hardware.display.allocator-service.rc"],
     vintf_fragments: ["vendor.qti.hardware.display.allocator-service.xml"],
-}
-
-soong_config_module_type {
-    name: "gralloc_cc_defaults",
-    module_type: "cc_defaults",
-    config_namespace: "gralloc",
-    bool_variables: [
-        "uses_ycrcb_camera_encode", // TARGET_USES_YCRCB_CAMERA_ENCODE
-        "uses_ycrcb_camera_preview", // TARGET_USES_YCRCB_CAMERA_PREVIEW
-        "needs_raw10_buffer_fix", // TARGET_NEEDS_RAW10_BUFFER_FIX
-        "enable_hyp", // ENABLE_HYP
-        "uses_gralloc4", // TARGET_USES_GRALLOC4
-    ],
-    properties: [
-        "cflags",
-        "cppflags",
-    ],
-}
-
-gralloc_cc_defaults {
-    name: "gralloc-defaults",
-    soong_config_variables: {
-        uses_ycrcb_camera_encode: {
-            cflags: ["-DUSE_YCRCB_CAMERA_ENCODE"],
-        },
-        uses_ycrcb_camera_preview: {
-            cflags: ["-DUSE_YCRCB_CAMERA_PREVIEW"],
-        },
-        needs_raw10_buffer_fix: {
-            cflags: ["-DRAW10_BUFFER_FIX",],
-        },
-        enable_hyp: {
-            cflags: ["-DHYPERVISOR"],
-        },
-        uses_gralloc4: {
-            cflags: ["-DTARGET_USES_GRALLOC4"],
-        },
-    },
 }

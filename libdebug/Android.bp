@@ -1,15 +1,12 @@
 cc_library_shared {
-
     name: "libdisplaydebug",
-    defaults: ["display_defaults"],
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
 
     shared_libs: ["libdl"],
     cflags: [
-        "-DLOG_TAG=\"SDM\"",
-        "-Wall",
-        "-Werror",
         "-fno-operator-names",
+        "-DLOG_TAG=\"SDM\"",
     ],
     export_include_dirs: ["."],
     srcs: ["debug_handler.cpp"],

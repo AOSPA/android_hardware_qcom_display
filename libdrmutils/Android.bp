@@ -1,22 +1,18 @@
 cc_library_shared {
 
     name: "libdrmutils",
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
+    header_libs: ["qti_kernel_headers"],
     shared_libs: [
         "libdrm",
         "libdl",
         "libdisplaydebug",
     ],
     cflags: [
-        "-DLOG_TAG=\"DRMUTILS\"",
-        "-Wall",
         "-std=c++11",
-        "-Werror",
         "-fno-operator-names",
+        "-DLOG_TAG=\"DRMUTILS\"",
     ],
 
     srcs: [

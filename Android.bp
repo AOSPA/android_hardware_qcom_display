@@ -1,8 +1,27 @@
-cc_defaults {
-    name: "display_defaults",
+soong_config_module_type {
+    name: "qtidisplay_cc_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "qtidisplay",
+    bool_variables: [
+        "enable_hyp", // ENABLE_HYP
+        "excludes_display_pp", // TARGET_EXCLUDES_DISPLAY_PP
+        "excludes_multi_display", // TARGET_EXCLUDES_MULTI_DISPLAY
+        "has_wide_color_display", // TARGET_HAS_WIDE_COLOR_DISPLAY
+        "is_headless", // TARGET_IS_HEADLESS
+        "uses_drm_pp", // TARGET_USES_DRM_PP
+        "uses_gralloc4", // TARGET_USES_GRALLOC4
+        "uses_ycrcb_camera_encode", // TARGET_USES_YCRCB_CAMERA_ENCODE
+    ],
+    properties: [
+        "cflags",
+        "cppflags",
+    ],
+}
+
+qtidisplay_cc_defaults {
+    name: "qtidisplay_defaults",
     cflags: [
         "-Wno-missing-field-initializers",
-        "-Wconversion",
         "-Wall",
         "-Werror",
     ],
@@ -12,6 +31,33 @@ cc_defaults {
         "libutils",
     ],
     header_libs: ["display_headers"],
+
+    soong_config_variables: {
+        enable_hyp: {
+            cflags: ["-DHYPERVISOR"],
+        },
+        excludes_display_pp: {
+            cflags: ["-DEXCLUDE_DISPLAY_PP"],
+        },
+        excludes_multi_display: {
+            cflags: ["-DEXCLUDES_MULTI_DISPLAY"],
+        },
+        has_wide_color_display: {
+            cflags: ["-DFEATURE_WIDE_COLOR"],
+        },
+        is_headless: {
+            cflags: ["-DTARGET_HEADLESS"],
+        },
+        uses_drm_pp: {
+            cflags: ["-DPP_DRM_ENABLE"],
+        },
+        uses_gralloc4: {
+            cflags: ["-DTARGET_USES_GRALLOC4"],
+        },
+        uses_ycrcb_camera_encode: {
+            cflags: ["-DUSE_YCRCB_CAMERA_ENCODE"],
+        },
+    },
 }
 
 cc_library_headers {
@@ -32,7 +78,15 @@ cc_library_headers {
 }
 
 subdirs = [
-    "gpu_tonemapper",
     "libqservice",
     "libqdutils",
+    "libddebug",
+    "libdrmutils",
+    "gralloc",
+    "gpu_tonemapper",
+    "hdmi_cec",
+    "sde-drm",
+    "sdm/libs/utils",
+    "sdm/libs/core",
+    "sdm/libs/hwc2",
 ]

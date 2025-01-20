@@ -1,13 +1,12 @@
 cc_library_shared {
     name: "libsdedrm",
-    defaults: ["display_defaults"],
+    defaults: ["qtidisplay_defaults"],
     shared_libs: [
         "libdrm",
         "libdrmutils",
         "libdisplaydebug",
     ],
     header_libs: [
-        "display_headers",
         "qti_kernel_headers",
     ],
     vendor: true,

@@ -1,29 +1,20 @@
 cc_library_shared {
     name: "libsdmcore",
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
-    defaults: [
-        "libsdmcore-defaults",
-    ],
-
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
-
+    header_libs: ["qti_kernel_headers"],
     shared_libs: [
         "libdl",
         "libsdmutils",
         "libdrm",
         "libdrmutils",
     ],
-
     cflags: [
         "-Wno-unused-parameter",
         "-fexceptions",
         "-DLOG_TAG=\"SDM\"",
         "-DCOMPILE_DRM",
     ],
-
     srcs: [
         "core_interface.cpp",
         "core_impl.cpp",
@@ -53,25 +44,3 @@ cc_library_shared {
         "drm/hw_color_manager_drm.cpp",
     ],
  }
-
-soong_config_module_type {
-    name: "sdm_cc_defaults",
-    module_type: "cc_defaults",
-    config_namespace: "sdmcore",
-    bool_variables: [
-        "uses_drm_pp", // TARGET_USES_DRM_PP
-    ],
-    properties: [
-        "cflags",
-        "cppflags",
-    ],
-}
-
-sdm_cc_defaults {
-    name: "libsdmcore-defaults",
-    soong_config_variables: {
-        uses_drm_pp: {
-            cflags: ["-DPP_DRM_ENABLE"],
-        },
-    },
-}

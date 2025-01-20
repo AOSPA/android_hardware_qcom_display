@@ -1,31 +1,20 @@
 cc_library_shared {
     name: "hwcomposer.qcom",
+    defaults: ["qtidisplay_defaults"],
     vendor: true,
     relative_install_path: "hw",
-
-    defaults: [
-        "hwcomposer-defaults",
-    ],
-
-    header_libs: [
-        "display_headers",
-        "qti_kernel_headers",
-    ],
-
+    header_libs: ["qti_kernel_headers"],
     shared_libs: [
         "libsdmcore",
         "libqservice",
         "libbinder",
         "libhardware",
         "libhardware_legacy",
-        "libutils",
-        "libcutils",
         "libsync",
         "libqdutils",
         "libqdMetaData",
         "libsdmutils",
         "libc++",
-        "liblog",
         "libgrallocutils",
         "libui",
         "libgpu_tonemapper",
@@ -39,14 +28,11 @@ cc_library_shared {
         "android.hardware.graphics.composer@2.1",
         "vendor.display.config@2.0",
     ],
-
     cflags: [
-        "-Wno-missing-field-initializers",
         "-Wno-unused-parameter",
         "-fcolor-diagnostics",
         "-DLOG_TAG=\"SDM\"",
     ],
-
     srcs: [
         "hwc_session.cpp",
         "hwc_session_services.cpp",
@@ -67,35 +53,4 @@ cc_library_shared {
         "hwc_display_external_test.cpp",
         "hwc_buffer_allocator.cpp",
     ],
-
-}
-
-soong_config_module_type {
-    name: "sdm_cc_defaults",
-    module_type: "cc_defaults",
-    config_namespace: "hwc2",
-    bool_variables: [
-        "excludes_display_pp", // TARGET_EXCLUDES_DISPLAY_PP
-        "excludes_multi_display", // TARGET_EXCLUDES_MULTI_DISPLAY
-        "has_wide_color_display", // TARGET_HAS_WIDE_COLOR_DISPLAY
-    ],
-    properties: [
-        "cflags",
-        "cppflags",
-    ],
-}
-
-sdm_cc_defaults {
-    name: "hwcomposer-defaults",
-    soong_config_variables: {
-        excludes_display_pp: {
-            cflags: ["-DEXCLUDE_DISPLAY_PP"],
-        },
-        excludes_multi_display: {
-            cflags: ["-DEXCLUDES_MULTI_DISPLAY"],
-        },
-        has_wide_color_display: {
-            cflags: ["-DFEATURE_WIDE_COLOR"],
-        },
-    },
 }

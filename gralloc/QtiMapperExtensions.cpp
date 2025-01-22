@@ -74,7 +74,7 @@ Return<void> QtiMapperExtensions::getInterlacedFlag(void *buffer, getInterlacedF
     auto ret = getMetaData(hnd, GET_PP_PARAM_INTERLACED, &interlaced_flag);
     if (ret != 0) {
       interlaced_flag = 0;
-      ALOGW("%s: getMetaData returned %d, defaulting to "
+      ALOGD_IF(DEBUG, "%s: getMetaData returned %d, defaulting to "
       "interlaced_flag = %d", __FUNCTION__, ret, interlaced_flag);
     }
   }

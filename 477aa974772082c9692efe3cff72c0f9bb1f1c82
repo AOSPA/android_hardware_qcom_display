@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7682a6d_7677f6d5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2025-04-04T11:37:02Z",
+      "side": 1,
+      "message": "Fixes missing vintf/initrc for devices with elf checks enabled and prebuilt composer",
+      "revId": "477aa974772082c9692efe3cff72c0f9bb1f1c82",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

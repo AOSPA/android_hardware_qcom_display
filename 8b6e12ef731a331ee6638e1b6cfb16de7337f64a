@@ -16,6 +16,23 @@
       "message": "seems to have stopped DisplayExtnImpl::NeedsCacheReset crashes from sf-ext",
       "revId": "8b6e12ef731a331ee6638e1b6cfb16de7337f64a",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "102acc64_1d6a9158",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2025-12-04T17:12:17Z",
+      "side": 1,
+      "message": "still face sf crashes without this",
+      "revId": "8b6e12ef731a331ee6638e1b6cfb16de7337f64a",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

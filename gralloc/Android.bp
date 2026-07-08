@@ -1,3 +1,9 @@
+soong_namespace {
+    imports: [
+        "hardware/qcom/display",
+    ],
+}
+
 //libgrallocutils
 cc_library_shared {
     name: "libgrallocutils",

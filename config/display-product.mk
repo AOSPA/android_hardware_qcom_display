@@ -200,6 +200,7 @@ SOONG_CONFIG_qtidisplay := drmpp headless llvmsa \
                            composer_version smmu_proxy \
                            ubwcp_headers sixzone_version
 SOONG_CONFIG_qtidisplay += udfps samsung_udfps oplus_udfps
+SOONG_CONFIG_qtidisplay += pxlw_hw_iris7 pxlw_vendor_namespace
 
 # Soong Values
 SOONG_CONFIG_qtidisplay_drmpp := true
@@ -219,6 +220,7 @@ SOONG_CONFIG_qtidisplay_sixzone_version := v2
 SOONG_CONFIG_qtidisplay_udfps ?= false
 SOONG_CONFIG_qtidisplay_samsung_udfps ?= false
 SOONG_CONFIG_qtidisplay_oplus_udfps ?= false
+SOONG_CONFIG_qtidisplay_pxlw_hw_iris7 ?= false
 ifeq ($(TARGET_USES_COMPOSER3),true)
     SOONG_CONFIG_qtidisplay_composer_version := v3
     $(warning "Using composer3")

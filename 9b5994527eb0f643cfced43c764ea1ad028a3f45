@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "09b3d419_5b44afc2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000092
+      },
+      "writtenOn": "2026-10-25T06:42:33Z",
+      "side": 1,
+      "message": "Verified out/soong/soong.aospa_oneplus12.variables",
+      "revId": "9b5994527eb0f643cfced43c764ea1ad028a3f45",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

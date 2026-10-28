@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b99ae6e4_6e0d4a94",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1001176
+      },
+      "writtenOn": "2026-10-28T16:46:02Z",
+      "side": 1,
+      "message": "resolves:\n`error: hardware/qcom/display/sdm/libs/core/Android.bp:1:1: \"libsdmcore\" depends on u\nndefined module \"//:libpwirisfeature\".`\n\nif sonng_config_set not defined.",
+      "revId": "9cb2492e919e441c5d764f5e0a3cb434f3122040",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}

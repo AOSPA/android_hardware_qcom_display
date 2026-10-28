@@ -20,6 +20,7 @@ cc_library_shared {
         true: ["-DTARGET_EXCLUDE_DDR_INFO"],
         default: [],
     }) + select(soong_config_variable("qtidisplay", "pxlw_vendor_namespace"), {
+        "": [],
         any @ value: [
             "-DPXLW_IRIS",
         ],
@@ -34,6 +35,7 @@ cc_library_shared {
         "libsdedrm",
         "libsdmdal",
     ]+ select(soong_config_variable("qtidisplay", "pxlw_vendor_namespace"), {
+        "": [],
         any @ value: [
             "//" + value + ":libpwirisfeature",
         ],

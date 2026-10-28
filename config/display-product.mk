@@ -221,6 +221,7 @@ SOONG_CONFIG_qtidisplay_udfps ?= false
 SOONG_CONFIG_qtidisplay_samsung_udfps ?= false
 SOONG_CONFIG_qtidisplay_oplus_udfps ?= false
 SOONG_CONFIG_qtidisplay_pxlw_hw_iris7 ?= false
+SOONG_CONFIG_qtidisplay_pxlw_vendor_namespace ?=
 ifeq ($(TARGET_USES_COMPOSER3),true)
     SOONG_CONFIG_qtidisplay_composer_version := v3
     $(warning "Using composer3")

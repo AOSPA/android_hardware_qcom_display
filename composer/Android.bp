@@ -22,12 +22,13 @@ cc_binary {
         "-Wno-unused-parameter",
         "-DLOG_TAG=\"SDM\"",
     ] + select(soong_config_variable("qtidisplay", "pxlw_vendor_namespace"), {
+        "": [],
         any @ value: [
             "-DPXLW_IRIS",
         ],
         default: [],
     }) + select(soong_config_variable("qtidisplay", "pxlw_hw_iris7"), {
-        true: [
+        "true": [
             "-DSUPPORTS_PXLW_IRIS7",
         ],
         default: [],
@@ -74,6 +75,7 @@ cc_binary {
         "libgrallocutils",
         "libtinyxml2",
     ] + select(soong_config_variable("qtidisplay", "pxlw_vendor_namespace"), {
+        "": [],
         any @ value: [
             "//" + value + ":libpwirisfeature",
             "//" + value + ":libpwirishalwrapper",

@@ -16,6 +16,40 @@
       "message": "resolves:\n`error: hardware/qcom/display/sdm/libs/core/Android.bp:1:1: \"libsdmcore\" depends on u\nndefined module \"//:libpwirisfeature\".`\n\nif sonng_config_set not defined.",
       "revId": "9cb2492e919e441c5d764f5e0a3cb434f3122040",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11e06054_24beafc0",
+        "filename": "composer/Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1000092
+      },
+      "writtenOn": "2026-10-29T10:17:30Z",
+      "side": 1,
+      "message": "better keep bool",
+      "revId": "9cb2492e919e441c5d764f5e0a3cb434f3122040",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1ade4bd5_b4452992",
+        "filename": "config/display-product.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 1000092
+      },
+      "writtenOn": "2026-10-29T10:17:30Z",
+      "side": 1,
+      "message": "needed?",
+      "revId": "9cb2492e919e441c5d764f5e0a3cb434f3122040",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
   ]
 }

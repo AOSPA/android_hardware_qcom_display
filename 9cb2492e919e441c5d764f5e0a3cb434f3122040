@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "92e1b565_13ec398d",
+        "filename": "composer/Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1001176
+      },
+      "writtenOn": "2026-10-30T12:58:32Z",
+      "side": 1,
+      "message": "if we keep bool, we need to set `$(call soong_config_set_bool,qtidisplay,pxlw_hw_iris7,false)` on config/display-product.mk.\n\n`error: hardware/qcom/display/composer/Android.bp:19:11: module \"vendor.qti.hardware.display.composer-service\" variant \"android_vendor_arm64_armv8-2a-dotprod\": cflags: Ex\npected all branches of a select on condition soong_config_variable(\"qtidisplay\", \"pxlw_hw_iris7\") to have type string, found bool`",
+      "parentUuid": "11e06054_24beafc0",
+      "revId": "9cb2492e919e441c5d764f5e0a3cb434f3122040",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1ade4bd5_b4452992",
         "filename": "config/display-product.mk",
         "patchSetId": 1
@@ -48,6 +66,24 @@
       "writtenOn": "2026-10-29T10:17:30Z",
       "side": 1,
       "message": "needed?",
+      "revId": "9cb2492e919e441c5d764f5e0a3cb434f3122040",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4e59149_b6f0aae3",
+        "filename": "config/display-product.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 1001176
+      },
+      "writtenOn": "2026-10-30T12:58:32Z",
+      "side": 1,
+      "message": "yeah, else it fails same way.",
+      "parentUuid": "1ade4bd5_b4452992",
       "revId": "9cb2492e919e441c5d764f5e0a3cb434f3122040",
       "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
     }
